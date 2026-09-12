@@ -1,0 +1,10 @@
+{
+  "disabledAccepted": true,
+  "insecureUrlRejected": true,
+  "validOfferAccepted": true,
+  "exactCheckoutUrl": true,
+  "presentationRecorded": true,
+  "clickRecorded": true,
+  "distinctEvents": true,
+  "deliveryStateUpdated": true
+}

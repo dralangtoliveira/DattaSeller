@@ -2,6 +2,12 @@
 
 Central comercial da linha Datta.
 
+## MVP local e preview visual
+
+- O CRM funcional baseado no Prospector fica em `poc/dattaseller-local` e roda localmente com SQLite, MCP, Kanban, comparador, proposta, contrato e follow-up.
+- O aplicativo Next.js na raiz preserva o protótipo visual criado no v0 e permite revisão pela Vercel sem assumir persistência ou substituir o CRM local.
+- As instruções operacionais, configurações e evidências de validação estão em `poc/dattaseller-local/README.md` e `poc/dattaseller-local/evidence/`.
+
 ## Objetivo
 
 Construir o **DattaSeller** como uma estação comercial única para vendedores trabalharem leads, oportunidades, propostas e vendas sem operar diretamente as ferramentas técnicas que executam os produtos.
