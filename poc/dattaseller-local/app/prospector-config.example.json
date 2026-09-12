@@ -7,6 +7,7 @@
   "dattavps": {
     "checkout_url": "",
     "offer_name": "",
+    "offer_description": "",
     "offer_price": "",
     "enabled": false,
     "notice": "Preencha somente com a URL oficial aprovada. Nenhum checkout é criado localmente."

@@ -1,0 +1,74 @@
+[
+  {
+    "width": 360,
+    "http": 200,
+    "views": 9,
+    "bodyOverflow": false,
+    "navVisible": true,
+    "passwordInputs": 0,
+    "forbiddenText": false,
+    "contentLength": 1121,
+    "errors": [],
+    "ok": true
+  },
+  {
+    "width": 375,
+    "http": 200,
+    "views": 9,
+    "bodyOverflow": false,
+    "navVisible": true,
+    "passwordInputs": 0,
+    "forbiddenText": false,
+    "contentLength": 1121,
+    "errors": [],
+    "ok": true
+  },
+  {
+    "width": 768,
+    "http": 200,
+    "views": 9,
+    "bodyOverflow": false,
+    "navVisible": true,
+    "passwordInputs": 0,
+    "forbiddenText": false,
+    "contentLength": 1121,
+    "errors": [],
+    "ok": true
+  },
+  {
+    "width": 1024,
+    "http": 200,
+    "views": 9,
+    "bodyOverflow": false,
+    "navVisible": true,
+    "passwordInputs": 0,
+    "forbiddenText": false,
+    "contentLength": 1121,
+    "errors": [],
+    "ok": true
+  },
+  {
+    "width": 1280,
+    "http": 200,
+    "views": 9,
+    "bodyOverflow": false,
+    "navVisible": true,
+    "passwordInputs": 0,
+    "forbiddenText": false,
+    "contentLength": 1121,
+    "errors": [],
+    "ok": true
+  },
+  {
+    "width": 1440,
+    "http": 200,
+    "views": 9,
+    "bodyOverflow": false,
+    "navVisible": true,
+    "passwordInputs": 0,
+    "forbiddenText": false,
+    "contentLength": 1121,
+    "errors": [],
+    "ok": true
+  }
+]

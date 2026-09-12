@@ -1,3 +1,5 @@
 # E2E Datta VPS
 
-O fluxo técnico local está pronto para qualificar e sugerir o produto. A apresentação de checkout permanece bloqueada até receber URL oficial, plano e preço; pagamento e entrega são registrados apenas após confirmação manual.
+O caminho técnico foi executado com dados efêmeros: configuração desabilitada, rejeição de URL insegura, ativação com configuração completa, lead aderente, registro de apresentação, liberação do CTA, registro de clique e estado `checkout_acessado`. O teste confirmou que o clique não altera pagamento, fechamento, handoff ou entrega. Dados efêmeros foram removidos.
+
+A execução comercial permanece em **Oferta aguardando configuração** até receber nome, descrição, preço, disponibilidade e URL oficial aprovados. Pagamento, provisionamento e entrega só podem ser registrados após confirmação manual.

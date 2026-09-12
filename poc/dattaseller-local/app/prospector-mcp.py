@@ -10,7 +10,8 @@ Execução:    python prospector-mcp.py            (usa a pasta atual)
              python prospector-mcp.py --pasta "C:\\Users\\voce\\Desktop\\Clientes"
 Teste local: python prospector-mcp.py --teste
 """
-import argparse, json, os, sqlite3, sys, datetime
+import argparse, json, os, sqlite3, sys, datetime, re, unicodedata
+from urllib.parse import urlparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--pasta', default=os.environ.get('PROSPECTOR_DIR', '.'),
@@ -28,6 +29,8 @@ CAMPOS = ['slug','nome','nicho','cidade','nota','avaliacoes','email','telefone',
           'checkout_url','checkout_presented_at','checkout_clicked_at','qualification_json',
           'site_audit_json','instagram_audit_json','valor_fechado','closing_confirmed_at']
 STATUS_VALIDOS = ['novo','redesenhado','publicado','proposta','respondeu','fechado','descartado']
+PRODUTOS_VALIDOS = ['datta360','dattavps','ambos']
+ENTREGAS_VALIDAS = ['nao_iniciado','checkout_apresentado','checkout_acessado','pagamento_confirmado_manual','handoff_manual','entregue','falha']
 
 def conexao():
     c = sqlite3.connect(DB)
@@ -55,6 +58,41 @@ def _linhas(rows, cols):
 def _agora():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
 
+def _texto_normalizado(valor):
+    texto = unicodedata.normalize('NFKD', str(valor or '')).encode('ascii', 'ignore').decode('ascii')
+    return ' '.join(texto.lower().split())
+
+def _telefone_normalizado(valor):
+    return re.sub(r'\D', '', str(valor or ''))
+
+def _url_normalizada(valor, somente_dominio=False):
+    bruto = str(valor or '').strip().lower()
+    if not bruto: return ''
+    parsed = urlparse(bruto if '://' in bruto else 'https://' + bruto)
+    dominio = (parsed.netloc or '').split('@')[-1].split(':')[0]
+    if dominio.startswith('www.'): dominio = dominio[4:]
+    if somente_dominio: return dominio
+    return (dominio + parsed.path.rstrip('/')).strip('/')
+
+def _encontrar_duplicado(dados):
+    chaves = [
+        ('nome', _texto_normalizado(dados.get('nome'))),
+        ('dominio', _url_normalizada(dados.get('siteAntigo'), True)),
+        ('telefone', _telefone_normalizado(dados.get('telefone') or dados.get('whatsapp'))),
+        ('perfil', _url_normalizada(dados.get('instagram_url'))),
+    ]
+    for existente in f_listar():
+        if existente.get('slug') == dados.get('slug'): continue
+        valores = {
+            'nome': _texto_normalizado(existente.get('nome')),
+            'dominio': _url_normalizada(existente.get('siteAntigo'), True),
+            'telefone': _telefone_normalizado(existente.get('telefone') or existente.get('whatsapp')),
+            'perfil': _url_normalizada(existente.get('instagram_url')),
+        }
+        for campo, valor in chaves:
+            if valor and valor == valores[campo]: return existente, campo
+    return None, None
+
 # ---------- Lógica (compartilhada entre MCP e autoteste) ----------
 
 def f_listar(status=None):
@@ -76,16 +114,33 @@ def f_salvar(dados):
         return {'erro': 'slug é obrigatório (ex.: maria-silva)'}
     if dados.get('status') and dados['status'] not in STATUS_VALIDOS:
         return {'erro': 'status inválido. Use: %s' % ', '.join(STATUS_VALIDOS)}
+    if dados.get('product_suggested') and dados['product_suggested'].lower() not in PRODUTOS_VALIDOS:
+        return {'erro': 'produto inválido. Use: %s' % ', '.join(PRODUTOS_VALIDOS)}
+    if dados.get('delivery_status') and dados['delivery_status'] not in ENTREGAS_VALIDAS:
+        return {'erro': 'delivery_status inválido. Use: %s' % ', '.join(ENTREGAS_VALIDAS)}
     if dados.get('status') == 'fechado':
         return {'erro': "Não marque 'fechado' por salvar_lead; use registrar_fechamento com confirmação explícita."}
-    atual = f_obter(dados['slug']) or {}
+    atual = f_obter(dados['slug'])
+    duplicado_por = None
+    if atual is None:
+        atual, duplicado_por = _encontrar_duplicado(dados)
+    atual = atual or {}
+    slug_solicitado = dados['slug']
+    if atual:
+        dados = dict(dados)
+        dados['slug'] = atual['slug']
+        if duplicado_por and atual.get('nome'):
+            dados['nome'] = atual['nome']
     atual.update({k: v for k, v in dados.items() if k in CAMPOS and v is not None})
     atual.setdefault('status', 'novo'); atual.setdefault('contratoStatus', 'pendente'); atual.setdefault('pago', 0)
     c = conexao()
     c.execute('INSERT OR REPLACE INTO leads (%s,atualizado) VALUES (%s,?)' % (','.join(CAMPOS), ','.join('?'*len(CAMPOS))),
               [atual.get(k) for k in CAMPOS] + [_agora()])
     c.commit(); c.close()
-    return {'ok': True, 'lead': atual['slug'], 'status': atual['status']}
+    resposta = {'ok': True, 'lead': atual['slug'], 'status': atual['status']}
+    if duplicado_por:
+        resposta.update({'deduplicado': True, 'duplicado_por': duplicado_por, 'slug_solicitado': slug_solicitado})
+    return resposta
 
 def f_status(slug, status, obs_extra=None):
     if status not in STATUS_VALIDOS:
@@ -150,15 +205,22 @@ def f_dashboard():
 if ARGS.teste:
     import tempfile
     PASTA = tempfile.mkdtemp(); DB = os.path.join(PASTA, 'prospector.db')
-    print('1 salvar:', f_salvar({'slug':'teste-mcp','nome':'Teste MCP','email':'t@t.com','nicho':'nutricionista','cidade':'SP'}))
-    print('2 listar:', len(f_listar()), 'lead(s)')
-    print('3 status:', f_status('teste-mcp','proposta'))
+    print('1 salvar:', f_salvar({'slug':'teste-mcp','nome':'Teste MCP','email':'t@t.com','nicho':'nutricionista','cidade':'SP','telefone':'(11) 99999-0000'}))
+    dedup = f_salvar({'slug':'teste-repetido','nome':'Outro nome','telefone':'11 99999-0000','source_url':'https://fonte.exemplo/perfil'})
+    assert dedup.get('deduplicado') is True and dedup.get('lead') == 'teste-mcp' and len(f_listar()) == 1
+    print('2 deduplicar:', dedup)
+    f_salvar({'slug':'teste-dominio','nome':'Teste Domínio','siteAntigo':'https://www.exemplo.com/inicial'})
+    dedup_dominio = f_salvar({'slug':'teste-dominio-repetido','nome':'Outro domínio','siteAntigo':'http://exemplo.com/outra'})
+    assert dedup_dominio.get('duplicado_por') == 'dominio' and dedup_dominio.get('lead') == 'teste-dominio' and len(f_listar()) == 2
+    print('3 deduplicar domínio:', dedup_dominio)
+    print('4 listar:', len(f_listar()), 'lead(s)')
+    print('5 status:', f_status('teste-mcp','proposta'))
     import sqlite3 as s3
     c=s3.connect(DB); c.execute("UPDATE leads SET dataProposta=date('now','-5 day') WHERE slug='teste-mcp'"); c.commit(); c.close()
-    print('4 followups pendentes:', f_followups())
-    print('5 fechar:', f_fechar('teste-mcp', 700, 100, True))
-    print('6 financeiro:', f_financeiro())
-    print('7 status inválido (deve dar erro):', f_status('teste-mcp','banana'))
+    print('6 followups pendentes:', f_followups())
+    print('7 fechar:', f_fechar('teste-mcp', 700, 100, True))
+    print('8 financeiro:', f_financeiro())
+    print('9 status inválido (deve dar erro):', f_status('teste-mcp','banana'))
     print('AUTOTESTE OK')
     sys.exit(0)
 
@@ -180,9 +242,11 @@ def obter_lead(slug: str) -> str:
 def salvar_lead(slug: str, nome: str = '', nicho: str = '', cidade: str = '', nota: float = 0,
                 avaliacoes: int = 0, email: str = '', telefone: str = '', whatsapp: str = '',
                 siteAntigo: str = '', motivo: str = '', urlNova: str = '', obs: str = '',
-                instagram_url: str = '', source_url: str = '', public_contact_type: str = '',
+                instagram_url: str = '', source_url: str = '', source_checked_at: str = '',
+                public_contact_type: str = '',
                 product_suggested: str = '', product_reason: str = '', next_action: str = '',
-                delivery_status: str = '', checkout_url: str = '') -> str:
+                delivery_status: str = '', checkout_url: str = '', qualification_json: str = '',
+                site_audit_json: str = '', instagram_audit_json: str = '') -> str:
     """Cria ou atualiza um lead no CRM (usar após prospectar ou ao corrigir dados). Slug no formato nome-sobrenome."""
     d = {k: v for k, v in locals().items() if v not in ('', 0)}
     return json.dumps(f_salvar(d), ensure_ascii=False)

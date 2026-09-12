@@ -71,10 +71,7 @@ class App(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.split('?')[0] == '/api/config':
             cfg = ler_config()
-            hg = dict(cfg.get('hostgator', {}))
-            hg['senhaDefinida'] = bool(hg.get('senha'))
-            hg.pop('senha', None)  # a senha NUNCA sai do arquivo
-            return self._json(200, {'contratante': cfg.get('contratante', {}), 'hostgator': hg, 'dattavps': cfg.get('dattavps', {})})
+            return self._json(200, {'contratante': cfg.get('contratante', {}), 'dattavps': cfg.get('dattavps', {})})
         if self.path.split('?')[0] == '/api/leads':
             c = conexao(); c.row_factory = sqlite3.Row
             rows = [dict(r) for r in c.execute('SELECT * FROM leads').fetchall()]; c.close()
@@ -94,22 +91,31 @@ class App(SimpleHTTPRequestHandler):
     def do_PUT(self):
         if self.path.split('?')[0] == '/api/config':
             cfg = ler_config(); corpo = self._corpo()
-            if 'contratante' in corpo or 'hostgator' in corpo:
-                if 'contratante' in corpo:
-                    ct = cfg.get('contratante', {})
-                    ct.update({k: v for k, v in corpo['contratante'].items() if isinstance(v, str)})
-                    cfg['contratante'] = ct
-                if 'hostgator' in corpo:
-                    hg = cfg.get('hostgator', {})
-                    for k, v in corpo['hostgator'].items():
-                        if not isinstance(v, str): continue
-                        if k == 'senha' and v == '': continue  # em branco = mantém a atual
-                        hg[k] = v
-                    cfg['hostgator'] = hg
-            else:  # compatibilidade: corpo plano = contratante
+            if 'contratante' in corpo:
                 ct = cfg.get('contratante', {})
-                ct.update({k: v for k, v in corpo.items() if isinstance(v, str)})
+                ct.update({k: v for k, v in corpo['contratante'].items() if isinstance(v, str)})
                 cfg['contratante'] = ct
+            if 'dattavps' in corpo:
+                recebido = corpo['dattavps'] if isinstance(corpo['dattavps'], dict) else {}
+                permitido = {'checkout_url', 'offer_name', 'offer_description', 'offer_price', 'enabled'}
+                vps = cfg.get('dattavps', {})
+                vps.update({k: v for k, v in recebido.items() if k in permitido and isinstance(v, (str, int, float, bool))})
+                vps['enabled'] = vps.get('enabled') is True
+                if vps['enabled']:
+                    from urllib.parse import urlparse
+                    url = str(vps.get('checkout_url', '')).strip()
+                    try: preco = float(vps.get('offer_price', 0))
+                    except (TypeError, ValueError): preco = 0
+                    parsed = urlparse(url)
+                    if parsed.scheme != 'https' or not parsed.netloc or not str(vps.get('offer_name', '')).strip() or not str(vps.get('offer_description', '')).strip() or preco <= 0:
+                        return self._json(400, {'erro': 'Para ativar, informe nome, descrição, preço positivo e URL oficial HTTPS.'})
+                vps.setdefault('notice', 'Preencha somente com a URL oficial aprovada. Nenhum checkout é criado localmente.')
+                cfg['dattavps'] = vps
+            else:  # compatibilidade: corpo plano = contratante
+                if 'contratante' not in corpo:
+                    ct = cfg.get('contratante', {})
+                    ct.update({k: v for k, v in corpo.items() if isinstance(v, str)})
+                    cfg['contratante'] = ct
             json.dump(cfg, open(CONFIG, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
             return self._json(200, {'ok': True})
         partes = self.path.split('?')[0].split('/')
