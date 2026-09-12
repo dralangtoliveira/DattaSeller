@@ -17,7 +17,11 @@ def ler_config():
 PORTA = 8765
 CAMPOS = ['slug','nome','nicho','cidade','nota','avaliacoes','email','telefone','whatsapp',
           'siteAntigo','motivo','status','urlNova','dataProposta','valor','obs',
-          'contratoStatus','contratoEm','manutencao','pago','docCliente','endCliente']
+          'contratoStatus','contratoEm','manutencao','pago','docCliente','endCliente',
+          'instagram_url','source_url','source_checked_at','public_contact_type',
+          'product_suggested','product_reason','next_action','delivery_status',
+          'checkout_url','checkout_presented_at','checkout_clicked_at','qualification_json',
+          'site_audit_json','instagram_audit_json','valor_fechado','closing_confirmed_at']
 
 def conexao():
     c = sqlite3.connect(DB)
@@ -26,8 +30,13 @@ def conexao():
         email TEXT, telefone TEXT, whatsapp TEXT, siteAntigo TEXT, motivo TEXT,
         status TEXT DEFAULT 'novo', urlNova TEXT, dataProposta TEXT, valor REAL, obs TEXT,
         contratoStatus TEXT DEFAULT 'pendente', contratoEm TEXT, manutencao REAL, pago INTEGER DEFAULT 0,
+        docCliente TEXT, endCliente TEXT, instagram_url TEXT, source_url TEXT, source_checked_at TEXT,
+        public_contact_type TEXT, product_suggested TEXT, product_reason TEXT, next_action TEXT,
+        delivery_status TEXT, checkout_url TEXT, checkout_presented_at TEXT, checkout_clicked_at TEXT,
+        qualification_json TEXT, site_audit_json TEXT, instagram_audit_json TEXT, valor_fechado REAL,
+        closing_confirmed_at TEXT,
         atualizado TEXT DEFAULT (datetime('now','localtime')))''')
-    for col, tipo in [('contratoStatus',"TEXT DEFAULT 'pendente'"),('contratoEm','TEXT'),('manutencao','REAL'),('pago','INTEGER DEFAULT 0'),('docCliente','TEXT'),('endCliente','TEXT')]:
+    for col, tipo in [('contratoStatus',"TEXT DEFAULT 'pendente'"),('contratoEm','TEXT'),('manutencao','REAL'),('pago','INTEGER DEFAULT 0'),('docCliente','TEXT'),('endCliente','TEXT'),('instagram_url','TEXT'),('source_url','TEXT'),('source_checked_at','TEXT'),('public_contact_type','TEXT'),('product_suggested','TEXT'),('product_reason','TEXT'),('next_action','TEXT'),('delivery_status','TEXT'),('checkout_url','TEXT'),('checkout_presented_at','TEXT'),('checkout_clicked_at','TEXT'),('qualification_json','TEXT'),('site_audit_json','TEXT'),('instagram_audit_json','TEXT'),('valor_fechado','REAL'),('closing_confirmed_at','TEXT')]:
         try: c.execute('ALTER TABLE leads ADD COLUMN %s %s' % (col, tipo))
         except sqlite3.OperationalError: pass
     return c
@@ -62,10 +71,7 @@ class App(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.split('?')[0] == '/api/config':
             cfg = ler_config()
-            hg = dict(cfg.get('hostgator', {}))
-            hg['senhaDefinida'] = bool(hg.get('senha'))
-            hg.pop('senha', None)  # a senha NUNCA sai do arquivo
-            return self._json(200, {'contratante': cfg.get('contratante', {}), 'hostgator': hg})
+            return self._json(200, {'contratante': cfg.get('contratante', {}), 'dattavps': cfg.get('dattavps', {})})
         if self.path.split('?')[0] == '/api/leads':
             c = conexao(); c.row_factory = sqlite3.Row
             rows = [dict(r) for r in c.execute('SELECT * FROM leads').fetchall()]; c.close()
@@ -76,6 +82,8 @@ class App(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path.split('?')[0] == '/api/leads':
             l = self._corpo(); c = conexao()
+            if l.get('status') == 'fechado':
+                c.close(); return self._json(400, {'erro': 'Fechamento exige confirmação explícita e valor_fechado positivo.'})
             c.execute('INSERT OR REPLACE INTO leads (%s) VALUES (%s)' % (','.join(CAMPOS), ','.join('?'*len(CAMPOS))),
                       [l.get(k) for k in CAMPOS])
             c.commit(); c.close(); return self._json(200, {'ok': True})
@@ -83,27 +91,43 @@ class App(SimpleHTTPRequestHandler):
     def do_PUT(self):
         if self.path.split('?')[0] == '/api/config':
             cfg = ler_config(); corpo = self._corpo()
-            if 'contratante' in corpo or 'hostgator' in corpo:
-                if 'contratante' in corpo:
-                    ct = cfg.get('contratante', {})
-                    ct.update({k: v for k, v in corpo['contratante'].items() if isinstance(v, str)})
-                    cfg['contratante'] = ct
-                if 'hostgator' in corpo:
-                    hg = cfg.get('hostgator', {})
-                    for k, v in corpo['hostgator'].items():
-                        if not isinstance(v, str): continue
-                        if k == 'senha' and v == '': continue  # em branco = mantém a atual
-                        hg[k] = v
-                    cfg['hostgator'] = hg
-            else:  # compatibilidade: corpo plano = contratante
+            if 'contratante' in corpo:
                 ct = cfg.get('contratante', {})
-                ct.update({k: v for k, v in corpo.items() if isinstance(v, str)})
+                ct.update({k: v for k, v in corpo['contratante'].items() if isinstance(v, str)})
                 cfg['contratante'] = ct
+            if 'dattavps' in corpo:
+                recebido = corpo['dattavps'] if isinstance(corpo['dattavps'], dict) else {}
+                permitido = {'checkout_url', 'offer_name', 'offer_description', 'offer_price', 'enabled'}
+                vps = cfg.get('dattavps', {})
+                vps.update({k: v for k, v in recebido.items() if k in permitido and isinstance(v, (str, int, float, bool))})
+                vps['enabled'] = vps.get('enabled') is True
+                if vps['enabled']:
+                    from urllib.parse import urlparse
+                    url = str(vps.get('checkout_url', '')).strip()
+                    try: preco = float(vps.get('offer_price', 0))
+                    except (TypeError, ValueError): preco = 0
+                    parsed = urlparse(url)
+                    if parsed.scheme != 'https' or not parsed.netloc or not str(vps.get('offer_name', '')).strip() or not str(vps.get('offer_description', '')).strip() or preco <= 0:
+                        return self._json(400, {'erro': 'Para ativar, informe nome, descrição, preço positivo e URL oficial HTTPS.'})
+                vps.setdefault('notice', 'Preencha somente com a URL oficial aprovada. Nenhum checkout é criado localmente.')
+                cfg['dattavps'] = vps
+            else:  # compatibilidade: corpo plano = contratante
+                if 'contratante' not in corpo:
+                    ct = cfg.get('contratante', {})
+                    ct.update({k: v for k, v in corpo.items() if isinstance(v, str)})
+                    cfg['contratante'] = ct
             json.dump(cfg, open(CONFIG, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
             return self._json(200, {'ok': True})
         partes = self.path.split('?')[0].split('/')
         if len(partes) == 4 and partes[1] == 'api' and partes[2] == 'leads':
             slug, ch = partes[3], self._corpo()
+            if ch.get('status') == 'fechado':
+                valor = ch.get('valor_fechado', ch.get('valor'))
+                if ch.get('closingConfirmed') is not True or not isinstance(valor, (int, float)) or valor <= 0:
+                    return self._json(400, {'erro': 'Fechamento exige confirmação explícita e valor_fechado positivo.'})
+                ch['valor_fechado'] = valor
+                ch['valor'] = valor
+                ch['closing_confirmed_at'] = __import__('datetime').datetime.now().isoformat(timespec='seconds')
             sets = [k for k in ch if k in CAMPOS and k != 'slug']
             if sets:
                 c = conexao()
