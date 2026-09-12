@@ -7,7 +7,7 @@ Colocar o DattaSeller em condição de uso comercial rápido com leads próprios
 Este MVP **não substitui, copia nem reabre trabalho** que já pertence aos boards de execução do DattaVPS ou do DattaSeg.
 
 A separação oficial é:
-- **DattaSeller:** leads, CRM, fila do vendedor, catálogo comercial, recomendação Lead × Produto, pedido comercial, checkout, confirmação de pagamento, comissão e acompanhamento do handoff.
+- **DattaSeller:** leads, enriquecimento, CRM, fila do vendedor, catálogo comercial, recomendação Lead × Produto, pedido comercial, checkout, confirmação de pagamento, comissão e acompanhamento do handoff.
 - **DattaVPS:** construção do produto VPS, fornecedor, provisionamento, infraestrutura, painel, operação, entrega técnica e demais cards do board próprio do DattaVPS.
 - **DattaSeg:** construção do produto de segurança, scanner, cofre, aprovação, políticas, onboarding técnico, operação e demais cards do board próprio do DattaSeg.
 
@@ -19,10 +19,31 @@ O DattaSeller pode conter cards que mencionem DattaVPS ou DattaSeg apenas quando
 Se durante a execução do DattaSeller for identificada uma funcionalidade ausente no DattaVPS ou DattaSeg, o card do Seller **não deve implementar essa funcionalidade dentro do outro produto**. Deve registrar a dependência e apontar para o card correspondente no board proprietário. Se não existir card correspondente, deve ser proposta a criação no board proprietário, não no DattaSeller.
 
 ## Fluxo mínimo
-Lead próprio → CRM/fila do vendedor → escolha DattaVPS ou DattaSeg → oportunidade → pedido → checkout → pagamento confirmado → comissão → handoff pós-venda.
+Lead próprio → normalização/deduplicação → enriquecimento → CRM/fila do vendedor → escolha DattaVPS ou DattaSeg → oportunidade → pedido → checkout → pagamento confirmado → comissão → handoff pós-venda.
+
+## Enriquecimento obrigatório no MVP Venda Rápida
+A base própria possui registros incompletos e pode conter leads em que o único dado confiável seja um número de telefone. Por isso, enriquecimento não é pós-MVP; ele faz parte do núcleo do MVP rápido.
+
+O fluxo deve aceitar um lead somente com telefone, normalizar o número e preservar o valor original. A partir daí, o motor de enriquecimento deve tentar completar, quando houver fonte disponível e uso permitido, dados úteis como nome, empresa, segmento, localização, site/domínio, e-mail e contatos adicionais.
+
+Regras obrigatórias:
+- nunca inventar nome, empresa ou outro dado ausente;
+- registrar origem, data e confiança do dado enriquecido;
+- separar dado confirmado, dado provável e inferência;
+- dado enriquecido não pode sobrescrever silenciosamente informação confirmada manualmente;
+- falha de enriquecimento não pode apagar o lead nem impedir o CRM de mantê-lo com status de dados incompletos;
+- reprocessamento deve ser idempotente e rastreável;
+- o enriquecimento inicial deve priorizar a base própria; prospecção outbound automática fica fora do primeiro ciclo.
+
+Cards existentes reaproveitados no MVP rápido:
+- `Provisionar OpenOutreach isolado`;
+- `Criar contrato de integração CRM ↔ OpenOutreach`;
+- `Validar enriquecimento com lote piloto`.
+
+Esses cards devem ser concluídos antes de considerar validado o fluxo `lead → match`, pois o motor Lead × Produto depende de dados mínimos úteis.
 
 ## Reuso de cards existentes
-O MVP reaproveita cards já existentes do próprio DattaSeller de fundação, CRM, leads, catálogo, match, checkout, comissão, pipeline de entrega e validação E2E. Não devem ser recriados cards com a mesma entrega.
+O MVP reaproveita cards já existentes do próprio DattaSeller de fundação, CRM, leads, enriquecimento, catálogo, match, checkout, comissão, pipeline de entrega e validação E2E. Não devem ser recriados cards com a mesma entrega.
 
 Cards do DattaVPS e DattaSeg não são copiados para este board.
 
@@ -52,8 +73,9 @@ O DattaVPS deve retornar ao menos um identificador do pedido/serviço e seu esta
 Uma venda paga de DattaSeg deve gerar um handoff/onboarding rastreável no fluxo já definido pelo projeto DattaSeg. O Seller não implementa internamente as funções de segurança do DattaSeg.
 
 ## Critério de MVP funcionando
-O MVP só pode ser considerado concluído quando existirem duas execuções reais e rastreáveis em ambiente autorizado:
+O MVP só pode ser considerado concluído quando existirem execuções reais e rastreáveis em ambiente autorizado:
 
+- lead incompleto, inclusive caso somente com telefone → enriquecimento → CRM → recomendação/produto comercial;
 - lead → DattaVPS → checkout → pagamento de teste → integração com o fluxo já existente do DattaVPS → status retornado;
 - lead → DattaSeg → checkout → pagamento de teste → integração com o fluxo já existente do DattaSeg → status retornado.
 
