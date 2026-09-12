@@ -1,0 +1,4 @@
+data/*.db
+data/*.db-*
+app/prospector-config.json
+evidence/baseline-run/
