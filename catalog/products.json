@@ -1,0 +1,88 @@
+{
+  "version": "2026-09-11",
+  "currency_policy": "A product is sellable only when it has an approved price, currency, checkout URL, delivery route, and availability confirmation.",
+  "products": [
+    {
+      "key": "dattavps",
+      "name": "DattaVPS",
+      "description": "VPS para agentes, automações e aplicações self-hosted.",
+      "ideal_customer": "Empresas e profissionais que precisam de ambiente dedicado disponível 24 horas.",
+      "recurrence": "monthly",
+      "sales_script": "Validar necessidade de servidor, aplicação, região e disponibilidade antes de ofertar.",
+      "objections": ["Preço", "região", "disponibilidade", "suporte"],
+      "pricing": { "status": "pending_product_approval", "amount": null, "currency": "USD" },
+      "checkout_url": null,
+      "delivery": "Handoff idempotente ao DattaVPS após pagamento.",
+      "commercial_status": "unavailable",
+      "blocking_dependencies": ["DVPS-005", "DVPS-034", "DVPS-035", "DVPS-067", "API Seller → DattaVPS"]
+    },
+    {
+      "key": "dattaseg",
+      "name": "DattaSeg",
+      "description": "Proteção para agentes e automações: exposição, credenciais e ações críticas.",
+      "ideal_customer": "Equipes que usam agentes, n8n, Make, Zapier ou credenciais com acesso a sistemas.",
+      "recurrence": "pending_product_approval",
+      "sales_script": "Validar exposição, credenciais e necessidade de controle antes de ofertar.",
+      "objections": ["Escopo", "integrações", "onboarding", "preço"],
+      "pricing": { "status": "pending_product_approval", "amount": null, "currency": null },
+      "checkout_url": null,
+      "delivery": "Handoff rastreável ao DattaSeg após pagamento.",
+      "commercial_status": "unavailable",
+      "blocking_dependencies": ["DS-024", "DS-026", "API Seller → DattaSeg"]
+    },
+    {
+      "key": "dattax", "name": "DattaX", "description": "Linha Datta ainda sem contrato comercial publicado.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
+    },
+    {
+      "key": "dattalex", "name": "DattaLEX", "description": "Produto jurídico Datta; oferta não faz parte deste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
+    },
+    {
+      "key": "dattago", "name": "DattaGo", "description": "Produto Datta sem oferta comercial publicada neste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
+    },
+    {
+      "key": "dattalead", "name": "DattaLead", "description": "Leads por nicho.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Entrega de base conforme contrato.", "commercial_status": "unavailable", "blocking_dependencies": ["oferta aprovada"]
+    },
+    {
+      "key": "dattadig", "name": "DattaDig", "description": "Produtos digitais.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Entrega digital conforme produto.", "commercial_status": "unavailable", "blocking_dependencies": ["oferta aprovada"]
+    },
+    {
+      "key": "dattascore", "name": "DattaScore", "description": "Produto Datta sem oferta comercial publicada neste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
+    },
+    {
+      "key": "dattaurb", "name": "DattaUrb", "description": "Produto Datta sem oferta comercial publicada neste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
+    },
+    {
+      "key": "datta360", "name": "Datta360°", "description": "Transformação da presença digital da empresa.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Onboarding de implantação conforme pacote.", "commercial_status": "unavailable", "blocking_dependencies": ["oferta aprovada"]
+    },
+    {
+      "key": "affiliates", "name": "Afiliados", "description": "Produtos de terceiros em categoria separada.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Definida pelo fornecedor.", "commercial_status": "unavailable", "blocking_dependencies": ["fornecedor e oferta aprovados"]
+    }
+  ]
+}
