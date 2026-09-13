@@ -36,7 +36,7 @@ def migrate(c):
       id TEXT PRIMARY KEY, name TEXT NOT NULL, billing TEXT NOT NULL, public_price REAL NOT NULL,
       base_price REAL NOT NULL, cost REAL NOT NULL, commission_pct REAL NOT NULL DEFAULT 0,
       max_discount_pct REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'BRL', active INTEGER NOT NULL DEFAULT 1,
-      adapter TEXT NOT NULL, is_demo INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL);
+      adapter TEXT NOT NULL, is_demo INTEGER NOT NULL DEFAULT 1, terms TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_timeline (id TEXT PRIMARY KEY, lead_slug TEXT, event TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL, is_demo INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS ds_proposals (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, product_id TEXT NOT NULL, base_price REAL NOT NULL,
       negotiated_price REAL NOT NULL, discount REAL NOT NULL, margin REAL NOT NULL, currency TEXT NOT NULL, terms TEXT, valid_until TEXT, version INTEGER NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -56,6 +56,8 @@ def migrate(c):
     CREATE TABLE IF NOT EXISTS ds_social_audits (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, platform TEXT NOT NULL, url TEXT, username TEXT, bio TEXT, cta TEXT, link TEXT, visual_identity TEXT, consistency_note TEXT, frequency_note TEXT, factual_notes TEXT, recommendation TEXT, creative_direction TEXT, evidence TEXT, created_at TEXT NOT NULL);
     ''')
     try: c.execute('ALTER TABLE ds_timeline ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 1')
+    except sqlite3.OperationalError: pass
+    try: c.execute("ALTER TABLE ds_products ADD COLUMN terms TEXT NOT NULL DEFAULT ''")
     except sqlite3.OperationalError: pass
     for p, name, billing, price, cost, pct in DEMO_PRODUCTS:
         c.execute('''INSERT OR IGNORE INTO ds_products(id,name,billing,public_price,base_price,cost,commission_pct,max_discount_pct,currency,active,adapter,is_demo,updated_at)
@@ -80,7 +82,7 @@ def update_settings(values):
 def products():
     c=connect(); result=rows(c,'SELECT * FROM ds_products ORDER BY id'); c.close(); return result
 def update_product(product_id, values):
-    allowed={'name','billing','public_price','base_price','cost','commission_pct','max_discount_pct','currency','active'}
+    allowed={'name','billing','public_price','base_price','cost','commission_pct','max_discount_pct','currency','active','terms'}
     c=connect(); fields=[k for k in values if k in allowed]
     if not fields: c.close(); return {'error':'Nenhum campo comercial permitido'}
     c.execute('UPDATE ds_products SET %s,updated_at=? WHERE id=?' % ','.join('%s=?'%k for k in fields),[values[k] for k in fields]+[now(),product_id]); c.commit(); r=one(c,'SELECT * FROM ds_products WHERE id=?',(product_id,)); c.close(); return r
