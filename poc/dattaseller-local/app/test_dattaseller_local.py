@@ -32,6 +32,9 @@ class DattaSellerLocalTests(unittest.TestCase):
         f=ds.financial_summary(); self.assertEqual((f['revenue'],f['cost'],f['margin'],f['commission'],f['received']),(100,60,40,10,100))
     def test_payment_cancellation_and_refund(self):
         o=ds.create_order(self.cycle()['id']); self.assertEqual(ds.payment(o['id'],'cancelled')['status'],'cancelled'); self.assertEqual(ds.payment(o['id'],'refunded')['status'],'refunded')
+    def test_local_preview_is_factual_and_persisted(self):
+        p=ds.create_local_preview('lead-a'); self.assertEqual(p['status'],'published_mock'); self.assertIn('não são inventados',p['content'])
+        c=ds.connect(); self.assertEqual(ds.one(c,'SELECT status FROM ds_previews WHERE id=?',(p['id'],))['status'],'published_mock'); c.close()
     def test_reset_preserves_non_demo_configuration_and_transactions(self):
         demo=self.cycle(); ds.create_order(demo['id'])
         c=ds.connect(); c.execute("INSERT INTO ds_products(id,name,billing,public_price,base_price,cost,commission_pct,max_discount_pct,currency,active,adapter,is_demo,updated_at) VALUES('real','Real','one_time',10,10,1,0,0,'BRL',1,'Mock',0,?)",(ds.now(),)); c.commit(); c.close()

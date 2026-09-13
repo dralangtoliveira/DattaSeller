@@ -50,6 +50,7 @@ def migrate(c):
     CREATE TABLE IF NOT EXISTS ds_contracts (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, status TEXT NOT NULL, html TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_handoffs (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, product_id TEXT NOT NULL, client TEXT, seller TEXT, requirements TEXT, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_commissions (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, seller TEXT, base REAL NOT NULL, pct REAL NOT NULL, amount REAL NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS ds_previews (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL);
     ''')
     try: c.execute('ALTER TABLE ds_timeline ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 1')
     except sqlite3.OperationalError: pass
@@ -138,6 +139,13 @@ def handoff(order_id, status='sent'):
     c.execute('UPDATE ds_handoffs SET status=?,updated_at=? WHERE order_id=?',(status,now(),order_id)); o=one(c,'SELECT * FROM ds_orders WHERE id=?',(order_id,)); timeline(c,o['lead_slug'],'handoff.'+status,order_id); c.commit(); r=one(c,'SELECT * FROM ds_handoffs WHERE order_id=?',(order_id,)); c.close(); return r
 def financial_summary():
     c=connect(); r=one(c,"SELECT COUNT(*) sales,COALESCE(SUM(negotiated_price),0) revenue,COALESCE(SUM(cost),0) cost,COALESCE(SUM(margin),0) margin FROM ds_orders WHERE status='paid'"); received=one(c,"SELECT COALESCE(SUM(amount),0) received FROM ds_payments WHERE status='approved'"); comm=one(c,"SELECT COALESCE(SUM(amount),0) commission FROM ds_commissions"); mrr=one(c,"SELECT COALESCE(SUM(o.negotiated_price),0) mrr FROM ds_orders o JOIN ds_products p ON p.id=o.product_id WHERE o.status='paid' AND p.billing='recurring'"); c.close(); return dict(r,received=received['received'],receivable=r['revenue']-received['received'],mrr=mrr['mrr'],projection=r['revenue']+mrr['mrr']*12,commission=comm['commission'])
+def create_local_preview(lead_slug, kind='redesign'):
+    """Preview local factual: só utiliza os campos já registrados no lead."""
+    c=connect(); lead=one(c,'SELECT * FROM leads WHERE slug=?',(lead_slug,))
+    if not lead: c.close(); return {'error':'Lead não encontrado'}
+    name=lead.get('nome') or lead_slug; contact=lead.get('email') or lead.get('whatsapp') or lead.get('siteAntigo') or 'Contato público não informado'
+    content='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>%s — preview local</title><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:24px"><small>PREVIEW LOCAL / DEMO — revisão humana obrigatória</small><h1>%s</h1><p>Prévia baseada somente nos dados públicos registrados no CRM.</p><p><b>Contato:</b> %s</p><p>Serviços e provas sociais não são inventados neste preview.</p></body></html>' % (name,name,contact)
+    preview={'id':ident('preview'),'lead_slug':lead_slug,'kind':kind,'url':'/api/previews/PLACEHOLDER','content':content,'status':'published_mock','created_at':now()}; preview['url']='/api/previews/'+preview['id']; c.execute('INSERT INTO ds_previews VALUES(:id,:lead_slug,:kind,:url,:content,:status,:created_at)',preview); timeline(c,lead_slug,'preview.published_mock',preview['id']); c.commit(); c.close(); return preview
 def reset_demo():
     """Remove apenas transações ligadas a produtos DEMO, nunca configuração ou dados reais."""
     c=connect()

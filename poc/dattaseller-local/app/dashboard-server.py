@@ -76,6 +76,12 @@ class App(SimpleHTTPRequestHandler):
         path = self.path.split('?')[0]
         if path == '/api/settings': return self._json(200, local.get_settings())
         if path == '/api/products': return self._json(200, local.products())
+        if path == '/api/previews':
+            c=local.connect(); result=local.rows(c,'SELECT id,lead_slug,kind,url,status,created_at FROM ds_previews ORDER BY created_at DESC'); c.close(); return self._json(200,result)
+        if path.startswith('/api/previews/'):
+            c=local.connect(); preview=local.one(c,'SELECT * FROM ds_previews WHERE id=?',(path.split('/')[3],)); c.close()
+            if not preview: return self._json(404,{'error':'Preview não encontrado'})
+            body=preview['content'].encode('utf-8'); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body); return
         if path == '/api/financial': return self._json(200, local.financial_summary())
         if path in ('/api/proposals','/api/emails','/api/orders','/api/checkouts','/api/payments','/api/contracts','/api/handoffs','/api/commissions'):
             table=path.split('/')[-1]
@@ -96,6 +102,7 @@ class App(SimpleHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split('?')[0]; body = self._corpo()
         if path == '/api/proposals': return self._json(200, local.create_proposal(body.get('lead_slug',''),body.get('product_id',''),body.get('negotiated_price'),body.get('terms','Pagamento mock local'),int(body.get('valid_days',7))))
+        if path == '/api/previews': return self._json(200, local.create_local_preview(body.get('lead_slug',''),body.get('kind','redesign')))
         if path == '/api/emails': return self._json(200, local.create_email(body.get('lead_slug',''),body.get('proposal_id'),body.get('subject',''),body.get('body','')))
         if path.startswith('/api/emails/') and path.endswith('/transition'):
             return self._json(200, local.email_transition(path.split('/')[3],body.get('status',''),body.get('fixture','')))

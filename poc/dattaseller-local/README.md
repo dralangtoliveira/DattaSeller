@@ -15,6 +15,8 @@ O banco é criado em `data/dattaseller-local.db`. Dashboard, MCP e o núcleo com
 
 O servidor disponibiliza adapters locais e persistentes para demonstrar o ciclo sem qualquer serviço externo: `proposta → e-mail em rascunho → aprovado → enviado/simulado → pedido → checkout mock → pagamento mock → contrato → handoff mock → financeiro`.
 
+Para uma demonstração Datta360°, `POST /api/previews` cria um preview `published_mock` servido pelo próprio dashboard. Ele usa exclusivamente nome e contato já registrados no lead e explicita que serviços, provas sociais e métricas não são inventados.
+
 - `GET /api/settings`, `PUT /api/settings`: configurações gerais. Campos com `secret`, `key` ou `password` são rejeitados e segredos não são persistidos.
 - `GET /api/products`, `PUT /api/products/:id`: catálogo desacoplado. Os quatro produtos iniciais são marcados explicitamente como `DEMO / TESTE`; preço, custo, comissão, desconto máximo e recorrência são persistidos.
 - `POST /api/proposals`, `/api/emails`, `/api/orders`: cria os artefatos comerciais no mesmo banco do CRM.
