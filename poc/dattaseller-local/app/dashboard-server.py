@@ -14,6 +14,10 @@ CONFIG = os.path.join(PASTA, 'prospector-config.json')
 def ler_config():
     try: return json.load(open(CONFIG, encoding='utf-8'))
     except Exception: return {}
+
+# O CRM original continua dono da tabela leads. O módulo novo acrescenta as
+# entidades comerciais ao mesmo arquivo SQLite, sem criar um segundo CRM.
+import dattaseller_local as local
 PORTA = 8765
 CAMPOS = ['slug','nome','nicho','cidade','nota','avaliacoes','email','telefone','whatsapp',
           'siteAntigo','motivo','status','urlNova','dataProposta','valor','obs',
@@ -69,6 +73,12 @@ class App(SimpleHTTPRequestHandler):
         n = int(self.headers.get('Content-Length', 0))
         return json.loads(self.rfile.read(n).decode('utf-8')) if n else {}
     def do_GET(self):
+        path = self.path.split('?')[0]
+        if path == '/api/settings': return self._json(200, local.get_settings())
+        if path == '/api/products': return self._json(200, local.products())
+        if path == '/api/financial': return self._json(200, local.financial_summary())
+        if path == '/api/timeline':
+            c=local.connect(); result=local.rows(c,'SELECT * FROM ds_timeline ORDER BY created_at DESC'); c.close(); return self._json(200,result)
         if self.path.split('?')[0] == '/api/config':
             cfg = ler_config()
             return self._json(200, {'contratante': cfg.get('contratante', {}), 'dattavps': cfg.get('dattavps', {})})
@@ -80,8 +90,23 @@ class App(SimpleHTTPRequestHandler):
             self.path = '/dashboard.html'
         return SimpleHTTPRequestHandler.do_GET(self)
     def do_POST(self):
+        path = self.path.split('?')[0]; body = self._corpo()
+        if path == '/api/proposals': return self._json(200, local.create_proposal(body.get('lead_slug',''),body.get('product_id',''),body.get('negotiated_price'),body.get('terms','Pagamento mock local'),int(body.get('valid_days',7))))
+        if path == '/api/emails': return self._json(200, local.create_email(body.get('lead_slug',''),body.get('proposal_id'),body.get('subject',''),body.get('body','')))
+        if path.startswith('/api/emails/') and path.endswith('/transition'):
+            return self._json(200, local.email_transition(path.split('/')[3],body.get('status',''),body.get('fixture','')))
+        if path == '/api/orders': return self._json(200, local.create_order(body.get('proposal_id','')))
+        if path.startswith('/api/orders/') and path.endswith('/checkout'):
+            return self._json(200, local.checkout(path.split('/')[3],body.get('result')))
+        if path.startswith('/api/orders/') and path.endswith('/payment'):
+            return self._json(200, local.payment(path.split('/')[3],body.get('status','pending')))
+        if path.startswith('/api/orders/') and path.endswith('/contract'):
+            return self._json(200, local.generate_contract(path.split('/')[3]))
+        if path.startswith('/api/orders/') and path.endswith('/handoff'):
+            return self._json(200, local.handoff(path.split('/')[3],body.get('status','sent')))
+        if path == '/api/demo/reset': return self._json(200, local.reset_demo())
         if self.path.split('?')[0] == '/api/leads':
-            l = self._corpo(); c = conexao()
+            l = body; c = conexao()
             if l.get('status') == 'fechado':
                 c.close(); return self._json(400, {'erro': 'Fechamento exige confirmação explícita e valor_fechado positivo.'})
             c.execute('INSERT OR REPLACE INTO leads (%s) VALUES (%s)' % (','.join(CAMPOS), ','.join('?'*len(CAMPOS))),
@@ -89,6 +114,10 @@ class App(SimpleHTTPRequestHandler):
             c.commit(); c.close(); return self._json(200, {'ok': True})
         return self._json(404, {'erro': 'rota'})
     def do_PUT(self):
+        path = self.path.split('?')[0]
+        if path == '/api/settings': return self._json(200, local.update_settings(self._corpo()))
+        if path.startswith('/api/products/'):
+            return self._json(200, local.update_product(path.split('/')[3], self._corpo()))
         if self.path.split('?')[0] == '/api/config':
             cfg = ler_config(); corpo = self._corpo()
             if 'contratante' in corpo:

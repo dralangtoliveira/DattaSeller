@@ -9,7 +9,20 @@ MVP local derivado do Prospector, com SQLite, dashboard e MCP. A origem integral
 3. Execute `app/iniciar-dashboard.bat` ou `python app/dashboard-server.py`.
 4. Abra `http://127.0.0.1:8765`.
 
-O banco é criado em `data/dattaseller-local.db`. Dashboard e MCP usam esse mesmo arquivo.
+O banco é criado em `data/dattaseller-local.db`. Dashboard, MCP e o núcleo comercial usam esse mesmo arquivo SQLite.
+
+## Ciclo comercial local (DEMO / TESTE)
+
+O servidor disponibiliza adapters locais e persistentes para demonstrar o ciclo sem qualquer serviço externo: `proposta → e-mail em rascunho → aprovado → enviado/simulado → pedido → checkout mock → pagamento mock → contrato → handoff mock → financeiro`.
+
+- `GET /api/settings`, `PUT /api/settings`: configurações gerais. Campos com `secret`, `key` ou `password` são rejeitados e segredos não são persistidos.
+- `GET /api/products`, `PUT /api/products/:id`: catálogo desacoplado. Os quatro produtos iniciais são marcados explicitamente como `DEMO / TESTE`; preço, custo, comissão, desconto máximo e recorrência são persistidos.
+- `POST /api/proposals`, `/api/emails`, `/api/orders`: cria os artefatos comerciais no mesmo banco do CRM.
+- `POST /api/orders/:id/checkout`, `/payment`, `/contract`, `/handoff`: executa apenas mocks locais. Pagamento não coleta cartão nem acessa uma API externa.
+- `GET /api/financial` e `/api/timeline`: resumo persistido e histórico auditável.
+- `POST /api/demo/reset`: remove somente os artefatos transacionais de demonstração; mantém configurações, catálogo e leads.
+
+No MCP, além dos comandos Prospector preservados, estão disponíveis `listar_produtos`, `criar_proposta`, `preparar_email`, `transicionar_email`, `criar_pedido`, `processar_pagamento_mock`, `gerar_contrato` e `resumo_financeiro_local`.
 
 ## Operar a fila
 
@@ -24,7 +37,10 @@ O banco é criado em `data/dattaseller-local.db`. Dashboard e MCP usam esse mesm
 ## Verificar
 
 - `python app/prospector-mcp.py --teste`
+- `python app/dattaseller_local.py` (E2E local completo, isolado e sem rede)
 - `node evidence/verify-responsive.cjs` com Playwright disponível em `NODE_PATH`
 - `node evidence/verify-dattavps.cjs` com o dashboard em execução
 
 O checkout DattaVPS permanece desabilitado enquanto a configuração oficial estiver incompleta. Contato externo, publicação, proposta e fechamento exigem aprovação humana explícita.
+
+Providers futuros (`Resend`, `Brevo`, `Gmail`, `SMTP`, DattaVPS e DattaSeg) continuam fora do MVP local: devem substituir os mocks por adapters, não reimplementar o CRM ou o banco.

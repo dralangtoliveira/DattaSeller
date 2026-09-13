@@ -12,6 +12,7 @@ Teste local: python prospector-mcp.py --teste
 """
 import argparse, json, os, sqlite3, sys, datetime, re, unicodedata
 from urllib.parse import urlparse
+import dattaseller_local as local
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--pasta', default=os.environ.get('PROSPECTOR_DIR', '.'),
@@ -280,6 +281,46 @@ def resumo_financeiro() -> str:
 def regenerar_dashboard() -> str:
     """Regenera o dashboard.html (painel visual) com os dados atuais do banco. Use ao final de qualquer sequência de alterações."""
     return json.dumps(f_dashboard(), ensure_ascii=False)
+
+@mcp.tool()
+def listar_produtos() -> str:
+    """Lista o catálogo local configurável, incluindo valores DEMO / TESTE."""
+    return json.dumps(local.products(), ensure_ascii=False)
+
+@mcp.tool()
+def criar_proposta(lead_slug: str, produto: str, preco_negociado: float = 0) -> str:
+    """Cria proposta em rascunho sem mudar preço público do catálogo."""
+    return json.dumps(local.create_proposal(lead_slug, produto, preco_negociado or None), ensure_ascii=False)
+
+@mcp.tool()
+def preparar_email(lead_slug: str, proposta_id: str, assunto: str, corpo: str) -> str:
+    """Cria e-mail em rascunho. O provider local nunca envia mensagem real."""
+    return json.dumps(local.create_email(lead_slug, proposta_id, assunto, corpo), ensure_ascii=False)
+
+@mcp.tool()
+def transicionar_email(email_id: str, status: str, fixture_resposta: str = '') -> str:
+    """Move e-mail por draft→reviewed→approved→sent_simulated e fixtures de resposta."""
+    return json.dumps(local.email_transition(email_id, status, fixture_resposta), ensure_ascii=False)
+
+@mcp.tool()
+def criar_pedido(proposta_id: str) -> str:
+    """Cria pedido local a partir de proposta aceita."""
+    return json.dumps(local.create_order(proposta_id), ensure_ascii=False)
+
+@mcp.tool()
+def processar_pagamento_mock(pedido_id: str, status: str) -> str:
+    """Simula pagamento sem coletar cartão: pending, approved, declined, cancelled ou refunded."""
+    return json.dumps(local.payment(pedido_id, status), ensure_ascii=False)
+
+@mcp.tool()
+def gerar_contrato(pedido_id: str) -> str:
+    """Gera contrato HTML DEMO / TESTE a partir dos valores persistidos do pedido."""
+    return json.dumps(local.generate_contract(pedido_id), ensure_ascii=False)
+
+@mcp.tool()
+def resumo_financeiro_local() -> str:
+    """Resumo de receita, recebido, margem, MRR, projeção e comissão no SQLite local."""
+    return json.dumps(local.financial_summary(), ensure_ascii=False)
 
 if __name__ == '__main__':
     mcp.run()
