@@ -83,9 +83,9 @@ class App(SimpleHTTPRequestHandler):
             if not preview: return self._json(404,{'error':'Preview não encontrado'})
             body=preview['content'].encode('utf-8'); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body); return
         if path == '/api/financial': return self._json(200, local.financial_summary())
-        if path in ('/api/proposals','/api/emails','/api/orders','/api/checkouts','/api/payments','/api/contracts','/api/handoffs','/api/commissions'):
+        if path in ('/api/proposals','/api/emails','/api/orders','/api/checkouts','/api/payments','/api/contracts','/api/handoffs','/api/commissions','/api/qualifications','/api/diagnoses','/api/social-audits'):
             table=path.split('/')[-1]
-            table={'checkouts':'ds_checkouts','payments':'ds_payments','proposals':'ds_proposals','emails':'ds_emails','orders':'ds_orders','contracts':'ds_contracts','handoffs':'ds_handoffs','commissions':'ds_commissions'}[table]
+            table={'checkouts':'ds_checkouts','payments':'ds_payments','proposals':'ds_proposals','emails':'ds_emails','orders':'ds_orders','contracts':'ds_contracts','handoffs':'ds_handoffs','commissions':'ds_commissions','qualifications':'ds_qualifications','diagnoses':'ds_site_diagnoses','social-audits':'ds_social_audits'}[table]
             c=local.connect(); result=local.rows(c,'SELECT * FROM %s ORDER BY created_at DESC' % table); c.close(); return self._json(200,result)
         if path == '/api/timeline':
             c=local.connect(); result=local.rows(c,'SELECT * FROM ds_timeline ORDER BY created_at DESC'); c.close(); return self._json(200,result)
@@ -102,6 +102,10 @@ class App(SimpleHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split('?')[0]; body = self._corpo()
         if path == '/api/proposals': return self._json(200, local.create_proposal(body.get('lead_slug',''),body.get('product_id',''),body.get('negotiated_price'),body.get('terms','Pagamento mock local'),int(body.get('valid_days',7))))
+        if path == '/api/qualifications': return self._json(200, local.qualify_lead(body.get('lead_slug',''),body.get('facts',[]),body.get('hypotheses',[]),body.get('recommendation','insufficient'),body.get('reason',''),body.get('confidence','low'),body.get('validation_question',''),body.get('next_action',''),body.get('owner','')))
+        if path == '/api/diagnoses': return self._json(200, local.diagnose_site(body.get('lead_slug',''),body.get('criteria',[])))
+        if path == '/api/social-audits':
+            fields=dict(body); fields.pop('lead_slug',None); fields.pop('platform',None); return self._json(200, local.audit_social(body.get('lead_slug',''),body.get('platform',''),**fields))
         if path == '/api/previews': return self._json(200, local.create_local_preview(body.get('lead_slug',''),body.get('kind','redesign')))
         if path == '/api/emails': return self._json(200, local.create_email(body.get('lead_slug',''),body.get('proposal_id'),body.get('subject',''),body.get('body','')))
         if path.startswith('/api/emails/') and path.endswith('/transition'):
