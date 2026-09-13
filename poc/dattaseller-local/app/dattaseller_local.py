@@ -149,6 +149,13 @@ def create_local_preview(lead_slug, kind='redesign'):
     name=lead.get('nome') or lead_slug; contact=lead.get('email') or lead.get('whatsapp') or lead.get('siteAntigo') or 'Contato público não informado'
     content='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>%s — preview local</title><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:24px"><small>PREVIEW LOCAL / DEMO — revisão humana obrigatória</small><h1>%s</h1><p>Prévia baseada somente nos dados públicos registrados no CRM.</p><p><b>Contato:</b> %s</p><p>Serviços e provas sociais não são inventados neste preview.</p></body></html>' % (name,name,contact)
     preview={'id':ident('preview'),'lead_slug':lead_slug,'kind':kind,'url':'/api/previews/PLACEHOLDER','content':content,'status':'published_mock','created_at':now()}; preview['url']='/api/previews/'+preview['id']; c.execute('INSERT INTO ds_previews VALUES(:id,:lead_slug,:kind,:url,:content,:status,:created_at)',preview); timeline(c,lead_slug,'preview.published_mock',preview['id']); c.commit(); c.close(); return preview
+def edit_preview(preview_id, title='', body='', cta='', contact=''):
+    """Adapta o preview existente; não cria conteúdo além dos campos revisados pelo operador."""
+    c=connect(); p=one(c,'SELECT * FROM ds_previews WHERE id=?',(preview_id,))
+    if not p: c.close(); return {'error':'Preview não encontrado'}
+    import html
+    content='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:24px"><small>PREVIEW LOCAL / DEMO — revisão humana obrigatória</small><h1>%s</h1><p>%s</p><p><b>CTA:</b> %s</p><p><b>Contato:</b> %s</p></body></html>' % tuple(html.escape(str(x)) for x in (title,body,cta,contact))
+    c.execute('UPDATE ds_previews SET content=? WHERE id=?',(content,preview_id)); timeline(c,p['lead_slug'],'preview.edited',preview_id); c.commit(); result=one(c,'SELECT * FROM ds_previews WHERE id=?',(preview_id,)); c.close(); return result
 def qualify_lead(lead_slug, facts, hypotheses, recommendation, reason, confidence, validation_question='', next_action='', owner=''):
     if recommendation not in ('datta360','dattavps','dattaseg','dattahost','insufficient'): return {'error':'Recomendação inválida'}
     if not isinstance(facts,list) or not isinstance(hypotheses,list): return {'error':'Fatos e hipóteses devem ser listas separadas'}

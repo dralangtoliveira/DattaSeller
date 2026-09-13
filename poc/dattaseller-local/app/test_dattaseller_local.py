@@ -35,6 +35,7 @@ class DattaSellerLocalTests(unittest.TestCase):
     def test_local_preview_is_factual_and_persisted(self):
         p=ds.create_local_preview('lead-a'); self.assertEqual(p['status'],'published_mock'); self.assertIn('não são inventados',p['content'])
         c=ds.connect(); self.assertEqual(ds.one(c,'SELECT status FROM ds_previews WHERE id=?',(p['id'],))['status'],'published_mock'); c.close()
+        edited=ds.edit_preview(p['id'],'Título revisado','Texto revisado','Fale conosco','contato público'); self.assertIn('Título revisado',edited['content']); self.assertEqual(ds.edit_preview('ausente')['error'],'Preview não encontrado')
     def test_qualification_separates_facts_hypotheses_and_insufficient(self):
         q=ds.qualify_lead('lead-a',['site público observado'],['pode precisar de nova página'],'datta360','CTA não visível','medium','Qual serviço prioriza?','agendar revisão','Demo')
         self.assertEqual(q['recommendation'],'datta360'); self.assertEqual(ds.qualify_lead('lead-a',[],[],'insufficient','recomendação insuficiente','low')['recommendation'],'insufficient')
