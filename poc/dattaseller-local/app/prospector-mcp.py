@@ -77,17 +77,19 @@ def _url_normalizada(valor, somente_dominio=False):
 
 def _encontrar_duplicado(dados):
     chaves = [
-        ('nome', _texto_normalizado(dados.get('nome'))),
+        ('nome_cidade', _texto_normalizado(dados.get('nome'))+'|'+_texto_normalizado(dados.get('cidade'))),
         ('dominio', _url_normalizada(dados.get('siteAntigo'), True)),
         ('telefone', _telefone_normalizado(dados.get('telefone') or dados.get('whatsapp'))),
+        ('email', _texto_normalizado(dados.get('email'))),
         ('perfil', _url_normalizada(dados.get('instagram_url'))),
     ]
     for existente in f_listar():
         if existente.get('slug') == dados.get('slug'): continue
         valores = {
-            'nome': _texto_normalizado(existente.get('nome')),
+            'nome_cidade': _texto_normalizado(existente.get('nome'))+'|'+_texto_normalizado(existente.get('cidade')),
             'dominio': _url_normalizada(existente.get('siteAntigo'), True),
             'telefone': _telefone_normalizado(existente.get('telefone') or existente.get('whatsapp')),
+            'email': _texto_normalizado(existente.get('email')),
             'perfil': _url_normalizada(existente.get('instagram_url')),
         }
         for campo, valor in chaves:
@@ -214,6 +216,15 @@ if ARGS.teste:
     dedup_dominio = f_salvar({'slug':'teste-dominio-repetido','nome':'Outro domínio','siteAntigo':'http://exemplo.com/outra'})
     assert dedup_dominio.get('duplicado_por') == 'dominio' and dedup_dominio.get('lead') == 'teste-dominio' and len(f_listar()) == 2
     print('3 deduplicar domínio:', dedup_dominio)
+    dedup_email = f_salvar({'slug':'teste-email','nome':'Sem telefone','cidade':'RJ','email':'T@T.COM'})
+    assert dedup_email.get('duplicado_por') == 'email' and dedup_email.get('lead') == 'teste-mcp'
+    f_salvar({'slug':'teste-insta-base','nome':'Insta Base','cidade':'SP','instagram_url':'instagram.com/teste'})
+    dedup_perfil = f_salvar({'slug':'teste-perfil','nome':'Outro perfil','instagram_url':'https://www.instagram.com/teste/'})
+    assert dedup_perfil.get('duplicado_por') == 'perfil' and dedup_perfil.get('lead') == 'teste-insta-base'
+    f_salvar({'slug':'teste-nome-cidade','nome':'Loja Exemplo','cidade':'Curitiba'})
+    dedup_nome = f_salvar({'slug':'teste-nome-cidade-2','nome':'loja exemplo','cidade':'CURITIBA'})
+    assert dedup_nome.get('duplicado_por') == 'nome_cidade' and dedup_nome.get('lead') == 'teste-nome-cidade'
+    print('4 deduplicar email/perfil/nome-cidade:', dedup_email, dedup_perfil, dedup_nome)
     print('4 listar:', len(f_listar()), 'lead(s)')
     print('5 status:', f_status('teste-mcp','proposta'))
     import sqlite3 as s3
