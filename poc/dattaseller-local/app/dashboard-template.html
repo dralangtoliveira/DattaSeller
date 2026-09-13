@@ -346,15 +346,16 @@ function vComparador(){var ls=fil().filter(function(l){return l.slug&&['redesenh
  if(!cmpSel||!ls.some(function(l){return l.slug===cmpSel}))cmpSel=ls[0].slug;
  var l=ls.filter(function(x){return x.slug===cmpSel})[0];
  var antiga=l.siteAntigo?((l.siteAntigo.indexOf('http')===0?l.siteAntigo:'https://'+l.siteAntigo)):null;
- var nova='sites/'+l.slug+'/'+l.slug+'.html';
+ var preview=(DS.previews||[]).filter(function(p){return p.lead_slug===l.slug})[0];
+ var nova=preview?preview.url:'sites/'+l.slug+'/'+l.slug+'.html';
  return '<div class="cmp-tabs">'+ls.map(function(x){return '<button class="'+(x.slug===cmpSel?'on':'')+'" onclick="cmpSel=\''+x.slug+'\';render()">'+x.nome+'</button>'}).join('')+'</div>'
  +'<div class="cmp-grid"><div class="cmp-col"><div class="cab antes">Antes — site atual'+(antiga?' · <a href="'+antiga+'" target="_blank" style="color:inherit">abrir ↗</a>':'')+'</div>'+(antiga?'<iframe src="'+antiga+'" loading="lazy"></iframe>':'<div class="vazio" style="padding:30px">Sem URL do site antigo registrada.</div>')+'</div>'
- +'<div class="cmp-col"><div class="cab depois">Depois — nova versão · <a href="'+nova+'" target="_blank" style="color:inherit">abrir ↗</a></div><iframe src="'+nova+'"></iframe></div></div>'
+ +'<div class="cmp-col"><div class="cab depois">Depois — '+(preview?'preview local persistido':'nova versão')+' · <a href="'+nova+'" target="_blank" style="color:inherit">abrir ↗</a></div><iframe src="'+nova+'"></iframe></div></div>'
  +'<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Alguns sites antigos bloqueiam visualização embutida — se o lado "Antes" ficar em branco, use o link "abrir ↗".</div>'}
-var DS={products:[],proposals:[],emails:[],orders:[],checkouts:[],payments:[],contracts:[],handoffs:[],commissions:[],qualifications:[],diagnoses:[],socialAudits:[],financial:{},timeline:[],settings:{}};
+var DS={products:[],proposals:[],emails:[],orders:[],checkouts:[],payments:[],contracts:[],handoffs:[],commissions:[],previews:[],qualifications:[],diagnoses:[],socialAudits:[],financial:{},timeline:[],settings:{}};
 function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(x){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]})}
 function money(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
-function dsLoad(){return Promise.all(['products','proposals','emails','orders','checkouts','payments','contracts','handoffs','commissions','financial','timeline','settings','qualifications','diagnoses'].map(function(n){return fetch('/api/'+n).then(function(r){return r.json()}).then(function(x){DS[n]=x})}),fetch('/api/social-audits').then(function(r){return r.json()}).then(function(x){DS.socialAudits=x})).then(render).catch(function(){})}
+function dsLoad(){return Promise.all(['products','proposals','emails','orders','checkouts','payments','contracts','handoffs','commissions','financial','timeline','settings','previews','qualifications','diagnoses'].map(function(n){return fetch('/api/'+n).then(function(r){return r.json()}).then(function(x){DS[n]=x})}),fetch('/api/social-audits').then(function(r){return r.json()}).then(function(x){DS.socialAudits=x})).then(render).catch(function(){})}
 function dsPost(path,body){return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}).then(function(r){return r.json()}).then(function(x){if(x.error||x.erro)alert(x.error||x.erro);return dsLoad()})}
 function dsCreateProposal(){var lead=document.getElementById('ws-lead').value.trim(),product=document.getElementById('ws-product').value,price=document.getElementById('ws-price').value;if(!lead){document.getElementById('ws-msg').textContent='Informe o slug de um lead existente.';return}dsPost('/api/proposals',{lead_slug:lead,product_id:product,negotiated_price:price===''?null:Number(price)})}
 function dsEmail(proposal){var lead=(DS.proposals.filter(function(p){return p.id===proposal})[0]||{}).lead_slug;dsPost('/api/emails',{lead_slug:lead,proposal_id:proposal,subject:'Proposta personalizada para revisão',body:'Olá, preparei uma proposta factual para sua revisão humana.'})}
