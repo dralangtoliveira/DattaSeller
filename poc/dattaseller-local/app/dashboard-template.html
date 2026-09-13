@@ -157,6 +157,15 @@ select.mini{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-
  .painel{padding:18px}.board{min-height:420px}.col{max-height:none}.cmp-grid{grid-template-columns:1fr;min-height:720px}
 }
 @media(max-width:520px){.funil .linha{grid-template-columns:96px 1fr 24px;gap:8px}.fup-item{align-items:flex-start;flex-wrap:wrap}#modal .mrow{grid-template-columns:1fr}}
+@media(max-width:520px){
+ .painel{padding:14px;margin-bottom:14px}.painel h2{font-size:16px}
+ .twrap{margin:0 -14px;padding:0 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .twrap table{min-width:680px}.twrap button,.painel>button{min-height:38px}
+ .board{margin:0 -14px;padding-left:14px}.col{flex-basis:258px;width:258px}
+ .cmp-col iframe{min-height:360px}.cmp-grid{min-height:760px}
+ #modal{width:calc(100vw - 20px);max-width:none;padding:18px;max-height:92vh}
+ .doc-bar{padding:10px;gap:7px;flex-wrap:wrap}.doc-bar .sp{display:none}
+}
 .cmp-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .cmp-tabs button{border:1px solid var(--line);background:var(--white);padding:8px 16px;border-radius:20px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted);font-family:var(--sans)}
 .cmp-tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
