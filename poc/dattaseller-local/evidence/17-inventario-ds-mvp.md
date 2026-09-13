@@ -20,10 +20,10 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 |---|---|---|---|---|
 | 01 | PRONTO | inventário e proveniência | 17 / afb44ac | — |
 | 02 | PRONTO | seis skills preservadas | vendor + SHA256 | — |
-| 03 | PARCIAL | CRM SQLite/dashboard | 03 / 81970a4 | CRUD visual de novo lead |
+| 03 | PRONTO | CRM SQLite/dashboard e criação visual | b352869 | — |
 | 04 | PRONTO | MCP e autoteste | 20 / 1c80d9e | — |
 | 05 | PARCIAL | settings SQLite/API | e22997b | todos os campos na UI |
-| 06 | PARCIAL | preço/custo na UI | 18 / 81970a4 | desconto/moeda/comissão na UI |
+| 06 | PARCIAL | preço/custo/comissão/desconto na UI | 27a7d97 | moeda/condições na UI |
 | 07 | PARCIAL | catálogo mock persistido | e22997b | regras/CTA completos na UI |
 | 08 | PRONTO | entrada sem e-mail | 20 / 1c80d9e | — |
 | 09 | PRONTO | cinco chaves de dedupe | 20 / 1c80d9e | — |
@@ -40,10 +40,10 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 32–33 | PARCIAL | HTML mock e estados | e22997b | reuso DOCX visual do Prospector |
 | 34–35 | PRONTO | Kanban e follow-up CRM | Prospector | — |
 | 36–37 | PRONTO | financeiro persistido | e22997b | — |
-| 38 | PARCIAL | `.env.example` e bloqueio de segredos settings | e22997b | varredura formal |
+| 38 | PRONTO | `.env.example`, bloqueio e varredura | 25 / 26909c9 | — |
 | 39–40 | PRONTO | DEMO/reset testados | 18 / e22997b | — |
-| 41–42 | PARCIAL | 10 testes Python + MCP/JS | 22 | integração HTTP abrangente |
-| 43–44 | FALTA | — | — | E2E visual completo |
+| 41–42 | PRONTO | 10 Python + MCP + 10 JS | 23 / c7a0938 | — |
+| 43–44 | PARCIAL | E2E local Datta360/VPS/negativo | 24 / 720767e | E2E visual completo |
 | 45 | PRONTO | reinício SQLite | 22 / 3a5914e | — |
 | 46 | PARCIAL | ajustes móveis | 0108c63 | matriz 6 larguras |
-| 47–48 | PARCIAL | README/evidências | README | playbook final |
+| 47–48 | PRONTO | README, evidências e playbook | c85105f | — |
