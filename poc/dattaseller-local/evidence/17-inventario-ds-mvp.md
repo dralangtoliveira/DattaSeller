@@ -23,7 +23,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 03 | PRONTO | CRM SQLite/dashboard e criação visual | b352869 | — |
 | 04 | PRONTO | MCP e autoteste | 20 / 1c80d9e | — |
 | 05 | PARCIAL | settings SQLite/API | e22997b | todos os campos na UI |
-| 06 | PARCIAL | preço/custo/comissão/desconto na UI | 27a7d97 | moeda/condições na UI |
+| 06 | PRONTO | preço/custo/comissão/desconto/moeda/condições/status na UI | c799a1c | — |
 | 07 | PARCIAL | catálogo mock persistido | e22997b | regras/CTA completos na UI |
 | 08 | PRONTO | entrada sem e-mail | 20 / 1c80d9e | — |
 | 09 | PRONTO | cinco chaves de dedupe | 20 / 1c80d9e | — |
