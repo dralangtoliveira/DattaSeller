@@ -5,7 +5,7 @@ import dattaseller_local as ds
 class DattaSellerLocalTests(unittest.TestCase):
     def setUp(self):
         self.old=ds.DB; self.tmp=tempfile.NamedTemporaryFile(suffix='.db',delete=False); self.tmp.close(); os.unlink(self.tmp.name); ds.DB=self.tmp.name
-        c=ds.connect(); c.execute('CREATE TABLE IF NOT EXISTS leads(slug TEXT PRIMARY KEY,email TEXT)'); c.execute("INSERT INTO leads VALUES('lead-a','a@local.invalid')"); c.commit(); c.close()
+        c=ds.connect(); c.execute('CREATE TABLE IF NOT EXISTS leads(slug TEXT PRIMARY KEY,email TEXT,product_suggested TEXT,product_reason TEXT,next_action TEXT,site_audit_json TEXT,instagram_audit_json TEXT)'); c.execute("INSERT INTO leads(slug,email) VALUES('lead-a','a@local.invalid')"); c.commit(); c.close()
     def tearDown(self):
         if os.path.exists(ds.DB): os.unlink(ds.DB)
         ds.DB=self.old
@@ -35,6 +35,14 @@ class DattaSellerLocalTests(unittest.TestCase):
     def test_local_preview_is_factual_and_persisted(self):
         p=ds.create_local_preview('lead-a'); self.assertEqual(p['status'],'published_mock'); self.assertIn('não são inventados',p['content'])
         c=ds.connect(); self.assertEqual(ds.one(c,'SELECT status FROM ds_previews WHERE id=?',(p['id'],))['status'],'published_mock'); c.close()
+    def test_qualification_separates_facts_hypotheses_and_insufficient(self):
+        q=ds.qualify_lead('lead-a',['site público observado'],['pode precisar de nova página'],'datta360','CTA não visível','medium','Qual serviço prioriza?','agendar revisão','Demo')
+        self.assertEqual(q['recommendation'],'datta360'); self.assertEqual(ds.qualify_lead('lead-a',[],[],'insufficient','recomendação insuficiente','low')['recommendation'],'insufficient')
+        self.assertEqual(ds.qualify_lead('lead-a','fato',[],'datta360','x','low')['error'],'Fatos e hipóteses devem ser listas separadas')
+    def test_factual_site_diagnosis_and_social_audit(self):
+        d=ds.diagnose_site('lead-a',[{'criterion':'CTA','observed_state':'não visível','evidence':'página inicial observada','recommendation':'inserir CTA'}]); self.assertIn('CTA',d['criteria'])
+        self.assertIn('exige teste',ds.diagnose_site('lead-a',[{'criterion':'SEO','observed_state':'ruim','evidence':'x','recommendation':'x'}])['error'])
+        s=ds.audit_social('lead-a','instagram',url='https://instagram.com/exemplo',factual_notes='bio pública observada',recommendation='testar CTA'); self.assertEqual(s['platform'],'instagram'); self.assertEqual(ds.audit_social('lead-a','x')['error'],'Plataforma deve ser instagram ou tiktok')
     def test_reset_preserves_non_demo_configuration_and_transactions(self):
         demo=self.cycle(); ds.create_order(demo['id'])
         c=ds.connect(); c.execute("INSERT INTO ds_products(id,name,billing,public_price,base_price,cost,commission_pct,max_discount_pct,currency,active,adapter,is_demo,updated_at) VALUES('real','Real','one_time',10,10,1,0,0,'BRL',1,'Mock',0,?)",(ds.now(),)); c.commit(); c.close()

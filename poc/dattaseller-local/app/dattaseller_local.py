@@ -51,6 +51,9 @@ def migrate(c):
     CREATE TABLE IF NOT EXISTS ds_handoffs (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, product_id TEXT NOT NULL, client TEXT, seller TEXT, requirements TEXT, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_commissions (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, seller TEXT, base REAL NOT NULL, pct REAL NOT NULL, amount REAL NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_previews (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS ds_qualifications (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, facts TEXT NOT NULL, hypotheses TEXT NOT NULL, recommendation TEXT NOT NULL, reason TEXT NOT NULL, confidence TEXT NOT NULL, validation_question TEXT, next_action TEXT, owner TEXT, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS ds_site_diagnoses (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, criteria TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS ds_social_audits (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, platform TEXT NOT NULL, url TEXT, username TEXT, bio TEXT, cta TEXT, link TEXT, visual_identity TEXT, consistency_note TEXT, frequency_note TEXT, factual_notes TEXT, recommendation TEXT, creative_direction TEXT, evidence TEXT, created_at TEXT NOT NULL);
     ''')
     try: c.execute('ALTER TABLE ds_timeline ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 1')
     except sqlite3.OperationalError: pass
@@ -146,6 +149,21 @@ def create_local_preview(lead_slug, kind='redesign'):
     name=lead.get('nome') or lead_slug; contact=lead.get('email') or lead.get('whatsapp') or lead.get('siteAntigo') or 'Contato público não informado'
     content='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>%s — preview local</title><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:24px"><small>PREVIEW LOCAL / DEMO — revisão humana obrigatória</small><h1>%s</h1><p>Prévia baseada somente nos dados públicos registrados no CRM.</p><p><b>Contato:</b> %s</p><p>Serviços e provas sociais não são inventados neste preview.</p></body></html>' % (name,name,contact)
     preview={'id':ident('preview'),'lead_slug':lead_slug,'kind':kind,'url':'/api/previews/PLACEHOLDER','content':content,'status':'published_mock','created_at':now()}; preview['url']='/api/previews/'+preview['id']; c.execute('INSERT INTO ds_previews VALUES(:id,:lead_slug,:kind,:url,:content,:status,:created_at)',preview); timeline(c,lead_slug,'preview.published_mock',preview['id']); c.commit(); c.close(); return preview
+def qualify_lead(lead_slug, facts, hypotheses, recommendation, reason, confidence, validation_question='', next_action='', owner=''):
+    if recommendation not in ('datta360','dattavps','dattaseg','dattahost','insufficient'): return {'error':'Recomendação inválida'}
+    if not isinstance(facts,list) or not isinstance(hypotheses,list): return {'error':'Fatos e hipóteses devem ser listas separadas'}
+    c=connect(); lead=one(c,'SELECT slug FROM leads WHERE slug=?',(lead_slug,))
+    if not lead: c.close(); return {'error':'Lead não encontrado'}
+    r={'id':ident('qual'),'lead_slug':lead_slug,'facts':json.dumps(facts,ensure_ascii=False),'hypotheses':json.dumps(hypotheses,ensure_ascii=False),'recommendation':recommendation,'reason':reason,'confidence':confidence,'validation_question':validation_question,'next_action':next_action,'owner':owner,'created_at':now()}
+    c.execute('INSERT INTO ds_qualifications VALUES(:id,:lead_slug,:facts,:hypotheses,:recommendation,:reason,:confidence,:validation_question,:next_action,:owner,:created_at)',r); c.execute('UPDATE leads SET product_suggested=?,product_reason=?,next_action=? WHERE slug=?',(recommendation if recommendation!='insufficient' else '',reason,next_action,lead_slug)); timeline(c,lead_slug,'qualification.created',r['id']); c.commit(); c.close(); return r
+def diagnose_site(lead_slug, criteria):
+    forbidden={'velocidade','seo','segurança','vulnerabilidade','penalidade google'}
+    if not isinstance(criteria,list) or any(not isinstance(x,dict) or not {'criterion','observed_state','evidence','recommendation'}.issubset(x) for x in criteria): return {'error':'Critérios devem conter criterion, observed_state, evidence e recommendation'}
+    if any(str(x.get('criterion','')).lower() in forbidden for x in criteria): return {'error':'Critério técnico exige teste específico e não pode ser declarado aqui'}
+    c=connect(); r={'id':ident('diag'),'lead_slug':lead_slug,'criteria':json.dumps(criteria,ensure_ascii=False),'created_at':now()}; c.execute('INSERT INTO ds_site_diagnoses VALUES(:id,:lead_slug,:criteria,:created_at)',r); c.execute('UPDATE leads SET site_audit_json=? WHERE slug=?',(r['criteria'],lead_slug)); timeline(c,lead_slug,'site_diagnosis.created',r['id']); c.commit(); c.close(); return r
+def audit_social(lead_slug, platform, **fields):
+    if platform not in ('instagram','tiktok'): return {'error':'Plataforma deve ser instagram ou tiktok'}
+    allowed=['url','username','bio','cta','link','visual_identity','consistency_note','frequency_note','factual_notes','recommendation','creative_direction','evidence']; c=connect(); r={'id':ident('social'),'lead_slug':lead_slug,'platform':platform,'created_at':now()}; r.update({k:str(fields.get(k,'')) for k in allowed}); c.execute('INSERT INTO ds_social_audits VALUES(:id,:lead_slug,:platform,:url,:username,:bio,:cta,:link,:visual_identity,:consistency_note,:frequency_note,:factual_notes,:recommendation,:creative_direction,:evidence,:created_at)',r); c.execute('UPDATE leads SET instagram_audit_json=? WHERE slug=?',(json.dumps(r,ensure_ascii=False),lead_slug)); timeline(c,lead_slug,'social_audit.created',r['id']); c.commit(); c.close(); return r
 def reset_demo():
     """Remove apenas transações ligadas a produtos DEMO, nunca configuração ou dados reais."""
     c=connect()
