@@ -77,6 +77,10 @@ class App(SimpleHTTPRequestHandler):
         if path == '/api/settings': return self._json(200, local.get_settings())
         if path == '/api/products': return self._json(200, local.products())
         if path == '/api/financial': return self._json(200, local.financial_summary())
+        if path in ('/api/proposals','/api/emails','/api/orders','/api/checkouts','/api/payments','/api/contracts','/api/handoffs','/api/commissions'):
+            table=path.split('/')[-1]
+            table={'checkouts':'ds_checkouts','payments':'ds_payments','proposals':'ds_proposals','emails':'ds_emails','orders':'ds_orders','contracts':'ds_contracts','handoffs':'ds_handoffs','commissions':'ds_commissions'}[table]
+            c=local.connect(); result=local.rows(c,'SELECT * FROM %s ORDER BY created_at DESC' % table); c.close(); return self._json(200,result)
         if path == '/api/timeline':
             c=local.connect(); result=local.rows(c,'SELECT * FROM ds_timeline ORDER BY created_at DESC'); c.close(); return self._json(200,result)
         if self.path.split('?')[0] == '/api/config':
@@ -104,6 +108,12 @@ class App(SimpleHTTPRequestHandler):
             return self._json(200, local.generate_contract(path.split('/')[3]))
         if path.startswith('/api/orders/') and path.endswith('/handoff'):
             return self._json(200, local.handoff(path.split('/')[3],body.get('status','sent')))
+        if path.startswith('/api/contracts/') and path.endswith('/transition'):
+            status=body.get('status','generated')
+            if status not in ('generated','sent_simulated','signed','refused','cancelled'): return self._json(400,{'error':'Estado de contrato inválido'})
+            c=local.connect(); existing=local.one(c,'SELECT * FROM ds_contracts WHERE id=?',(path.split('/')[3],))
+            if not existing: c.close(); return self._json(404,{'error':'Contrato não encontrado'})
+            c.execute('UPDATE ds_contracts SET status=?,updated_at=? WHERE id=?',(status,local.now(),existing['id'])); c.commit(); result=local.one(c,'SELECT * FROM ds_contracts WHERE id=?',(existing['id'],)); c.close(); return self._json(200,result)
         if path == '/api/demo/reset': return self._json(200, local.reset_demo())
         if self.path.split('?')[0] == '/api/leads':
             l = body; c = conexao()

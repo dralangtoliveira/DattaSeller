@@ -37,7 +37,7 @@ def migrate(c):
       base_price REAL NOT NULL, cost REAL NOT NULL, commission_pct REAL NOT NULL DEFAULT 0,
       max_discount_pct REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'BRL', active INTEGER NOT NULL DEFAULT 1,
       adapter TEXT NOT NULL, is_demo INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS ds_timeline (id TEXT PRIMARY KEY, lead_slug TEXT, event TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS ds_timeline (id TEXT PRIMARY KEY, lead_slug TEXT, event TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL, is_demo INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS ds_proposals (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, product_id TEXT NOT NULL, base_price REAL NOT NULL,
       negotiated_price REAL NOT NULL, discount REAL NOT NULL, margin REAL NOT NULL, currency TEXT NOT NULL, terms TEXT, valid_until TEXT, version INTEGER NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_emails (id TEXT PRIMARY KEY, lead_slug TEXT NOT NULL, proposal_id TEXT, sender TEXT, recipient TEXT, reply_to TEXT,
@@ -51,6 +51,8 @@ def migrate(c):
     CREATE TABLE IF NOT EXISTS ds_handoffs (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, product_id TEXT NOT NULL, client TEXT, seller TEXT, requirements TEXT, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ds_commissions (id TEXT PRIMARY KEY, order_id TEXT UNIQUE NOT NULL, seller TEXT, base REAL NOT NULL, pct REAL NOT NULL, amount REAL NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL);
     ''')
+    try: c.execute('ALTER TABLE ds_timeline ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 1')
+    except sqlite3.OperationalError: pass
     for p, name, billing, price, cost, pct in DEMO_PRODUCTS:
         c.execute('''INSERT OR IGNORE INTO ds_products(id,name,billing,public_price,base_price,cost,commission_pct,max_discount_pct,currency,active,adapter,is_demo,updated_at)
         VALUES(?,?,?,?,?,?,?,?,?,1,?,1,?)''', (p,name,billing,price,price,cost,pct,20,'BRL','Mock%sAdapter' % p.title(),now()))
@@ -61,7 +63,7 @@ def migrate(c):
 def rows(c, query, args=()): return [dict(r) for r in c.execute(query,args).fetchall()]
 def one(c, query, args=()):
     r=c.execute(query,args).fetchone(); return dict(r) if r else None
-def timeline(c, lead, event, detail=''): c.execute('INSERT INTO ds_timeline VALUES(?,?,?,?,?)',(ident('evt'),lead,event,detail,now()))
+def timeline(c, lead, event, detail='', is_demo=True): c.execute('INSERT INTO ds_timeline(id,lead_slug,event,detail,created_at,is_demo) VALUES(?,?,?,?,?,?)',(ident('evt'),lead,event,detail,now(),1 if is_demo else 0))
 
 def get_settings():
     c=connect(); result={r['key']:json.loads(r['value']) for r in c.execute('SELECT * FROM ds_settings')}; c.close(); return result
@@ -137,7 +139,17 @@ def handoff(order_id, status='sent'):
 def financial_summary():
     c=connect(); r=one(c,"SELECT COUNT(*) sales,COALESCE(SUM(negotiated_price),0) revenue,COALESCE(SUM(cost),0) cost,COALESCE(SUM(margin),0) margin FROM ds_orders WHERE status='paid'"); received=one(c,"SELECT COALESCE(SUM(amount),0) received FROM ds_payments WHERE status='approved'"); comm=one(c,"SELECT COALESCE(SUM(amount),0) commission FROM ds_commissions"); mrr=one(c,"SELECT COALESCE(SUM(o.negotiated_price),0) mrr FROM ds_orders o JOIN ds_products p ON p.id=o.product_id WHERE o.status='paid' AND p.billing='recurring'"); c.close(); return dict(r,received=received['received'],receivable=r['revenue']-received['received'],mrr=mrr['mrr'],projection=r['revenue']+mrr['mrr']*12,commission=comm['commission'])
 def reset_demo():
-    c=connect(); c.executescript("DELETE FROM ds_timeline; DELETE FROM ds_proposals; DELETE FROM ds_emails; DELETE FROM ds_orders; DELETE FROM ds_checkouts; DELETE FROM ds_payments; DELETE FROM ds_contracts; DELETE FROM ds_handoffs; DELETE FROM ds_commissions;"); c.commit(); c.close(); return {'ok':True,'message':'Dados transacionais DEMO removidos; configurações, produtos e leads preservados.'}
+    """Remove apenas transações ligadas a produtos DEMO, nunca configuração ou dados reais."""
+    c=connect()
+    demo_orders="SELECT o.id FROM ds_orders o JOIN ds_products p ON p.id=o.product_id WHERE p.is_demo=1"
+    demo_props="SELECT pr.id FROM ds_proposals pr JOIN ds_products p ON p.id=pr.product_id WHERE p.is_demo=1"
+    c.execute('DELETE FROM ds_emails WHERE proposal_id IN (%s)' % demo_props)
+    for table in ('ds_checkouts','ds_payments','ds_contracts','ds_handoffs','ds_commissions'):
+        c.execute('DELETE FROM %s WHERE order_id IN (%s)' % (table,demo_orders))
+    c.execute('DELETE FROM ds_orders WHERE id IN (%s)' % demo_orders)
+    c.execute('DELETE FROM ds_proposals WHERE id IN (%s)' % demo_props)
+    c.execute('DELETE FROM ds_timeline WHERE is_demo=1')
+    c.commit(); c.close(); return {'ok':True,'message':'Dados transacionais DEMO removidos; configurações, produtos e dados não DEMO preservados.'}
 
 def self_test():
     # Testa ciclo simples inteiro no banco configurado por DS_DB_TEST, sem dados reais.
