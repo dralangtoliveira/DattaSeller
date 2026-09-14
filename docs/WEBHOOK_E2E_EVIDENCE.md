@@ -5,6 +5,7 @@
 ## Resultado
 
 - O formulário público do deployment `datta360-nkunu3mr2-datta-x.vercel.app` respondeu `201` em `POST /api/leads`.
+- O novo teste de produção em `datta360.vercel.app` respondeu `201` em `POST /api/leads` e o DattaSeller registrou `201` em `POST /api/inbound/datta360`, com evento `complete/processed` e `request_id` redigido.
 - O deployment de produção do DattaSeller `BoRSYthRP6Fv4yQCRDMFM9WZJ5M6` respondeu `201` em `POST /api/inbound/datta360`.
 - A correção foi promovida para o deployment DattaSeller `HSwWcfnoW` (commit `719e8b6`, Ready) e o proxy Datta360 foi publicado no deployment `7Ak5nuZSDqWTiTHZ5iz3ZZ7AujPn` (commit `b92d882`, Ready).
 - Após o E2E final, a consulta no Supabase retornou `2` eventos em `ds_inbound_events` e `2` leads em `ds_leads` com `source=datta360.com.br`, além das timelines correspondentes.
@@ -22,7 +23,7 @@ As rotas administrativas passaram a retornar `storage_unavailable` em falhas de 
 
 O deployment de produção da correção de sanitização é `DBKqf81Tp` (commit `93ddfc6`, Ready). O smoke test anônimo confirmou redirecionamento de `/`, `/dashboard.html`, `/api/leads` e `/api/products` para `/login`, e credenciais inválidas retornam à tela com mensagem genérica.
 
-No momento da validação, `auth.users=0` e `ds_users=0`; portanto não existe administrador real para validar login positivo, sessão persistente, logout ou alteração autenticada de lead.
+O administrador agora existe: Supabase Auth contém `contato@dralanoliveira.com` e `public.ds_users` contém o mesmo UUID com `role=admin`. A senha não foi registrada nem compartilhada. Login positivo, sessão persistente, logout e alteração autenticada de lead ainda aguardam a entrada segura da senha pelo responsável.
 
 ## Limites conhecidos
 
