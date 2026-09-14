@@ -43,7 +43,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 38 | PRONTO | `.env.example`, bloqueio e varredura | 25 / 26909c9 | — |
 | 39–40 | PRONTO | DEMO/reset testados | 18 / e22997b | — |
 | 41–42 | PRONTO | 10 Python + MCP + 10 JS | 23 / c7a0938 | — |
-| 43–44 | PARCIAL | E2E local Datta360/VPS/negativo | 24 / 720767e | E2E visual completo |
-| 45 | PRONTO | reinício SQLite | 22 / 3a5914e | — |
+| 43–44 | PARCIAL | E2E local Datta360/VPS/negativo; DattaVPS e cenário checkout/pagamento negativos executados visualmente; persistência reiniciada | 24 / 37 / 38 / 39 | resta consolidar a evidência visual completa Datta360 e os estados negativos de contrato/follow-up no mesmo roteiro |
+| 45 | PRONTO | reinício SQLite com entidades do E2E visual confirmadas por endpoints | 22 / 39 | — |
 | 46 | PARCIAL | seis larguras sem overflow no dashboard base | 27 | matriz visual de todas as telas e modais |
 | 47–48 | PRONTO | README, evidências e playbook | c85105f | — |
