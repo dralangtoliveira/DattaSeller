@@ -16,6 +16,14 @@ O runtime de produção do DattaSeller recebeu a secret key dedicada do projeto 
 
 O proxy do Datta360 agora também usa `request_id`, timeout de 8 segundos e logs redigidos para distinguir erro de transporte de erro upstream.
 
+As rotas administrativas passaram a retornar `storage_unavailable` em falhas de banco, sem repassar `error.message` do Supabase.
+
+## Ciclo autenticado
+
+O deployment de produção da correção de sanitização é `DBKqf81Tp` (commit `93ddfc6`, Ready). O smoke test anônimo confirmou redirecionamento de `/`, `/dashboard.html`, `/api/leads` e `/api/products` para `/login`, e credenciais inválidas retornam à tela com mensagem genérica.
+
+No momento da validação, `auth.users=0` e `ds_users=0`; portanto não existe administrador real para validar login positivo, sessão persistente, logout ou alteração autenticada de lead.
+
 ## Limites conhecidos
 
 - `crm.datta360.com.br` ainda depende do DNS externo: o CNAME pendente é `crm` → `d3ac14df21b458ee.vercel-dns-017.com`.
