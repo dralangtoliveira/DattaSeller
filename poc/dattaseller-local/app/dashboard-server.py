@@ -78,6 +78,9 @@ class App(SimpleHTTPRequestHandler):
         if path == '/api/products': return self._json(200, local.products())
         if path == '/api/previews':
             c=local.connect(); result=local.rows(c,'SELECT id,lead_slug,kind,url,status,created_at FROM ds_previews ORDER BY created_at DESC'); c.close(); return self._json(200,result)
+        if path.startswith('/api/previews/') and path.endswith('/data'):
+            c=local.connect(); preview=local.one(c,'SELECT * FROM ds_previews WHERE id=?',(path.split('/')[3],)); c.close()
+            return self._json(200,preview or {'error':'Preview não encontrado'})
         if path.startswith('/api/previews/'):
             c=local.connect(); preview=local.one(c,'SELECT * FROM ds_previews WHERE id=?',(path.split('/')[3],)); c.close()
             if not preview: return self._json(404,{'error':'Preview não encontrado'})
