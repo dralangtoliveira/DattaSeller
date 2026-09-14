@@ -37,7 +37,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 17–24 | PRONTO | central visual: edição, revisão, aprovação, envio mock, respostas, follow-up, bounce e histórico persistente | af73174 / 27 / 32 | — |
 | 25 | PRONTO | timeline persistida | e22997b | — |
 | 26–31 | PRONTO | pedido a comissão mocks | e22997b | — |
-| 32–33 | PARCIAL | minuta HTML reaproveitada, visualização dedicada e estados com timeline | 33 | download DOCX visual pelo gerador Prospector |
+| 32–33 | BLOQUEIO EXTERNO COMPROVADO | minuta HTML, download DOCX, estados e timeline locais completos | e0fc1e0 / 33 | QA raster do DOCX bloqueado: runtime fornecido não contém `soffice.exe` |
 | 34–35 | PRONTO | Kanban e follow-up CRM | Prospector | — |
 | 36–37 | PRONTO | financeiro persistido | e22997b | — |
 | 38 | PRONTO | `.env.example`, bloqueio e varredura | 25 / 26909c9 | — |

@@ -9,6 +9,8 @@ import datetime as dt
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 import uuid
 from html import escape
 
@@ -191,6 +193,31 @@ def contract_transition(contract_id, status):
     c.execute('UPDATE ds_contracts SET status=?,updated_at=? WHERE id=?',(status,now(),contract_id))
     timeline(c,(order or {}).get('lead_slug'),'contract.'+status,contract_id)
     c.commit(); result=one(c,'SELECT * FROM ds_contracts WHERE id=?',(contract_id,)); c.close(); return result
+def generate_contract_docx(order_id, output_path):
+    """Reaproveita o gerador DOCX do Prospector; o arquivo é entregue pelo adapter HTTP local."""
+    c=connect(); o=one(c,'SELECT * FROM ds_orders WHERE id=?',(order_id,))
+    if not o: c.close(); return {'error':'Pedido não encontrado'}
+    lead=one(c,'SELECT * FROM leads WHERE slug=?',(o['lead_slug'],)) or {}; c.close()
+    settings=get_settings(); missing='preencher'; company=str(settings.get('company_name') or missing)
+    data={
+      'NOME_CLIENTE':str(lead.get('nome') or o['lead_slug'] or missing), 'CPF_CNPJ_CLIENTE_LABEL':'CPF/CNPJ', 'CPF_CNPJ_CLIENTE':str(lead.get('docCliente') or missing),
+      'ENDERECO_CLIENTE':str(lead.get('endCliente') or missing), 'CIDADE_UF_CLIENTE':str(lead.get('cidade') or missing), 'NOME_PRESTADOR':str(settings.get('seller_name') or company),
+      'CPF_CNPJ_PRESTADOR_LABEL':'CPF/CNPJ', 'CPF_CNPJ_PRESTADOR':missing, 'ENDERECO_PRESTADOR':str(settings.get('region') or missing), 'CIDADE_UF_PRESTADOR':str(settings.get('region') or missing),
+      'URL_SITE_ANTIGO':str(lead.get('siteAntigo') or missing), 'URL_PUBLICADA':str(lead.get('urlNova') or missing), 'VALOR':'%.2f' % float(o['negotiated_price']), 'VALOR_EXTENSO':'valor a confirmar',
+      'FORMA_PAGAMENTO':str(next((p.get('terms') for p in products() if p['id']==o['product_id']), 'preencher') or missing), 'PRAZO_ENTREGA':missing, 'RODADAS_AJUSTES':'1 (uma)',
+      'TEXTO_HOSPEDAGEM':'A definição de hospedagem deve ser confirmada antes da assinatura.', 'CIDADE_FORO':str(lead.get('cidade') or missing), 'CIDADE_ASSINATURA':str(lead.get('cidade') or missing),
+      'MANUTENCAO':False, 'VALOR_MANUTENCAO':''
+    }
+    generator=os.path.normpath(os.path.join(PASTA,'..','skills','prospector-contrato','references','gerar-docx.py')); data_path=output_path+'.json'
+    try:
+        with open(data_path,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False)
+        run=subprocess.run([sys.executable,generator,data_path,output_path],capture_output=True,text=True,timeout=30)
+        if run.returncode: return {'error':'Gerador DOCX local falhou: '+(run.stderr.strip() or run.stdout.strip())}
+        return {'ok':True,'path':output_path}
+    except Exception as exc: return {'error':'Gerador DOCX local falhou: '+str(exc)}
+    finally:
+        try: os.remove(data_path)
+        except OSError: pass
 def handoff(order_id, status='sent'):
     if status not in ('pending','sent','executing','delivered','failed'): return {'error':'Handoff inválido'}
     c=connect(); h=one(c,'SELECT * FROM ds_handoffs WHERE order_id=?',(order_id,))

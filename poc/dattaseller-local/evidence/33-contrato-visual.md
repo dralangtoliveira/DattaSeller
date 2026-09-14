@@ -25,5 +25,16 @@ O teste unitário do núcleo valida geração da minuta, ausência de placeholde
 transição para envio simulado e assinatura. A suíte Python passou com 10 testes.
 
 O gerador DOCX original do Prospector foi preservado em
-`skills/prospector-contrato/references/gerar-docx.py`; sua exposição como
-download visual permanece a pendência explícita do grupo DS-MVP-32–33.
+`skills/prospector-contrato/references/gerar-docx.py` e está exposto por
+**baixar DOCX** no dashboard. O download local gerou um arquivo de 38.207 bytes
+e o teste do núcleo validou o arquivo acima de 1 KB.
+
+## Bloqueio externo comprovado de QA raster
+
+O renderizador documental oficial foi executado sobre o DOCX baixado, mas
+interrompeu com `FileNotFoundError: LibreOffice soffice.exe was not found on
+PATH`. A inspeção raster exigida não pode ser concluída porque o runtime de
+documentos fornecido não inclui o binário LibreOffice, confirmado também por
+busca direta em `C:\Users\dr_al\.cache\codex-runtimes`. Não foi usada uma
+instalação externa nem credencial. A funcionalidade local continua testada e
+operável; apenas esta evidência raster permanece bloqueada pelo ambiente.

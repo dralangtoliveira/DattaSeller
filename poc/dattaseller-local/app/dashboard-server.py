@@ -3,7 +3,7 @@
 """Prospector — servidor local do dashboard (SQLite). Sem dependências: só Python padrão.
 Uso: python dashboard-server.py  (ou duplo clique em iniciar-dashboard.bat)
 Abre em http://localhost:8765 — edições, exclusões e drag&drop salvam no prospector.db"""
-import json, sqlite3, os, sys, webbrowser
+import json, sqlite3, os, sys, webbrowser, tempfile
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
@@ -89,6 +89,14 @@ class App(SimpleHTTPRequestHandler):
             c=local.connect(); contract=local.one(c,'SELECT * FROM ds_contracts WHERE id=?',(path.split('/')[3],)); c.close()
             if not contract: return self._json(404,{'error':'Contrato não encontrado'})
             body=(contract.get('html') or '').encode('utf-8'); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body); return
+        if path.startswith('/api/contracts/') and path.endswith('/docx'):
+            c=local.connect(); contract=local.one(c,'SELECT * FROM ds_contracts WHERE id=?',(path.split('/')[3],)); c.close()
+            if not contract: return self._json(404,{'error':'Contrato não encontrado'})
+            with tempfile.TemporaryDirectory(prefix='dattaseller-contract-') as temp_dir:
+                output=os.path.join(temp_dir,'contrato-local.docx'); result=local.generate_contract_docx(contract['order_id'],output)
+                if result.get('error'): return self._json(400,result)
+                with open(output,'rb') as f: body=f.read()
+            self.send_response(200); self.send_header('Content-Type','application/vnd.openxmlformats-officedocument.wordprocessingml.document'); self.send_header('Content-Disposition','attachment; filename="contrato-local.docx"'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body); return
         if path == '/api/financial': return self._json(200, local.financial_summary())
         if path in ('/api/proposals','/api/emails','/api/orders','/api/checkouts','/api/payments','/api/contracts','/api/handoffs','/api/commissions','/api/qualifications','/api/diagnoses','/api/social-audits'):
             table=path.split('/')[-1]
