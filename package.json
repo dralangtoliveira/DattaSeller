@@ -7,7 +7,7 @@
     "prebuild": "node scripts/sync-dashboard.mjs",
     "build": "next build",
     "start": "next start",
-    "test": "node --test"
+    "test": "node --experimental-strip-types --test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
