@@ -45,5 +45,5 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 41–42 | PRONTO | 10 Python + MCP + 10 JS | 23 / c7a0938 | — |
 | 43–44 | PRONTO | E2Es visuais Datta360, DattaVPS e negativo, com persistência reiniciada e estados finais conferidos | 24 / 32–40 / df28f50 | — |
 | 45 | PRONTO | reinício SQLite com entidades do E2E visual confirmadas por endpoints | 22 / 39 | — |
-| 46 | PARCIAL | seis larguras sem overflow no dashboard base | 27 | matriz visual de todas as telas e modais |
+| 46 | PRONTO | seis larguras capturadas em navegador local; painéis, modal, tabelas/Kanban e comparador auditados; correção móvel aplicada | 27 / 41 | — |
 | 47–48 | PRONTO | README, evidências e playbook | c85105f | — |
