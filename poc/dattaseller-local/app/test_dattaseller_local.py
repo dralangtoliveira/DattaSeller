@@ -39,7 +39,7 @@ class DattaSellerLocalTests(unittest.TestCase):
         contract=ds.generate_contract(o['id']); self.assertEqual(contract['status'],'generated'); self.assertIn('minuta base',contract['html']); self.assertNotIn('{{',contract['html']); self.assertEqual(ds.contract_transition(contract['id'],'sent_simulated')['status'],'sent_simulated'); self.assertEqual(ds.contract_transition(contract['id'],'signed')['status'],'signed')
         with tempfile.TemporaryDirectory() as temp_dir:
             docx=os.path.join(temp_dir,'contract.docx'); self.assertTrue(ds.generate_contract_docx(o['id'],docx)['ok']); self.assertGreater(os.path.getsize(docx),1000)
-        self.assertEqual(ds.handoff(o['id'],'failed')['status'],'failed'); self.assertEqual(ds.handoff(o['id'],'delivered')['status'],'delivered')
+        self.assertEqual(ds.handoff(o['id'],'failed')['status'],'failed'); retried=ds.handoff(o['id'],'sent'); self.assertEqual((retried['status'],retried['retry_count']),('sent',1)); self.assertEqual(ds.handoff(o['id'],'delivered')['status'],'delivered')
         f=ds.financial_summary(); self.assertEqual((f['revenue'],f['cost'],f['margin'],f['commission'],f['received']),(100,60,40,10,100))
     def test_payment_cancellation_and_refund(self):
         o=ds.create_order(self.cycle()['id']); self.assertEqual(ds.payment(o['id'],'cancelled')['status'],'cancelled'); self.assertEqual(ds.payment(o['id'],'refunded')['status'],'refunded')

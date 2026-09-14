@@ -239,7 +239,10 @@ def handoff(order_id, status='sent'):
     if status not in ('pending','sent','executing','delivered','failed'): return {'error':'Handoff inválido'}
     c=connect(); h=one(c,'SELECT * FROM ds_handoffs WHERE order_id=?',(order_id,))
     if not h: c.close(); return {'error':'Handoff só existe após pagamento aprovado'}
-    c.execute('UPDATE ds_handoffs SET status=?,updated_at=? WHERE order_id=?',(status,now(),order_id)); o=one(c,'SELECT * FROM ds_orders WHERE id=?',(order_id,)); timeline(c,o['lead_slug'],'handoff.'+status,order_id); c.commit(); r=one(c,'SELECT * FROM ds_handoffs WHERE order_id=?',(order_id,)); c.close(); return r
+    retrying=status=='sent' and h['status']=='failed'
+    if retrying: c.execute('UPDATE ds_handoffs SET status=?,retry_count=retry_count+1,error=NULL,updated_at=? WHERE order_id=?',(status,now(),order_id))
+    else: c.execute('UPDATE ds_handoffs SET status=?,updated_at=? WHERE order_id=?',(status,now(),order_id))
+    o=one(c,'SELECT * FROM ds_orders WHERE id=?',(order_id,)); timeline(c,o['lead_slug'],'handoff.retry' if retrying else 'handoff.'+status,order_id); c.commit(); r=one(c,'SELECT * FROM ds_handoffs WHERE order_id=?',(order_id,)); c.close(); return r
 def financial_summary():
     c=connect(); r=one(c,"SELECT COUNT(*) sales,COALESCE(SUM(negotiated_price),0) revenue,COALESCE(SUM(cost),0) cost,COALESCE(SUM(margin),0) margin FROM ds_orders WHERE status='paid'"); received=one(c,"SELECT COALESCE(SUM(amount),0) received FROM ds_payments WHERE status='approved'"); comm=one(c,"SELECT COALESCE(SUM(amount),0) commission FROM ds_commissions"); mrr=one(c,"SELECT COALESCE(SUM(o.negotiated_price),0) mrr FROM ds_orders o JOIN ds_products p ON p.id=o.product_id WHERE o.status='paid' AND p.billing='recurring'"); c.close(); return dict(r,received=received['received'],receivable=r['revenue']-received['received'],mrr=mrr['mrr'],projection=r['revenue']+mrr['mrr']*12,commission=comm['commission'])
 def create_local_preview(lead_slug, kind='redesign'):
