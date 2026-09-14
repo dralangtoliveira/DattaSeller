@@ -34,7 +34,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 14 | PRONTO | diagnóstico factual | 21 / b8f58af | — |
 | 15 | PRONTO | auditoria social local | 21 / 62e6cf7 | — |
 | 16 | PRONTO | proposta persistida | e22997b | — |
-| 17–24 | PARCIAL | mock, transições, edição visual de rascunho e persistência | 162786d / 27 | preview, resposta e follow-up visual completos |
+| 17–24 | PRONTO | central visual: edição, revisão, aprovação, envio mock, respostas, follow-up, bounce e histórico persistente | af73174 / 27 / 32 | — |
 | 25 | PRONTO | timeline persistida | e22997b | — |
 | 26–31 | PRONTO | pedido a comissão mocks | e22997b | — |
 | 32–33 | PARCIAL | minuta HTML reaproveitada e estados locais | 162786d | geração DOCX e visualização dedicada |
