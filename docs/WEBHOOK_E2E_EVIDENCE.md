@@ -1,12 +1,13 @@
 # Datta360 → DattaSeller: evidência de publicação
 
-Última verificação: 14/09/2026, aproximadamente 10:09 (America/New_York).
+Última verificação: 14/09/2026, após a promoção de produção (America/New_York).
 
 ## Resultado
 
 - O formulário público do deployment `datta360-nkunu3mr2-datta-x.vercel.app` respondeu `201` em `POST /api/leads`.
 - O deployment de produção do DattaSeller `BoRSYthRP6Fv4yQCRDMFM9WZJ5M6` respondeu `201` em `POST /api/inbound/datta360`.
-- O lead sintético foi persistido em `public.ds_leads` com `source=datta360.com.br`, além do evento de entrada e da timeline.
+- A correção foi promovida para o deployment DattaSeller `HSwWcfnoW` (commit `719e8b6`, Ready) e o proxy Datta360 foi publicado no deployment `7Ak5nuZSDqWTiTHZ5iz3ZZ7AujPn` (commit `b92d882`, Ready).
+- Após o E2E final, a consulta no Supabase retornou `2` eventos em `ds_inbound_events` e `2` leads em `ds_leads` com `source=datta360.com.br`, além das timelines correspondentes.
 - A autenticação do webhook continua baseada em HMAC-SHA256 sobre o corpo bruto; segredos não são registrados neste documento nem nos logs operacionais.
 
 ## Correção aplicada
