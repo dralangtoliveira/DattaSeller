@@ -182,6 +182,15 @@ def generate_contract(order_id):
     if existing: c.execute('UPDATE ds_contracts SET status="generated",html=?,updated_at=? WHERE order_id=?',(html,now(),order_id))
     else: c.execute('INSERT INTO ds_contracts VALUES(?,?,?,?,?,?)',(ident('contract'),order_id,'generated',html,now(),now()))
     timeline(c,o['lead_slug'],'contract.generated',order_id); c.commit(); r=one(c,'SELECT * FROM ds_contracts WHERE order_id=?',(order_id,)); c.close(); return r
+def contract_transition(contract_id, status):
+    if status not in ('generated','sent_simulated','signed','refused','cancelled'):
+        return {'error':'Estado de contrato inválido'}
+    c=connect(); contract=one(c,'SELECT * FROM ds_contracts WHERE id=?',(contract_id,))
+    if not contract: c.close(); return {'error':'Contrato não encontrado'}
+    order=one(c,'SELECT * FROM ds_orders WHERE id=?',(contract['order_id'],))
+    c.execute('UPDATE ds_contracts SET status=?,updated_at=? WHERE id=?',(status,now(),contract_id))
+    timeline(c,(order or {}).get('lead_slug'),'contract.'+status,contract_id)
+    c.commit(); result=one(c,'SELECT * FROM ds_contracts WHERE id=?',(contract_id,)); c.close(); return result
 def handoff(order_id, status='sent'):
     if status not in ('pending','sent','executing','delivered','failed'): return {'error':'Handoff inválido'}
     c=connect(); h=one(c,'SELECT * FROM ds_handoffs WHERE order_id=?',(order_id,))
