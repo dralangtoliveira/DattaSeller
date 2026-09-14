@@ -40,7 +40,7 @@ No MCP, além dos comandos Prospector preservados, estão disponíveis `listar_p
 
 - `python app/prospector-mcp.py --teste`
 - `python app/dattaseller_local.py` (E2E local completo, isolado e sem rede)
-- `cd app; python test_dattaseller_local.py -v` (6 testes unitários do ciclo comercial)
+- `cd app; python test_dattaseller_local.py -v` (10 testes unitários do ciclo comercial)
 - `node evidence/verify-responsive.cjs` com Playwright disponível em `NODE_PATH`
 - `node evidence/verify-dattavps.cjs` com o dashboard em execução
 
