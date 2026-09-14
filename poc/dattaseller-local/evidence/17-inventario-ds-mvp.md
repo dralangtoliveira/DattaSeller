@@ -4,10 +4,10 @@ Data: 2026-09-13. Fontes comparadas: raiz do repositório, `origin/main`, commit
 
 | Componente | Estado | Fonte | Reutilizar | Falta / observação |
 |---|---|---|---|---|
-| CRM, SQLite, Kanban, dashboard | PRONTO | Prospector CRM adaptado | SIM | UI do núcleo comercial ainda é API local |
+| CRM, SQLite, Kanban, dashboard | PRONTO | Prospector CRM adaptado | SIM | central comercial visual validada em 27 |
 | MCP, prospecção, deduplicação | PRONTO | Prospector MCP/skills | SIM | pesquisa pública segue assistida |
 | Qualificação, diagnóstico, redesign, comparador, editor | PARCIAL | skills Prospector | SIM | produção de criativos exige operador e fatos públicos |
-| Instagram/TikTok, proposta, e-mail, follow-up | PARCIAL | skills + núcleo local | SIM | UI específica e providers reais ficam pós-validação |
+| Instagram/TikTok, proposta, e-mail, follow-up | PARCIAL | skills + núcleo local | SIM | editor de rascunho validado; follow-up visual completo ainda falta |
 | Pedido, checkout, pagamento, contrato, handoff, comissão | PRONTO (mock local) | núcleo local | SIM | adapters reais intencionalmente ausentes |
 | Financeiro, configurações, catálogo, DEMO/reset, timeline | PRONTO (API local) | núcleo local | SIM | integração visual incremental |
 | Testes/E2E | PARCIAL | Node, MCP e núcleo local | SIM | execução Playwright depende do runtime local disponível |
@@ -34,10 +34,10 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 14 | PRONTO | diagnóstico factual | 21 / b8f58af | — |
 | 15 | PRONTO | auditoria social local | 21 / 62e6cf7 | — |
 | 16 | PRONTO | proposta persistida | e22997b | — |
-| 17–24 | PARCIAL | mock e transições/testes | e22997b | edição/preview/follow-up visual completo |
+| 17–24 | PARCIAL | mock, transições, edição visual de rascunho e persistência | 162786d / 27 | preview, resposta e follow-up visual completos |
 | 25 | PRONTO | timeline persistida | e22997b | — |
 | 26–31 | PRONTO | pedido a comissão mocks | e22997b | — |
-| 32–33 | PARCIAL | HTML mock e estados | e22997b | reuso DOCX visual do Prospector |
+| 32–33 | PARCIAL | minuta HTML reaproveitada e estados locais | 162786d | geração DOCX e visualização dedicada |
 | 34–35 | PRONTO | Kanban e follow-up CRM | Prospector | — |
 | 36–37 | PRONTO | financeiro persistido | e22997b | — |
 | 38 | PRONTO | `.env.example`, bloqueio e varredura | 25 / 26909c9 | — |
@@ -45,5 +45,5 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 41–42 | PRONTO | 10 Python + MCP + 10 JS | 23 / c7a0938 | — |
 | 43–44 | PARCIAL | E2E local Datta360/VPS/negativo | 24 / 720767e | E2E visual completo |
 | 45 | PRONTO | reinício SQLite | 22 / 3a5914e | — |
-| 46 | PARCIAL | ajustes móveis | 0108c63 | matriz 6 larguras |
+| 46 | PARCIAL | seis larguras sem overflow no dashboard base | 27 | matriz visual de todas as telas e modais |
 | 47–48 | PRONTO | README, evidências e playbook | c85105f | — |
