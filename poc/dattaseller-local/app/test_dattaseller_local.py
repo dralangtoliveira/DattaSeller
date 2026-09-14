@@ -29,7 +29,7 @@ class DattaSellerLocalTests(unittest.TestCase):
         p=self.cycle(); e=ds.create_email('lead-a',p['id'],'Assunto natural','Corpo factual'); self.assertEqual(e['status'],'draft')
         edited=ds.edit_email(e['id'],'Assunto revisado','Corpo revisado'); self.assertEqual((edited['subject'],edited['body']),('Assunto revisado','Corpo revisado'))
         self.assertEqual(ds.email_transition(e['id'],'sent_simulated')['error'],'Somente rascunho aprovado pode ser enviado/simulado')
-        self.assertTrue(ds.email_transition(e['id'],'reviewed')['ok']); self.assertTrue(ds.email_transition(e['id'],'approved')['ok']); self.assertIn('Somente rascunhos',ds.edit_email(e['id'],'x','y')['error']); self.assertTrue(ds.email_transition(e['id'],'sent_simulated')['ok']); self.assertTrue(ds.email_transition(e['id'],'positive_reply')['ok'])
+        self.assertTrue(ds.email_transition(e['id'],'reviewed')['ok']); self.assertTrue(ds.email_transition(e['id'],'approved')['ok']); self.assertIn('Somente rascunhos',ds.edit_email(e['id'],'x','y')['error']); self.assertTrue(ds.email_transition(e['id'],'sent_simulated')['ok']); self.assertTrue(ds.email_transition(e['id'],'positive_reply')['ok']); self.assertTrue(ds.email_transition(e['id'],'no_reply')['ok']); self.assertTrue(ds.email_transition(e['id'],'bounce')['ok'])
     def test_order_checkout_payment_contract_handoff_commission_financial(self):
         ds.update_product('datta360',{'base_price':100,'public_price':100,'cost':60,'commission_pct':10}); p=self.cycle('datta360',100); o=ds.create_order(p['id'])
         self.assertEqual(ds.checkout(o['id'])['status'],'open'); self.assertEqual(ds.checkout(o['id'],'abandoned')['status'],'abandoned'); self.assertEqual(ds.checkout(o['id'],'completed')['status'],'completed')
