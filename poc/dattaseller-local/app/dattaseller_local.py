@@ -107,6 +107,23 @@ def create_proposal(lead_slug, product_id, negotiated_price=None, terms='Pagamen
     if price<=0 or discount > base*float(p['max_discount_pct'])/100: c.close(); return {'error':'Preço inválido ou desconto acima do máximo'}
     r={'id':ident('prop'),'lead_slug':lead_slug,'product_id':product_id,'base_price':base,'negotiated_price':price,'discount':discount,'margin':price-float(p['cost']),'currency':p['currency'],'terms':terms,'valid_until':(dt.date.today()+dt.timedelta(days=valid_days)).isoformat(),'version':1,'status':'draft','created_at':now()}
     c.execute('INSERT INTO ds_proposals VALUES(:id,:lead_slug,:product_id,:base_price,:negotiated_price,:discount,:margin,:currency,:terms,:valid_until,:version,:status,:created_at)',r); timeline(c,lead_slug,'proposal.created',r['id']); c.commit(); c.close(); return r
+def revise_proposal(proposal_id, negotiated_price=None, terms=None, valid_days=None):
+    """Edita uma proposta aberta e incrementa a versão persistida."""
+    c=connect(); proposal=one(c,'SELECT * FROM ds_proposals WHERE id=?',(proposal_id,))
+    if not proposal: c.close(); return {'error':'Proposta não encontrada'}
+    if proposal['status']=='accepted': c.close(); return {'error':'Proposta aceita não pode ser revisada'}
+    product=one(c,'SELECT * FROM ds_products WHERE id=?',(proposal['product_id'],))
+    base=float(proposal['base_price']); price=float(proposal['negotiated_price'] if negotiated_price is None else negotiated_price); discount=base-price
+    if price<=0 or discount > base*float(product['max_discount_pct'])/100:
+        c.close(); return {'error':'Preço inválido ou desconto acima do máximo'}
+    if valid_days is None: valid_until=proposal['valid_until']
+    else:
+        try: valid_until=(dt.date.today()+dt.timedelta(days=int(valid_days))).isoformat()
+        except (TypeError,ValueError): c.close(); return {'error':'Validade inválida'}
+    revised_terms=proposal['terms'] if terms is None else str(terms).strip()
+    if not revised_terms: c.close(); return {'error':'Condições são obrigatórias'}
+    c.execute('UPDATE ds_proposals SET negotiated_price=?,discount=?,margin=?,terms=?,valid_until=?,version=?,status="draft" WHERE id=?',(price,discount,price-float(product['cost']),revised_terms,valid_until,int(proposal['version'])+1,proposal_id))
+    timeline(c,proposal['lead_slug'],'proposal.revised',proposal_id); c.commit(); result=one(c,'SELECT * FROM ds_proposals WHERE id=?',(proposal_id,)); c.close(); return result
 def create_email(lead_slug, proposal_id, subject, body):
     s=get_settings(); c=connect(); r={'id':ident('email'),'lead_slug':lead_slug,'proposal_id':proposal_id,'sender':s.get('email_sender','demo@local.invalid'),'recipient':'','reply_to':s.get('email_reply_to','demo@local.invalid'),'subject':subject,'body':body,'template':'default','status':'draft','attempt':0,'error':None,'created_at':now(),'updated_at':now()}
     lead=one(c,'SELECT email FROM leads WHERE slug=?',(lead_slug,)); r['recipient']=(lead or {}).get('email','')

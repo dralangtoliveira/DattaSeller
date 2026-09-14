@@ -33,7 +33,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 13 | PRONTO | editor visual e persistência revisada | 921d0c5 / 30 | — |
 | 14 | PRONTO | diagnóstico factual criado e exibido visualmente | 34 | — |
 | 15 | PRONTO | auditoria social Instagram/TikTok criada visualmente | 34 | — |
-| 16 | PRONTO | proposta persistida | e22997b | — |
+| 16 | PRONTO | criação, edição visual, validade, cálculo e versionamento persistido | 35 | — |
 | 17–24 | PRONTO | central visual: edição, revisão, aprovação, envio mock, respostas, follow-up, bounce e histórico persistente | af73174 / 27 / 32 | — |
 | 25 | PRONTO | timeline persistida | e22997b | — |
 | 26–31 | PRONTO | pedido a comissão mocks | e22997b | — |

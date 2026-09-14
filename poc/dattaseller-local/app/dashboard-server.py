@@ -149,6 +149,8 @@ class App(SimpleHTTPRequestHandler):
         return self._json(404, {'erro': 'rota'})
     def do_PUT(self):
         path = self.path.split('?')[0]
+        if path.startswith('/api/proposals/'):
+            body=self._corpo(); return self._json(200, local.revise_proposal(path.split('/')[3],body.get('negotiated_price'),body.get('terms'),body.get('valid_days')))
         if path.startswith('/api/emails/'):
             body=self._corpo(); return self._json(200, local.edit_email(path.split('/')[3],body.get('subject',''),body.get('body','')))
         if path.startswith('/api/previews/'):

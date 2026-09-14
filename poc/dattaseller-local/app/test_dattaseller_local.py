@@ -24,7 +24,9 @@ class DattaSellerLocalTests(unittest.TestCase):
     def test_proposal_discount_margin_and_persistence(self):
         ds.update_product('datta360',{'base_price':100,'public_price':100,'cost':60,'max_discount_pct':20,'commission_pct':10})
         p=self.cycle('datta360',90); self.assertEqual((p['discount'],p['margin']),(10,30)); self.assertEqual(ds.create_proposal('lead-a','datta360',70)['error'],'Preço inválido ou desconto acima do máximo')
-        c=ds.connect(); self.assertEqual(ds.one(c,'SELECT id FROM ds_proposals WHERE id=?',(p['id'],))['id'],p['id']); c.close()
+        revised=ds.revise_proposal(p['id'],85,'Pagamento DEMO revisado',14); self.assertEqual((revised['version'],revised['discount'],revised['margin'],revised['terms']),(2,15,25,'Pagamento DEMO revisado'))
+        self.assertEqual(ds.revise_proposal(p['id'],70)['error'],'Preço inválido ou desconto acima do máximo')
+        c=ds.connect(); self.assertEqual(ds.one(c,'SELECT id FROM ds_proposals WHERE id=?',(p['id'],))['id'],p['id']); self.assertIsNotNone(ds.one(c,"SELECT id FROM ds_timeline WHERE event='proposal.revised'")); c.close()
     def test_email_transitions_and_history(self):
         p=self.cycle(); e=ds.create_email('lead-a',p['id'],'Assunto natural','Corpo factual'); self.assertEqual(e['status'],'draft')
         edited=ds.edit_email(e['id'],'Assunto revisado','Corpo revisado'); self.assertEqual((edited['subject'],edited['body']),('Assunto revisado','Corpo revisado'))
