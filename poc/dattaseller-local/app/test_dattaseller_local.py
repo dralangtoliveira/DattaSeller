@@ -18,6 +18,9 @@ class DattaSellerLocalTests(unittest.TestCase):
         product=ds.update_product('datta360',{'public_price':100,'base_price':100,'cost':60,'commission_pct':10,'terms':'DEMO: pagamento mock'})
         self.assertEqual((product['public_price'],product['cost']), (100,60))
         self.assertEqual(product['terms'],'DEMO: pagamento mock')
+        offer=ds.update_product('datta360',{'description':'Oferta validada','cta_label':'Solicitar proposta','checkout_url':'https://checkout.local.invalid/datta360','availability':'prelaunch'})
+        self.assertEqual((offer['cta_label'],offer['availability']),('Solicitar proposta','prelaunch'))
+        self.assertIn('HTTPS',ds.update_product('datta360',{'checkout_url':'http://inseguro.local'})['error'])
     def test_proposal_discount_margin_and_persistence(self):
         ds.update_product('datta360',{'base_price':100,'public_price':100,'cost':60,'max_discount_pct':20,'commission_pct':10})
         p=self.cycle('datta360',90); self.assertEqual((p['discount'],p['margin']),(10,30)); self.assertEqual(ds.create_proposal('lead-a','datta360',70)['error'],'Preço inválido ou desconto acima do máximo')
