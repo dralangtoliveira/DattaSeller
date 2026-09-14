@@ -24,7 +24,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 04 | PRONTO | MCP e autoteste | 20 / 1c80d9e | — |
 | 05 | PRONTO | operação, provider mock, limites e modo DEMO visuais/persistentes | 28 / suíte Python 10/10 | — |
 | 06 | PRONTO | preço/custo/comissão/desconto/moeda/condições/status na UI | c799a1c | — |
-| 07 | PARCIAL | catálogo mock persistido | e22997b | regras/CTA completos na UI |
+| 07 | PRONTO | catálogo, CTA, disponibilidade e checkout HTTPS opcional visuais/persistentes | 37b01ed / 29 / suíte Python 10/10 | — |
 | 08 | PRONTO | entrada sem e-mail | 20 / 1c80d9e | — |
 | 09 | PRONTO | cinco chaves de dedupe | 20 / 1c80d9e | — |
 | 10 | PRONTO | qualificação separada | 21 / 62e6cf7 | — |
