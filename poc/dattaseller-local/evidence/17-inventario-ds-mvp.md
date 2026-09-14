@@ -27,12 +27,12 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 07 | PRONTO | catálogo, CTA, disponibilidade e checkout HTTPS opcional visuais/persistentes | 37b01ed / 29 / suíte Python 10/10 | — |
 | 08 | PRONTO | entrada sem e-mail | 20 / 1c80d9e | — |
 | 09 | PRONTO | cinco chaves de dedupe | 20 / 1c80d9e | — |
-| 10 | PRONTO | qualificação separada | 21 / 62e6cf7 | — |
+| 10 | PRONTO | qualificação visual separa fatos, hipóteses e recomendação | 34 | — |
 | 11 | PRONTO | preview factual persistido e visual | 8febd6a / 30 | — |
 | 12 | PRONTO | comparador antes/depois com preview persistido | e6d8a25 / 31 | — |
 | 13 | PRONTO | editor visual e persistência revisada | 921d0c5 / 30 | — |
-| 14 | PRONTO | diagnóstico factual | 21 / b8f58af | — |
-| 15 | PRONTO | auditoria social local | 21 / 62e6cf7 | — |
+| 14 | PRONTO | diagnóstico factual criado e exibido visualmente | 34 | — |
+| 15 | PRONTO | auditoria social Instagram/TikTok criada visualmente | 34 | — |
 | 16 | PRONTO | proposta persistida | e22997b | — |
 | 17–24 | PRONTO | central visual: edição, revisão, aprovação, envio mock, respostas, follow-up, bounce e histórico persistente | af73174 / 27 / 32 | — |
 | 25 | PRONTO | timeline persistida | e22997b | — |
