@@ -93,6 +93,24 @@ create table public.ds_handoffs (id text primary key, order_id text unique not n
 create table public.ds_commissions (id text primary key, order_id text unique not null references public.ds_orders(id) on delete cascade, seller text, base numeric not null, pct numeric not null, amount numeric not null, state text not null, created_at timestamptz not null default now());
 create table public.ds_inbound_events (id uuid primary key default extensions.gen_random_uuid(), source text not null, request_id text unique, payload jsonb not null, status text not null, error_sanitized text, created_at timestamptz not null default now());
 
+insert into public.ds_products
+  (id, name, billing, public_price, base_price, cost, commission_pct, max_discount_pct, currency, active, adapter, is_demo)
+values
+  ('datta360', 'Datta360° — DEMO / TESTE', 'one_time', 1500, 1500, 400, 10, 20, 'BRL', true, 'MockDatta360Adapter', true),
+  ('dattavps', 'DattaVPS — DEMO / TESTE', 'recurring', 190, 190, 55, 12, 20, 'BRL', true, 'MockDattavpsAdapter', true),
+  ('dattaseg', 'DattaSeg — DEMO / TESTE', 'recurring', 240, 240, 80, 12, 20, 'BRL', true, 'MockDattasegAdapter', true),
+  ('dattahost', 'DattaHost — DEMO / TESTE', 'recurring', 45, 45, 12, 12, 20, 'BRL', true, 'MockDattahostAdapter', true);
+
+insert into public.ds_settings (key, value)
+values
+  ('company_name', to_jsonb('DattaSeller'::text)),
+  ('seller_name', to_jsonb('Vendedor DEMO'::text)),
+  ('demo_mode', 'true'::jsonb),
+  ('email_provider', to_jsonb('mock'::text)),
+  ('email_sender', to_jsonb('demo@local.invalid'::text)),
+  ('email_reply_to', to_jsonb('demo@local.invalid'::text)),
+  ('followup_days', '3'::jsonb);
+
 alter table public.ds_users enable row level security;
 create policy "admin reads own profile" on public.ds_users for select to authenticated using (id = (select auth.uid()) and role = 'admin');
 
@@ -107,3 +125,7 @@ end $$;
 
 revoke all on all tables in schema public from anon;
 revoke all on all sequences in schema public from anon;
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant all on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to authenticated, service_role;
