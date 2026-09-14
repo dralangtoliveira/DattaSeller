@@ -1,5 +1,5 @@
 """Cobertura de regressão do núcleo local, sem dependências externas."""
-import os, tempfile, unittest
+import os, tempfile, unittest, zipfile
 import dattaseller_local as ds
 
 class DattaSellerLocalTests(unittest.TestCase):
@@ -43,6 +43,21 @@ class DattaSellerLocalTests(unittest.TestCase):
         f=ds.financial_summary(); self.assertEqual((f['revenue'],f['cost'],f['margin'],f['commission'],f['received']),(100,60,40,10,100))
     def test_payment_cancellation_and_refund(self):
         o=ds.create_order(self.cycle()['id']); self.assertEqual(ds.payment(o['id'],'cancelled')['status'],'cancelled'); self.assertEqual(ds.payment(o['id'],'refunded')['status'],'refunded')
+    def test_contract_docx_has_ooxml_structure_and_order_values(self):
+        ds.update_product('datta360',{'base_price':100,'public_price':100,'cost':60,'commission_pct':10,'terms':'DEMO: à vista'})
+        order=ds.create_order(self.cycle('datta360',100)['id'])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            docx=os.path.join(temp_dir,'contract.docx')
+            self.assertTrue(ds.generate_contract_docx(order['id'],docx)['ok'])
+            with zipfile.ZipFile(docx) as package:
+                names=set(package.namelist())
+                self.assertTrue({'[Content_Types].xml','word/document.xml','word/styles.xml','word/settings.xml'}.issubset(names))
+                document=package.read('word/document.xml').decode('utf-8')
+                settings=package.read('word/settings.xml').decode('utf-8')
+            self.assertIn('CONTRATO DE PRESTA',document)
+            self.assertIn('100.00',document)
+            self.assertIn('DEMO: à vista',document)
+            self.assertIn('documentProtection',settings)
     def test_local_preview_is_factual_and_persisted(self):
         p=ds.create_local_preview('lead-a'); self.assertEqual(p['status'],'published_mock'); self.assertIn('não são inventados',p['content'])
         c=ds.connect(); self.assertEqual(ds.one(c,'SELECT status FROM ds_previews WHERE id=?',(p['id'],))['status'],'published_mock'); c.close()
@@ -56,16 +71,18 @@ class DattaSellerLocalTests(unittest.TestCase):
         self.assertIn('exige teste',ds.diagnose_site('lead-a',[{'criterion':'SEO','observed_state':'ruim','evidence':'x','recommendation':'x'}])['error'])
         s=ds.audit_social('lead-a','instagram',url='https://instagram.com/exemplo',factual_notes='bio pública observada',recommendation='testar CTA'); self.assertEqual(s['platform'],'instagram'); self.assertEqual(ds.audit_social('lead-a','x')['error'],'Plataforma deve ser instagram ou tiktok')
     def test_restart_persists_full_local_flow(self):
+        ds.update_settings({'company_name':'Persistência Local','email_provider':'mock','email_sender':'persist@local.invalid','email_reply_to':'resposta@local.invalid','followup_days':7})
         ds.update_product('datta360',{'base_price':100,'public_price':100,'cost':60,'commission_pct':10})
         q=ds.qualify_lead('lead-a',['telefone público'],[],'datta360','CTA ausente','medium','Qual prioridade?','proposta','Demo')
         d=ds.diagnose_site('lead-a',[{'criterion':'CTA','observed_state':'ausente','evidence':'página observada','recommendation':'inserir CTA'}])
         s=ds.audit_social('lead-a','instagram',factual_notes='perfil público observado'); pr=ds.create_local_preview('lead-a'); ds.edit_preview(pr['id'],'Título','Texto','CTA','Contato')
         p=self.cycle('datta360',100); e=ds.create_email('lead-a',p['id'],'Assunto','Corpo'); ds.email_transition(e['id'],'reviewed'); ds.email_transition(e['id'],'approved'); ds.email_transition(e['id'],'sent_simulated')
-        o=ds.create_order(p['id']); ds.checkout(o['id'],'completed'); ds.payment(o['id'],'approved'); ct=ds.generate_contract(o['id']); ds.handoff(o['id'],'delivered')
+        o=ds.create_order(p['id']); checkout=ds.checkout(o['id'],'completed'); payment=ds.payment(o['id'],'approved'); ct=ds.generate_contract(o['id']); handoff=ds.handoff(o['id'],'delivered')
         # Simula término e nova abertura da aplicação: nenhuma referência de conexão é reutilizada.
-        c=ds.connect(); checks=[('ds_qualifications',q['id']),('ds_site_diagnoses',d['id']),('ds_social_audits',s['id']),('ds_previews',pr['id']),('ds_proposals',p['id']),('ds_emails',e['id']),('ds_orders',o['id']),('ds_contracts',ct['id'])]
+        c=ds.connect(); checks=[('ds_qualifications',q['id']),('ds_site_diagnoses',d['id']),('ds_social_audits',s['id']),('ds_previews',pr['id']),('ds_proposals',p['id']),('ds_emails',e['id']),('ds_orders',o['id']),('ds_checkouts',checkout['id']),('ds_payments',payment['id']),('ds_contracts',ct['id']),('ds_handoffs',handoff['id'])]
         for table, ident in checks: self.assertIsNotNone(ds.one(c,'SELECT id FROM %s WHERE id=?' % table,(ident,)))
-        self.assertEqual(ds.one(c,'SELECT status FROM ds_payments WHERE order_id=?',(o['id'],))['status'],'approved'); self.assertEqual(ds.one(c,'SELECT status FROM ds_handoffs WHERE order_id=?',(o['id'],))['status'],'delivered'); self.assertEqual(ds.financial_summary()['revenue'],100); c.close()
+        self.assertEqual(ds.one(c,'SELECT status FROM ds_payments WHERE order_id=?',(o['id'],))['status'],'approved'); self.assertEqual(ds.one(c,'SELECT status FROM ds_handoffs WHERE order_id=?',(o['id'],))['status'],'delivered'); self.assertIsNotNone(ds.one(c,'SELECT id FROM ds_commissions WHERE order_id=?',(o['id'],))); self.assertIsNotNone(ds.one(c,"SELECT id FROM ds_timeline WHERE lead_slug=? AND event='handoff.delivered'",('lead-a',))); c.close()
+        self.assertEqual((ds.get_settings()['company_name'],ds.get_settings()['email_provider'],ds.get_settings()['followup_days']),('Persistência Local','mock',7)); self.assertEqual(ds.financial_summary()['revenue'],100)
     def test_reset_preserves_non_demo_configuration_and_transactions(self):
         demo=self.cycle(); ds.create_order(demo['id'])
         c=ds.connect(); c.execute("INSERT INTO ds_products(id,name,billing,public_price,base_price,cost,commission_pct,max_discount_pct,currency,active,adapter,is_demo,updated_at) VALUES('real','Real','one_time',10,10,1,0,0,'BRL',1,'Mock',0,?)",(ds.now(),)); c.commit(); c.close()
