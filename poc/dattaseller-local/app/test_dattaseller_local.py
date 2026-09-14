@@ -23,13 +23,14 @@ class DattaSellerLocalTests(unittest.TestCase):
         c=ds.connect(); self.assertEqual(ds.one(c,'SELECT id FROM ds_proposals WHERE id=?',(p['id'],))['id'],p['id']); c.close()
     def test_email_transitions_and_history(self):
         p=self.cycle(); e=ds.create_email('lead-a',p['id'],'Assunto natural','Corpo factual'); self.assertEqual(e['status'],'draft')
+        edited=ds.edit_email(e['id'],'Assunto revisado','Corpo revisado'); self.assertEqual((edited['subject'],edited['body']),('Assunto revisado','Corpo revisado'))
         self.assertEqual(ds.email_transition(e['id'],'sent_simulated')['error'],'Somente rascunho aprovado pode ser enviado/simulado')
-        self.assertTrue(ds.email_transition(e['id'],'reviewed')['ok']); self.assertTrue(ds.email_transition(e['id'],'approved')['ok']); self.assertTrue(ds.email_transition(e['id'],'sent_simulated')['ok']); self.assertTrue(ds.email_transition(e['id'],'positive_reply')['ok'])
+        self.assertTrue(ds.email_transition(e['id'],'reviewed')['ok']); self.assertTrue(ds.email_transition(e['id'],'approved')['ok']); self.assertIn('Somente rascunhos',ds.edit_email(e['id'],'x','y')['error']); self.assertTrue(ds.email_transition(e['id'],'sent_simulated')['ok']); self.assertTrue(ds.email_transition(e['id'],'positive_reply')['ok'])
     def test_order_checkout_payment_contract_handoff_commission_financial(self):
         ds.update_product('datta360',{'base_price':100,'public_price':100,'cost':60,'commission_pct':10}); p=self.cycle('datta360',100); o=ds.create_order(p['id'])
         self.assertEqual(ds.checkout(o['id'])['status'],'open'); self.assertEqual(ds.checkout(o['id'],'abandoned')['status'],'abandoned'); self.assertEqual(ds.checkout(o['id'],'completed')['status'],'completed')
         self.assertEqual(ds.payment(o['id'],'declined')['status'],'declined'); self.assertEqual(ds.payment(o['id'],'approved')['status'],'approved'); self.assertEqual(ds.payment(o['id'],'approved')['status'],'approved')
-        self.assertEqual(ds.generate_contract(o['id'])['status'],'generated'); self.assertEqual(ds.handoff(o['id'],'failed')['status'],'failed'); self.assertEqual(ds.handoff(o['id'],'delivered')['status'],'delivered')
+        contract=ds.generate_contract(o['id']); self.assertEqual(contract['status'],'generated'); self.assertIn('minuta base',contract['html']); self.assertNotIn('{{',contract['html']); self.assertEqual(ds.handoff(o['id'],'failed')['status'],'failed'); self.assertEqual(ds.handoff(o['id'],'delivered')['status'],'delivered')
         f=ds.financial_summary(); self.assertEqual((f['revenue'],f['cost'],f['margin'],f['commission'],f['received']),(100,60,40,10,100))
     def test_payment_cancellation_and_refund(self):
         o=ds.create_order(self.cycle()['id']); self.assertEqual(ds.payment(o['id'],'cancelled')['status'],'cancelled'); self.assertEqual(ds.payment(o['id'],'refunded')['status'],'refunded')

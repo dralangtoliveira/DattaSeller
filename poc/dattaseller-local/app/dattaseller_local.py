@@ -10,6 +10,7 @@ import json
 import os
 import sqlite3
 import uuid
+from html import escape
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.normpath(os.path.join(PASTA, '..', 'data', 'dattaseller-local.db'))
@@ -98,6 +99,16 @@ def create_email(lead_slug, proposal_id, subject, body):
     s=get_settings(); c=connect(); r={'id':ident('email'),'lead_slug':lead_slug,'proposal_id':proposal_id,'sender':s.get('email_sender','demo@local.invalid'),'recipient':'','reply_to':s.get('email_reply_to','demo@local.invalid'),'subject':subject,'body':body,'template':'default','status':'draft','attempt':0,'error':None,'created_at':now(),'updated_at':now()}
     lead=one(c,'SELECT email FROM leads WHERE slug=?',(lead_slug,)); r['recipient']=(lead or {}).get('email','')
     c.execute('INSERT INTO ds_emails VALUES(:id,:lead_slug,:proposal_id,:sender,:recipient,:reply_to,:subject,:body,:template,:status,:attempt,:error,:created_at,:updated_at)',r); timeline(c,lead_slug,'email.draft',r['id']); c.commit(); c.close(); return r
+def edit_email(email_id, subject, body):
+    """Edita somente mensagens ainda submetidas à revisão humana."""
+    c=connect(); e=one(c,'SELECT * FROM ds_emails WHERE id=?',(email_id,))
+    if not e: c.close(); return {'error':'E-mail não encontrado'}
+    if e['status'] not in ('draft','reviewed'):
+        c.close(); return {'error':'Somente rascunhos ou e-mails em revisão podem ser editados'}
+    if not str(subject).strip() or not str(body).strip():
+        c.close(); return {'error':'Assunto e corpo são obrigatórios'}
+    c.execute('UPDATE ds_emails SET subject=?,body=?,updated_at=? WHERE id=?',(str(subject).strip(),str(body).strip(),now(),email_id))
+    timeline(c,e['lead_slug'],'email.edited',email_id); c.commit(); r=one(c,'SELECT * FROM ds_emails WHERE id=?',(email_id,)); c.close(); return r
 def email_transition(email_id, status, response_fixture=''):
     if status not in ('reviewed','approved','sent_simulated','delivered_simulated','positive_reply','negative_reply','bounce','failed','no_reply','generic_reply'): return {'error':'Estado de e-mail inválido'}
     c=connect(); e=one(c,'SELECT * FROM ds_emails WHERE id=?',(email_id,))
@@ -133,7 +144,31 @@ def payment(order_id, status):
 def generate_contract(order_id):
     c=connect(); o=one(c,'SELECT * FROM ds_orders WHERE id=?',(order_id,))
     if not o: c.close(); return {'error':'Pedido não encontrado'}
-    html='<html><body><h1>Contrato DEMO / TESTE</h1><p>Pedido %s — %s %s</p></body></html>'%(o['id'],o['currency'],o['negotiated_price']); existing=one(c,'SELECT * FROM ds_contracts WHERE order_id=?',(order_id,))
+    lead=one(c,'SELECT * FROM leads WHERE slug=?',(o['lead_slug'],)) or {}
+    settings=get_settings()
+    template_path=os.path.normpath(os.path.join(PASTA,'..','skills','prospector-contrato','references','contrato-template.html'))
+    with open(template_path,encoding='utf-8') as f: html=f.read()
+    missing='preencher'
+    company=str(settings.get('company_name') or missing)
+    client=str(lead.get('nome') or o['lead_slug'] or missing)
+    replacements={
+      'NOME_NEGOCIO':company, 'NOME_CLIENTE':client,
+      'CPF_CNPJ_CLIENTE_LABEL':'CPF/CNPJ', 'CPF_CNPJ_CLIENTE':str(lead.get('docCliente') or missing),
+      'ENDERECO_CLIENTE':str(lead.get('endCliente') or missing), 'CIDADE_UF_CLIENTE':str(lead.get('cidade') or missing),
+      'NOME_PRESTADOR':str(settings.get('seller_name') or company), 'CPF_CNPJ_PRESTADOR_LABEL':'CPF/CNPJ',
+      'CPF_CNPJ_PRESTADOR':missing, 'ENDERECO_PRESTADOR':str(settings.get('region') or missing), 'CIDADE_UF_PRESTADOR':str(settings.get('region') or missing),
+      'URL_SITE_ANTIGO':str(lead.get('siteAntigo') or missing), 'URL_PUBLICADA':str(lead.get('urlNova') or missing),
+      'VALOR':'%.2f' % float(o['negotiated_price']), 'VALOR_EXTENSO':'valor a confirmar',
+      'FORMA_PAGAMENTO':str(next((p.get('terms') for p in products() if p['id']==o['product_id']), 'preencher') or missing),
+      'PRAZO_ENTREGA':missing, 'RODADAS_AJUSTES':'1 (uma)', 'CLAUSULA_MANUTENCAO':'',
+      'N_CONTEUDO':'4', 'N_HOSPEDAGEM':'5', 'N_RESCISAO':'6', 'N_FORO':'7',
+      'TEXTO_HOSPEDAGEM':'A definição de hospedagem deve ser confirmada antes da assinatura.',
+      'CIDADE_FORO':str(lead.get('cidade') or missing), 'CIDADE_ASSINATURA':str(lead.get('cidade') or missing),
+      'DATA_EXTENSO':dt.date.today().isoformat()
+    }
+    for key,value in replacements.items(): html=html.replace('{{%s}}' % key,escape(value))
+    html=html.replace('{{','').replace('}}','')
+    existing=one(c,'SELECT * FROM ds_contracts WHERE order_id=?',(order_id,))
     if existing: c.execute('UPDATE ds_contracts SET status="generated",html=?,updated_at=? WHERE order_id=?',(html,now(),order_id))
     else: c.execute('INSERT INTO ds_contracts VALUES(?,?,?,?,?,?)',(ident('contract'),order_id,'generated',html,now(),now()))
     timeline(c,o['lead_slug'],'contract.generated',order_id); c.commit(); r=one(c,'SELECT * FROM ds_contracts WHERE order_id=?',(order_id,)); c.close(); return r
