@@ -33,6 +33,10 @@ main{margin-left:232px;flex:1;min-width:0;padding:22px 28px 0;height:100vh;displ
 .topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;flex:0 0 auto}
 .topbar h1{font-family:var(--serif);font-size:26px;font-weight:600;margin:0;letter-spacing:-.2px}
 .topbar .upd{color:var(--muted);font-size:12px}
+.logout-btn{border:1px solid var(--line);background:var(--white);color:var(--ink);font-size:12px;font-weight:700;padding:8px 12px;border-radius:9px;cursor:pointer;font-family:var(--sans);transition:background .15s,border-color .15s,color .15s}
+.logout-btn:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-2)}
+.logout-btn:disabled{opacity:.6;cursor:wait}
+.logout-status{color:var(--muted);font-size:12px}
 .busca{margin-left:auto;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13.5px;width:260px;color:var(--ink);font-family:var(--sans);transition:border-color .15s,box-shadow .15s}
 .busca:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
@@ -188,7 +192,7 @@ select.mini{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-
   <div class="side-foot">Baseado no Prospector. Contatos, envio de propostas, publicação e checkout exigem confirmação humana.</div>
 </aside>
 <main>
-  <div class="topbar"><h1 id="titulo">Visão geral</h1><span class="upd" id="upd"></span><span class="modo file" id="modo" title="Abra pelo iniciar-dashboard.bat para salvar no banco">modo arquivo</span><button id="limpar-ov" style="display:none;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer;font-family:var(--sans)" onclick="if(confirm('Descartar as edições feitas neste navegador e voltar aos dados do plugin?')){localStorage.removeItem('prospector_ov');location.reload()}">limpar edições locais</button><input class="busca" id="busca" placeholder="Buscar cliente, nicho, cidade..."></div>
+  <div class="topbar"><h1 id="titulo">Visão geral</h1><span class="upd" id="upd"></span><span class="modo file" id="modo" title="Abra pelo iniciar-dashboard.bat para salvar no banco">modo arquivo</span><button id="limpar-ov" style="display:none;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer;font-family:var(--sans)" onclick="if(confirm('Descartar as edições feitas neste navegador e voltar aos dados do plugin?')){localStorage.removeItem('prospector_ov');location.reload()}">limpar edições locais</button><button id="logout-btn" class="logout-btn" type="button">Sair</button><span id="logout-status" class="logout-status" role="status" aria-live="polite"></span><input class="busca" id="busca" placeholder="Buscar cliente, nicho, cidade..."></div>
   <div id="view"></div>
 </main>
 <div id="doc-bg"><div class="doc-bar"><b id="doc-titulo">Contrato</b><span class="sp"></span><button class="imp" onclick="printDoc()">🖨 Imprimir / Salvar PDF</button><button class="fech" onclick="fecharDoc()">Fechar ✕</button></div><iframe id="doc-frame"></iframe></div>
@@ -260,6 +264,16 @@ function salvarEdit(){if(!editSlug)return;var ch={};
  ch.pago=parseInt(document.getElementById('m-pago').value);ch.contratoStatus=document.getElementById('m-contratoStatus').value;
  var slug=editSlug;fecharEdit();salvarOv(slug,ch)}
 function setView(v){view=v;render()}
+function dsLogout(){
+ var button=document.getElementById('logout-btn'),status=document.getElementById('logout-status');
+ if(!button)return;
+ button.disabled=true;button.textContent='Saindo…';status.textContent='Encerrando sessão…';
+ fetch('/api/auth/logout',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'}})
+  .then(function(r){if(!r.ok)throw 0;return r.json()})
+  .then(function(){window.location.replace('/login')})
+  .catch(function(){button.disabled=false;button.textContent='Sair';status.textContent='Não foi possível encerrar a sessão. Verifique a conexão e tente novamente.'});
+}
+document.getElementById('logout-btn').addEventListener('click',dsLogout);
 function nav(){
  var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=4});
  var fechadosN=fil().filter(function(l){return l.status==='fechado'}).length;
