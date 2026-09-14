@@ -12,8 +12,9 @@ class DattaSellerLocalTests(unittest.TestCase):
     def cycle(self, product='datta360', price=None):
         p=ds.create_proposal('lead-a',product,price); self.assertNotIn('error',p); return p
     def test_settings_and_products_persist(self):
-        self.assertTrue(ds.get_settings()['demo_mode']); ds.update_settings({'company_name':'Teste Local','secret':'nunca'})
+        self.assertTrue(ds.get_settings()['demo_mode']); ds.update_settings({'company_name':'Teste Local','email_provider':'mock','email_sender':'sender@local.invalid','email_reply_to':'reply@local.invalid','followup_days':5,'hour_limit':10,'day_limit':50,'demo_mode':False,'secret':'nunca'})
         self.assertEqual(ds.get_settings()['company_name'],'Teste Local'); self.assertNotIn('secret',ds.get_settings())
+        self.assertEqual((ds.get_settings()['email_sender'],ds.get_settings()['followup_days'],ds.get_settings()['demo_mode']),('sender@local.invalid',5,False))
         product=ds.update_product('datta360',{'public_price':100,'base_price':100,'cost':60,'commission_pct':10,'terms':'DEMO: pagamento mock'})
         self.assertEqual((product['public_price'],product['cost']), (100,60))
         self.assertEqual(product['terms'],'DEMO: pagamento mock')
