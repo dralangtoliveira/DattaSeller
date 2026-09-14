@@ -29,7 +29,7 @@ Proveniência preservada integralmente em `vendor/prospector-original/`, com has
 | 09 | PRONTO | cinco chaves de dedupe | 20 / 1c80d9e | — |
 | 10 | PRONTO | qualificação separada | 21 / 62e6cf7 | — |
 | 11 | PRONTO | preview factual persistido e visual | 8febd6a / 30 | — |
-| 12 | PARCIAL | comparador usa preview persistido | e6d8a25 | E2E visual antes/depois com lead redesenhado |
+| 12 | PRONTO | comparador antes/depois com preview persistido | e6d8a25 / 31 | — |
 | 13 | PRONTO | editor visual e persistência revisada | 921d0c5 / 30 | — |
 | 14 | PRONTO | diagnóstico factual | 21 / b8f58af | — |
 | 15 | PRONTO | auditoria social local | 21 / 62e6cf7 | — |
