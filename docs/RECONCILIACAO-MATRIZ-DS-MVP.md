@@ -16,7 +16,7 @@ de integração efetivamente acessível no CRM web.
 | 13 | Editor visual de preview | `references/editor-visual.md`; `921d0c5` | `GET /api/previews/:id/editor` injeta a camada original sobre `ds_previews`; exportação limpa; revisão textual persistida; `test/prospector.test.js` | **PRONTO** para edição visual e exportação; a publicação do HTML exportado segue requerendo revisão humana |
 | 14 | Diagnóstico factual de site | `prospector-redesign`; `90e7962` | `POST /api/diagnoses`; Inteligência; `ds_site_diagnoses` | **PRONTO** para registro factual, com cobertura de integração ainda parcial |
 | 15 | Auditoria Instagram/TikTok e direção visual | `prospector-prospeccao`; `90e7962` | `POST /api/social-audits`; Inteligência e direção social; `ds_social_audits`; teste de contrato | **PARCIAL**: estrutura e direção existem, mas faltam formulário completo e evidência visual organizada no fluxo da proposta |
-| 16 | Proposta comercial versionada com artefatos | `prospector-proposta`; `178ba1f`, `e22997b` | `POST /api/proposals`; Central comercial expõe previews, comparador e IDs de diagnósticos/auditorias; `ds_proposals.artifacts` na migration local; testes financeiros e de API | **PRONTO** para vínculo e inspeção de artefatos persistidos; falta execução E2E com fonte pública real |
+| 16 | Proposta comercial versionada com artefatos | `prospector-proposta`; `178ba1f`, `e22997b` | `POST /api/proposals`; Central comercial expõe previews, comparador, IDs de diagnósticos/auditorias e capa privada de proposta; `ds_proposals.artifacts` na migration local; testes financeiros e de API | **PRONTO** para vínculo, inspeção e capa privada de artefatos persistidos; falta execução E2E com fonte pública real |
 
 ## Requisitos transversais
 
