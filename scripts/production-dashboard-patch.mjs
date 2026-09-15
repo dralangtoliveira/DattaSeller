@@ -51,7 +51,7 @@ const patch = String.raw`
     return oldDelete(slug);
   };
   recarrega=function(){
-    return apiJson('/api/leads',{cache:'no-store'}).then(function(data){MODE='db';leads=data;return data}).catch(function(e){fail(e);throw e});
+    return apiJson('/api/leads',{cache:'no-store'}).then(function(data){MODE='db';leads=(Array.isArray(data)?data:[]).filter(function(l){return /^[a-z0-9][a-z0-9-]{0,71}$/.test(String(l.slug||''))});return leads}).catch(function(e){fail(e);throw e});
   };
   dsLoad=function(){
     var names=['products','proposals','emails','orders','checkouts','payments','contracts','handoffs','commissions','financial','timeline','settings','previews','qualifications','diagnoses'];
@@ -71,11 +71,11 @@ const patch = String.raw`
   };
 
   acoes=function(l){
-    var a=[];
-    if(l.whatsapp) a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>');
-    if(l.email&&l.email.indexOf('@')>0) a.push('<a href="#" onclick="dsQuickEmail(\\''+l.slug+'\\');return false">e-mail</a>');
-    a.push('<a href="#" onclick="abrirEdit(\\''+l.slug+'\\');return false">✎ dados</a>');
-    a.push('<a href="#" class="del" onclick="deletar(\\''+l.slug+'\\');return false">✕ excluir</a>');
+    var a=[],slug=jsArg(l.slug);
+    if(/^\\d{6,20}$/.test(String(l.whatsapp||''))) a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>');
+    if(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\\''+slug+'\\'));return false">e-mail</a>');
+    a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\\''+slug+'\\'));return false">✎ dados</a>');
+    a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\\''+slug+'\\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };
 
@@ -165,7 +165,6 @@ const patch = String.raw`
 
   var oldPost=dsPost;
   dsPost=function(path,body){
-    if(path==='/api/demo/reset'){alert('Reset de dados DEMO desativado em produção.');return Promise.resolve()}
     return oldPost(path,body);
   };
 

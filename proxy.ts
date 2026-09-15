@@ -18,14 +18,17 @@ export async function proxy(request: NextRequest) {
     },
   );
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user ? await supabase.from("ds_users").select("role").eq("id", user.id).maybeSingle() : { data: null };
+  const isAdmin = profile?.role === "admin";
   const path = request.nextUrl.pathname;
   const isPublic = path === "/login" || path === "/api/auth/logout" || path.startsWith("/api/inbound/");
-  if (!user && !isPublic) {
+  if (!isAdmin && !isPublic) {
+    if (user) await supabase.auth.signOut();
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
-  if (user && path === "/login") {
+  if (isAdmin && path === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard.html";
     return NextResponse.redirect(url);
