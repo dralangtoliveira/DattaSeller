@@ -66,16 +66,16 @@ const patch = String.raw`
     var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=Number((DS.settings||{}).followup_days||4)});
     var itens=[['geral','Visão geral',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
     if(!itens.some(function(i){return i[0]===view})) view='geral';
-    document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\\''+i[0]+'\\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
+    document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\''+i[0]+'\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
     document.getElementById('titulo').textContent=itens.filter(function(i){return i[0]===view})[0][1];
   };
 
   acoes=function(l){
     var a=[],slug=jsArg(l.slug);
-    if(/^\\d{6,20}$/.test(String(l.whatsapp||''))) a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>');
-    if(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\\''+slug+'\\'));return false">e-mail</a>');
-    a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\\''+slug+'\\'));return false">✎ dados</a>');
-    a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\\''+slug+'\\'));return false">✕ excluir</a>');
+    if(/^\d{6,20}$/.test(String(l.whatsapp||''))) a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>');
+    if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\''+slug+'\'));return false">e-mail</a>');
+    a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
+    a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };
 

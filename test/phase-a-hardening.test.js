@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
 import { canGenerateContract, canSoftDeleteLead, escapeHtml, firstDisallowedKey, isAdminProfile, isSafeLeadSlug, LEAD_INPUT_KEYS, sellerName, SOCIAL_AUDIT_INPUT_KEYS } from "../lib/hardening/guards.ts";
 
 test("soft delete is allowed without a paid order and blocked with a paid order", () => {
@@ -70,4 +71,13 @@ test("the production API wires the containment guards", () => {
   const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8");
   assert.match(proxy, /from\("ds_users"\)/);
   assert.match(proxy, /if \(user\) await supabase\.auth\.signOut\(\)/);
+});
+
+test("the generated production dashboard inline scripts parse", () => {
+  const dashboard = readFileSync(new URL("../public/dashboard.html", import.meta.url), "utf8");
+  const scripts = [...dashboard.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+  for (const [index, match] of scripts.entries()) {
+    if (/application\/json/.test(match[0])) continue;
+    assert.doesNotThrow(() => new vm.Script(match[1], { filename: `public/dashboard.html:inline-${index}` }));
+  }
 });
