@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (!emailId) return json({ error: "email_id é obrigatório" }, 400);
 
   const { data: email, error: emailError } = await db.from("ds_emails").select("*").eq("id", emailId).maybeSingle();
-  if (emailError) return json({ error: emailError.message }, 400);
+  if (emailError) return json({ error: "email_lookup_failed" }, 503);
   if (!email) return json({ error: "E-mail não encontrado" }, 404);
   if (email.status !== "approved") return json({ error: "O e-mail precisa estar aprovado antes do envio real." }, 409);
   if (!String(email.subject || "").trim() || !String(email.body || "").trim()) return json({ error: "Assunto e corpo são obrigatórios." }, 400);
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       attempt,
       updated_at: now(),
     }).eq("id", email.id);
-    if (updateError) return json({ error: updateError.message }, 500);
+    if (updateError) return json({ error: "email_update_failed" }, 503);
 
     await db.from("ds_timeline").insert({
       id: id("evt"),
@@ -86,8 +86,7 @@ export async function POST(request: Request) {
     });
 
     return json({ ok: true, status: "sent", provider: "resend", provider_message_id: providerMessageId, recipient });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "provider_send_failed";
+  } catch {
     await db.from("ds_emails").update({
       status: "failed",
       provider: "resend",
@@ -102,6 +101,6 @@ export async function POST(request: Request) {
       detail: "provider_send_failed",
       is_demo: false,
     });
-    return json({ error: "Falha no envio pelo Resend.", detail: message }, 502);
+    return json({ error: "provider_send_failed" }, 502);
   }
 }
