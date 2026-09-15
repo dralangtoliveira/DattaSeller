@@ -24,6 +24,6 @@ de integração efetivamente acessível no CRM web.
   patch de produção; verificar visualmente no E2E é pendência.
 - Segurança: não há scraper novo, contato automático, publicação ou envio automático nesta
   branch. A migration `20260915212624_add_prospector_reconciliation.sql` permanece local.
-- Evidência: o inventário histórico comprova o MVP local; a matriz acima é a evidência de
-  que a integração Supabase/Next ainda requer recuperação incremental, sem substituir o
-  material original.
+- Evidência: o inventário histórico e a reexecução documentada em
+  `docs/EVIDENCIA-E2E-LOCAL-PROSPECTOR-2026-09-15.md` comprovam o MVP local;
+  a integração Supabase/Next ainda requer E2E próprio, sem substituir o material original.
