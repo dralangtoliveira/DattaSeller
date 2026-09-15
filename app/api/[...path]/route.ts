@@ -51,6 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
     return out({ sales: paid.length, revenue, cost, margin, received, receivable: revenue - received, mrr, projection: revenue + mrr * 12, commission: (commissions ?? []).reduce((a, c) => a + Number(c.amount), 0) });
   }
   if (root === "contracts" && parts[2] === "html") { const { data } = await db.from("ds_contracts").select("html").eq("id", parts[1]).maybeSingle(); return new Response(data?.html ?? "Contrato não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
+  if (root === "previews" && parts[1] && parts[2] === "data") { const { data, error } = await db.from("ds_previews").select("*").eq("id", parts[1]).maybeSingle(); return error ? storageUnavailable() : data ? out(data) : out({ error: "preview_not_found" }, 404); }
   if (root === "previews" && parts[1] && parts[2] !== "data") { const { data } = await db.from("ds_previews").select("content").eq("id", parts[1]).maybeSingle(); return new Response(data?.content ?? "Preview não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
   if (tables[root]) { const fields = root === "previews" ? "id,lead_slug,kind,url,status,created_at" : "*"; const { data, error } = await db.from(tables[root]).select(fields).order("created_at", { ascending: false }); return error ? storageUnavailable() : out(data); }
   return out({ error: "route_not_found" }, 404);
