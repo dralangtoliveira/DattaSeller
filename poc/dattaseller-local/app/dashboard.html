@@ -331,7 +331,7 @@ function vSites(){var ls=fil().filter(function(l){return['redesenhado','publicad
    ic.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+jsArg(l.slug)+'\'));return false">✎ dados</a>');
    ic.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+jsArg(l.slug)+'\'));return false">✕</a>');
    return '<div class="site-card"><div class="prev"><iframe src="'+pg+'" loading="lazy"></iframe></div><div class="info"><div class="s-head"><span class="s-nm">'+esc(l.nome)+'</span>'+pillStatus(l.status)+'</div><div class="s-sub">'+[l.nicho,l.cidade,(l.nota?'★ '+esc(l.nota)+' ('+esc(l.avaliacoes)+')':null)].filter(Boolean).map(esc).join(' · ')+'</div><div class="s-main">'+prim+'<a class="sec" href="sites/'+esc(l.slug)+'/'+esc(l.slug)+'-editor.html" target="_blank">Editar site</a></div><div class="s-icons">'+ic.join('')+'</div></div></div>'
- }).join('')+'</div>':'<div class="painel vazio">Nenhum site redesenhado ainda — rode /redesenhar.</div>'}
+ }).join('')+'</div>':'<div class="painel vazio">Nenhum preview revisado ainda. Crie e revise um preview na Central comercial.</div>'}
 function vFollowup(){var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=4});
  return '<div class="painel"><h2>Propostas aguardando follow-up</h2>'+(fu.length?fu.map(card).join(''):'<div class="vazio">Nenhum follow-up pendente.</div>')+'</div>'}
 function abrirContrato(slug,nome){document.getElementById('doc-titulo').textContent='Contrato — '+nome;document.getElementById('doc-frame').src='sites/'+slug+'/contrato-'+slug+'.html';document.getElementById('doc-bg').classList.add('aberto')}
