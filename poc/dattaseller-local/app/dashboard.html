@@ -385,7 +385,7 @@ function vComparador(){var ls=fil().filter(function(l){return l.slug&&['redesenh
   return '<div class="cmp-tabs">'+ls.map(function(x){return '<button class="'+(x.slug===cmpSel?'on':'')+'" onclick="cmpSel=\''+jsArg(x.slug)+'\';render()">'+esc(x.nome)+'</button>'}).join('')+'</div>'
   +'<div class="cmp-grid"><div class="cmp-col"><div class="cab antes">Antes — site atual'+(antiga?' · <a href="'+esc(antiga)+'" target="_blank" rel="noopener" style="color:inherit">abrir ↗</a>':'')+'</div>'+(antiga?'<iframe src="'+esc(antiga)+'" loading="lazy"></iframe>':'<div class="vazio" style="padding:30px">Sem URL do site antigo registrada.</div>')+'</div>'
   +'<div class="cmp-col"><div class="cab depois">Depois — '+(preview?'preview local persistido':'nova versão')+' · <a href="'+esc(nova)+'" target="_blank" rel="noopener" style="color:inherit">abrir ↗</a></div><iframe src="'+esc(nova)+'"></iframe></div></div>'
- +'<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Alguns sites antigos bloqueiam visualização embutida — se o lado "Antes" ficar em branco, use o link "abrir ↗".</div>'+vPreviewWorkspace()}
+ +'<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Alguns sites antigos bloqueiam visualização embutida — se o lado "Antes" ficar em branco, use o link "abrir ↗".'+(preview?' <a href="/api/comparators/'+esc(l.slug)+'" target="_blank">Abrir comparador original ↗</a>':'')+'</div>'+vPreviewWorkspace()}
 var DS={products:[],proposals:[],emails:[],orders:[],checkouts:[],payments:[],contracts:[],handoffs:[],commissions:[],previews:[],qualifications:[],diagnoses:[],socialAudits:[],financial:{},timeline:[],settings:{}};
 var dsEmailEditId=null;
 var dsProposalEditId=null;

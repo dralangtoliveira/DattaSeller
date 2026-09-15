@@ -6,6 +6,8 @@ import { canGenerateContract, canSoftDeleteLead, firstDisallowedKey, isSafeLeadS
 import { duplicateOf, normalizeEmail, normalizePhone, normalizeUrl } from "@/lib/prospector.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { withProspectorEditor } from "@/lib/prospector-preview-editor.js";
+// @ts-expect-error helper is deliberately exercised by node:test without a build step.
+import { renderProspectorComparator } from "@/lib/prospector-comparator.js";
 
 export const runtime = "nodejs";
 type Db = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -53,6 +55,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
     return out({ sales: paid.length, revenue, cost, margin, received, receivable: revenue - received, mrr, projection: revenue + mrr * 12, commission: (commissions ?? []).reduce((a, c) => a + Number(c.amount), 0) });
   }
   if (root === "contracts" && parts[2] === "html") { const { data } = await db.from("ds_contracts").select("html").eq("id", parts[1]).maybeSingle(); return new Response(data?.html ?? "Contrato não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
+  if (root === "comparators" && parts[1]) { if (!isSafeLeadSlug(parts[1])) return out({ error: "invalid_lead_slug" }, 400); const [{ data: lead, error: leadError }, { data: preview, error: previewError }] = await Promise.all([db.from("ds_leads").select("nome,site_antigo").eq("slug", parts[1]).is("deleted_at", null).maybeSingle(), db.from("ds_previews").select("id").eq("lead_slug", parts[1]).order("created_at", { ascending: false }).limit(1).maybeSingle()]); if (leadError || previewError) return storageUnavailable(); if (!lead || !preview) return out({ error: "comparison_requires_lead_and_preview" }, 404); return new Response(renderProspectorComparator([{ nome: lead.nome || parts[1], slug: parts[1], old: lead.site_antigo, novo: `/api/previews/${preview.id}`, motivo: "Sem URL pública do site atual registrada." }]), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }); }
   if (root === "previews" && parts[1] && parts[2] === "data") { const { data, error } = await db.from("ds_previews").select("*").eq("id", parts[1]).maybeSingle(); return error ? storageUnavailable() : data ? out(data) : out({ error: "preview_not_found" }, 404); }
   if (root === "previews" && parts[1] && parts[2] === "editor") { const { data, error } = await db.from("ds_previews").select("content").eq("id", parts[1]).maybeSingle(); return error ? storageUnavailable() : new Response(data ? withProspectorEditor(data.content) : "Preview não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }); }
   if (root === "previews" && parts[1] && parts[2] !== "data") { const { data } = await db.from("ds_previews").select("content").eq("id", parts[1]).maybeSingle(); return new Response(data?.content ?? "Preview não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
