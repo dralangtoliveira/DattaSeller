@@ -4,6 +4,8 @@ import { resendConfigurationError } from "@/lib/email/provider";
 import { canGenerateContract, canSoftDeleteLead, firstDisallowedKey, isSafeLeadSlug, LEAD_INPUT_KEYS, sellerName, SOCIAL_AUDIT_INPUT_KEYS } from "@/lib/hardening/guards";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { duplicateOf, normalizeEmail, normalizePhone, normalizeUrl } from "@/lib/prospector.js";
+// @ts-expect-error helper is deliberately exercised by node:test without a build step.
+import { withProspectorEditor } from "@/lib/prospector-preview-editor.js";
 
 export const runtime = "nodejs";
 type Db = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -52,6 +54,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
   }
   if (root === "contracts" && parts[2] === "html") { const { data } = await db.from("ds_contracts").select("html").eq("id", parts[1]).maybeSingle(); return new Response(data?.html ?? "Contrato não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
   if (root === "previews" && parts[1] && parts[2] === "data") { const { data, error } = await db.from("ds_previews").select("*").eq("id", parts[1]).maybeSingle(); return error ? storageUnavailable() : data ? out(data) : out({ error: "preview_not_found" }, 404); }
+  if (root === "previews" && parts[1] && parts[2] === "editor") { const { data, error } = await db.from("ds_previews").select("content").eq("id", parts[1]).maybeSingle(); return error ? storageUnavailable() : new Response(data ? withProspectorEditor(data.content) : "Preview não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } }); }
   if (root === "previews" && parts[1] && parts[2] !== "data") { const { data } = await db.from("ds_previews").select("content").eq("id", parts[1]).maybeSingle(); return new Response(data?.content ?? "Preview não encontrado", { status: data ? 200 : 404, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
   if (tables[root]) { const fields = root === "previews" ? "id,lead_slug,kind,url,status,created_at" : "*"; const { data, error } = await db.from(tables[root]).select(fields).order("created_at", { ascending: false }); return error ? storageUnavailable() : out(data); }
   return out({ error: "route_not_found" }, 404);
