@@ -81,3 +81,11 @@ test("the generated production dashboard inline scripts parse", () => {
     assert.doesNotThrow(() => new vm.Script(match[1], { filename: `public/dashboard.html:inline-${index}` }));
   }
 });
+
+test("the production dashboard patch fails explicitly when a required target changes", () => {
+  const patch = readFileSync(new URL("../scripts/production-dashboard-patch.mjs", import.meta.url), "utf8");
+  assert.match(patch, /function replaceRequired\(/);
+  assert.match(patch, /dashboard\.html sem alvo esperado/);
+  assert.match(patch, /título da POC/);
+  assert.match(patch, /aviso operacional da POC/);
+});

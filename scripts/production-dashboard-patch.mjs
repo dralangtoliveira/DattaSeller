@@ -4,12 +4,25 @@ import { resolve } from "node:path";
 const target = resolve("public/dashboard.html");
 let html = readFileSync(target, "utf8");
 
-html = html
-  .replace("<title>DattaSeller — Painel comercial local</title>", "<title>DattaSeller — CRM Comercial</title>")
-  .replace(
-    "Baseado no Prospector. Contatos, envio de propostas, publicação e checkout exigem confirmação humana.",
-    "CRM comercial Datta. Operação autenticada e persistida no servidor."
-  );
+function replaceRequired(source, expected, replacement, description) {
+  if (!source.includes(expected)) {
+    throw new Error(`dashboard.html sem alvo esperado: ${description}; patch de produção não aplicado`);
+  }
+  return source.replace(expected, replacement);
+}
+
+html = replaceRequired(
+  html,
+  "<title>DattaSeller — Painel comercial local</title>",
+  "<title>DattaSeller — CRM Comercial</title>",
+  "título da POC"
+);
+html = replaceRequired(
+  html,
+  "Baseado no Prospector. Contatos, envio de propostas, publicação e checkout exigem confirmação humana.",
+  "CRM comercial Datta. Operação autenticada e persistida no servidor.",
+  "aviso operacional da POC"
+);
 
 const patch = String.raw`
 <style>
