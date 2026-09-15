@@ -1,0 +1,4 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { duplicateOf, normalizePhone, normalizeUrl } from "../lib/prospector.js";
+test("normaliza contatos e encontra as cinco chaves Prospector",()=>{const lead={nome:"Clínica Árvore",cidade:"São Paulo",telefone:"11999990000",email:"oi@exemplo.com",site_antigo:"https://exemplo.com",instagram_url:"instagram.com/exemplo"};assert.equal(normalizePhone("(11) 99999-0000"),"11999990000");assert.equal(normalizeUrl("www.exemplo.com/x",true),"exemplo.com");for(const [x,k] of [[{telefone:"11 99999-0000"},"telefone"],[{email:"OI@EXEMPLO.COM"},"email"],[{site_antigo:"https://www.exemplo.com/a"},"dominio"],[{instagram_url:"https://instagram.com/exemplo/"},"instagram"],[{nome:"clinica arvore",cidade:"sao paulo"},"nome_cidade"]])assert.equal(duplicateOf(x,[lead])?.criterion,k)});
