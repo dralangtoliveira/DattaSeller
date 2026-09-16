@@ -64,7 +64,25 @@ node node_modules/next/dist/bin/next build
 git diff --check
 ```
 
-Ainda é necessário um login novo conduzido pelo operador no domínio único do
-Preview e a revisão visual dos artefatos recuperados nesse mesmo domínio para
-encerrar a evidência interativa E2E. Não é necessário nem autorizado mudar
-Supabase Production para esta etapa.
+## Validação interativa e desvio corrigido
+
+Em 16/09/2026, após login humano no Preview `47e2155`, a Central comercial
+mostrou o lead `curtume-tropical-franca`, a proposta `datta360 v1 draft`, seu
+preview, comparador, diagnóstico e auditoria social; nenhum pedido foi criado.
+O preview factual e o comparador foram abertos e confirmaram a origem pública,
+o rótulo de revisão humana e a ausência de alegações inventadas.
+
+A recarga revelou um defeito de entrega: a primeira sessão carregava o
+dashboard sincronizado, mas um reload recebia a versão-base do dashboard,
+sem a camada Prospector e sem os dados. A configuração do projeto Vercel não
+tinha override do build e usava o comando padrão do framework, que não executa
+o `prebuild` do pacote. Isso torna o item **IMPLEMENTADO MAS NÃO TOTALMENTE
+VALIDADO** até a publicação do ajuste.
+
+O arquivo `vercel.json` passa a fixar `pnpm run build`. Esse comando chama o
+`prebuild` existente, que sincroniza e aplica o patch do dashboard antes do
+`next build`. Um teste de regressão verifica ambos os scripts. Após o Preview
+desse ajuste ficar pronto, é obrigatório autenticar no domínio de Preview
+atual e repetir o reload da Central comercial para encerrar o E2E.
+
+Não é necessário nem autorizado mudar Supabase Production para esta etapa.
