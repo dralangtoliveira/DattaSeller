@@ -23,6 +23,15 @@ html = replaceRequired(
   "CRM comercial Datta. Operação autenticada e persistida no servidor.",
   "aviso operacional da POC"
 );
+// The base POC starts an asynchronous dsLoad() before this production patch is
+// evaluated. Its later render would overwrite the patched navigation and views.
+// Production boot is intentionally deferred to the guarded loader below.
+html = replaceRequired(
+  html,
+  "render();dsLoad();",
+  "render();",
+  "boot assíncrono da POC"
+);
 
 const patch = String.raw`
 <style>

@@ -443,7 +443,7 @@ function solta(e,st){e.preventDefault();e.currentTarget.classList.remove('alvo')
  salvarOv(dragSlug,ch);dragSlug=null}
 document.getElementById('busca').addEventListener('input',function(){busca=this.value;pag=1;render()});
 var rsz;window.addEventListener('resize',function(){clearTimeout(rsz);rsz=setTimeout(render,150)});
-render();dsLoad();
+render();
 </script>
 
 <script>
