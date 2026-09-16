@@ -3,9 +3,9 @@
 ## Escopo e proteção
 
 Este é um registro de pesquisa pública controlada para validar a trilha do
-Prospector no DattaSeller. Ele não cria, altera ou importa um lead no Supabase
-Production; não houve contato, envio de mensagem, coleta de área autenticada
-nem publicação de preview.
+Prospector no DattaSeller. Em 16/09/2026, o lead público foi importado em
+Production com fontes públicas e sem dados de contato. Não houve contato,
+envio de mensagem, coleta de área autenticada nem publicação de preview.
 
 - Data da conferência: 15/09/2026.
 - Fonte inicial indicada pelo operador: <https://www.instagram.com/curtume_tropical/>.
@@ -16,7 +16,7 @@ O domínio institucional é a fonte de referência para qualquer comparador. O
 Instagram é uma segunda evidência de presença social, não uma fonte para
 inferir métricas, frequência ou resultados comerciais.
 
-## Candidato de importação futura (somente ambiente não produtivo)
+## Lead público importado
 
 ```json
 {
@@ -34,9 +34,12 @@ inferir métricas, frequência ou resultados comerciais.
 }
 ```
 
-O bloco é deliberadamente isento de telefone, e-mail, pessoas, CNPJ e outros
-dados de contato. Ele pode ser usado como fixture em ambiente local ou
-Supabase não produtivo após revisão humana.
+O registro é deliberadamente isento de telefone, e-mail, pessoas, CNPJ e outros
+dados de contato. Ele foi importado como `curtume-tropical-franca`, sem
+sobrescrever outro slug, domínio ou Instagram. A qualificação, diagnóstico e
+auditoria social factuais receberam, respectivamente, os IDs
+`qual_curtume_tropical_20260916`, `diag_curtume_tropical_20260916` e
+`social_curtume_tropical_20260916`.
 
 ## Qualificação estruturada
 
@@ -95,11 +98,11 @@ qualquer publicação ou comunicação.
 
 ## Próximo teste controlado
 
-1. Criar um projeto Supabase não produtivo ou banco local isolado.
-2. Aplicar a migration de reconciliação apenas nesse ambiente de teste.
-3. Importar o JSON acima por `POST /api/prospects` com sessão admin de teste.
-4. Criar qualificação, diagnóstico, preview, comparador, auditoria social e
-   capa de proposta, validando que os artefatos se vinculam ao mesmo slug.
-5. Revisar visualmente o preview e exportar evidência local, sem deploy nem
+1. No preview autenticado da PR, confirmar que os três artefatos aparecem para
+   `curtume-tropical-franca`.
+2. Criar o redesign visual com conteúdo e ativos aprovados; não usar imagens do
+   site ou Instagram sem licença/autorização.
+3. Criar preview, comparador e capa de proposta, validando o vínculo ao mesmo
+   slug.
+4. Revisar visualmente o preview e exportar evidência local, sem deploy nem
    envio de mensagem.
-
