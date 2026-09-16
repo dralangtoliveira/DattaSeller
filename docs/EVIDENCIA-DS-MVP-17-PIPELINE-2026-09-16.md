@@ -95,3 +95,28 @@ elimina a divergência entre o dashboard gerado localmente e o arquivo estático
 entregue pelo Preview.
 
 Não é necessário nem autorizado mudar Supabase Production para esta etapa.
+
+## Correção e confirmação final de reload
+
+O artefato estático e o comando de build estavam corretos no commit
+`66f58b0`, mas a recarga ainda podia terminar com o dashboard-base. A causa
+era uma corrida de inicialização: o HTML da POC disparava `dsLoad()` antes do
+patch de produção; quando essa requisição assíncrona terminava, seu `render()`
+original sobrescrevia a navegação Prospector já aplicada.
+
+O commit `7774867` remove somente esse boot antecipado da cópia publicada. O
+patch mantém o boot único e protegido, `recarrega().then(dsLoad)`, depois de
+instalar os guards de sessão e persistência. O teste de regressão assegura que
+o payload publicado não contém `render();dsLoad();` e que conserva o boot
+protegido.
+
+Com o Preview da PR #5 em `SUCCESS`, foi recarregada a sessão autenticada em
+`https://v0-project-git-prospector-reconciliation-datta-x.vercel.app/dashboard.html`.
+Depois da recarga, o dashboard exibiu `Prospecção`, 3 leads, 1 proposta e
+`CRM conectado`. A Central comercial confirmou novamente a proposta
+`datta360 v1 draft` de `curtume-tropical-franca`, com preview, comparador,
+diagnóstico `diag_curtume_tropical_20260916` e auditoria social
+`social_curtume_tropical_20260916`. A lista de pedidos continuou vazia.
+
+Resultado: **CONCLUÍDO E COMPROVADO no Preview**, sem merge, deploy de
+Production, migration ou alteração no Supabase Production.
