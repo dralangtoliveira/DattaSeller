@@ -23,7 +23,7 @@ diagnóstico `diag_curtume_tropical_20260916`, auditoria social
 `datta360 v1 draft` referencia o preview, comparador, diagnóstico e auditoria
 social. Nenhum pedido, pagamento, envio de e-mail ou mensagem foi criado.
 
-No Preview autenticado, em 16/09/2026, o CRM recarregado mostrou:
+No Preview autenticado anterior, em 16/09/2026, o CRM recarregado mostrou:
 
 - `CRM conectado`;
 - 3 leads persistidos e 1 proposta registrada;
@@ -32,9 +32,17 @@ No Preview autenticado, em 16/09/2026, o CRM recarregado mostrou:
 - nenhum pedido registrado e receita/recebido iguais a R$ 0,00.
 
 Isso confirma recuperação após reload da sessão autenticada sem criar novos
-dados. Não foi executado logout/login para não interromper a sessão do
-operador; os testes de autenticação e logout cobrem sessão ausente/expirada de
-forma fail-closed.
+dados. O deployment da PR foi então conferido no Vercel: commit
+`47e2155`, branch `prospector/reconciliation`, ambiente Preview, estado
+`Ready`, domínio único
+`https://v0-project-ntag10u29-datta-x.vercel.app`.
+
+O domínio previamente aberto, `v0-project-mlux2apaa-datta-x.vercel.app`, era
+outro deployment e não é usado como evidência de PR #5. O domínio correto
+redireciona para `/login`, como esperado para uma sessão ausente no domínio
+novo. Não foi executado logout/login para não interromper a sessão do operador
+nem inserir credenciais. Os testes de autenticação e logout cobrem sessão
+ausente/expirada de forma fail-closed.
 
 ## Proteções acrescentadas nesta validação
 
@@ -56,6 +64,7 @@ node node_modules/next/dist/bin/next build
 git diff --check
 ```
 
-Ainda é necessário um login novo conduzido pelo operador, se a organização
-quiser registrar evidência interativa de uma nova autenticação no Preview. Não
-é necessário nem autorizado mudar Supabase Production para esta etapa.
+Ainda é necessário um login novo conduzido pelo operador no domínio único do
+Preview e a revisão visual dos artefatos recuperados nesse mesmo domínio para
+encerrar a evidência interativa E2E. Não é necessário nem autorizado mudar
+Supabase Production para esta etapa.
