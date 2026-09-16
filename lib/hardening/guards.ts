@@ -9,6 +9,7 @@ export const LEAD_INPUT_KEYS = new Set([
   "checkout_presented_at", "checkout_clicked_at", "qualification_json", "site_audit_json", "instagram_audit_json",
   "valor_fechado", "message", "referrer", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
   "consents", "closingConfirmed",
+  "region", "search_radius_km", "target_quantity", "search_limit", "tiktok_url", "contact_evidence",
 ]);
 
 export const SOCIAL_AUDIT_INPUT_KEYS = new Set([
