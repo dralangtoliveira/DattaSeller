@@ -9,20 +9,22 @@ documento. A autorização para revisar ou aplicar não remove esse controle. N�
 executar junto com deploy, merge, importação de lead, disparo de e-mail ou outra
 mudança comercial.
 
-## Estado da auditoria em 15/09/2026
+## Estado da auditoria e execução em 15–16/09/2026
 
 - Projeto auditado: `vkvkzoulbljampcbxaim` (DattaSeller Production).
-- As 12 colunas previstas pela migration ainda não existem.
-- Há zero grupos duplicados de e-mail ativo, após normalização de caixa e
-  espaços.
-- Há um grupo duplicado de telefone ativo, após remover caracteres não
-  numéricos de `telefone`/`whatsapp`.
-- A auditoria ainda não identificou os `slugs` desse grupo: a consulta foi
-  preparada, mas não executada enquanto o gate de confirmação estava ativo.
+- A auditoria inicial encontrou zero grupos duplicados de e-mail e um grupo de
+  telefone ativo, após normalização.
+- O grupo de telefone era composto exclusivamente pelos testes
+  `teste-integracao-dcb95d4171` e `teste-integracao-final-f8d6029576`; ambos
+  foram confirmados sem pedido pago e receberam soft-delete em
+  16/09/2026 01:16 UTC. O histórico foi preservado.
+- A verificação posterior retornou zero grupos duplicados de telefone e e-mail.
+- A migration foi aplicada no SQL Editor do projeto indicado, após os gates.
+- Pós-verificação: 12 colunas e 5 índices esperados presentes.
 
-O último item impede a aplicação. Embora a migration não preencha os novos
-campos normalizados e, por isso, não deva colidir imediatamente, aplicar sem
-decidir o destino desse grupo deixaria a deduplicação histórica incompleta.
+Ela foi executada diretamente no SQL Editor; portanto, não houve registro
+automático adicional no histórico de migrations do CLI. O arquivo versionado no
+repositório continua sendo a fonte de verdade do SQL aplicado.
 
 ## Impacto técnico revisado
 
@@ -159,4 +161,3 @@ alter table public.ds_leads
 ```
 
 Esse SQL de rollback não deve ser usado sem revisão humana específica.
-

@@ -9,7 +9,7 @@ de integração efetivamente acessível no CRM web.
 | --- | --- | --- | --- | --- |
 | 02 | Seis skills operacionais preservadas | `vendor/prospector-original/packages/*`; `afb44ac` | Fontes preservadas em `poc/dattaseller-local/skills`; hashes em `SHA256SUMS.txt`; sem tela própria | **PRONTO** como proveniência; fluxos ainda precisam ser expostos pelo CRM atual |
 | 08 | Entrada de lead público sem e-mail | `prospector-prospeccao`, `prospector-mcp.py`; `1c80d9e` | `POST /api/prospects` e `saveProspect`; tela Prospecção aceita nicho/cidade/região, produto, raio, quantidade, limite e candidatos JSON; `ds_leads`; `test/prospector.test.js` | **PARCIAL**: contatos públicos sem e-mail e parâmetros assistidos funcionam; falta uma fonte operacional reutilizada e execução com fonte real |
-| 09 | Deduplicação por telefone, e-mail, domínio, Instagram, nome+cidade | `prospector-mcp.py`; `1c80d9e` | `lib/prospector.js`, `saveProspect`; migration local com normalizações; teste das cinco chaves | **PARCIAL**: algoritmo e teste existem; a migration de normalizações não está aplicada e o enriquecimento de evidências de duplicata é incompleto |
+| 09 | Deduplicação por telefone, e-mail, domínio, Instagram, nome+cidade | `prospector-mcp.py`; `1c80d9e` | `lib/prospector.js`, `saveProspect`; migration de normalizações aplicada em Production; teste das cinco chaves | **PARCIAL**: algoritmo, schema e índices estão ativos; o enriquecimento de evidências de duplicata e um E2E autenticado ainda são pendentes |
 | 10 | Qualificação separando fato, hipótese e recomendação | `prospector-prospeccao`; `90e7962` | `POST /api/qualifications` e importação estruturada em `POST /api/prospects`; Inteligência; `ds_qualifications`; `test/prospector.test.js` | **PRONTO** para gravação manual e candidatos já qualificados: exige fatos, hipóteses, recomendação, confiança, pergunta e próxima ação; pesquisa real/E2E ainda pendentes |
 | 11 | Preview factual persistido | `prospector-redesign`; `8febd6a` | `POST /api/previews`, editor e URL persistida; `ds_previews`; teste de rota/dashboard | **PARCIAL**: preservado, mas o conteúdo gerado é uma página factual mínima, não o redesign visual original |
 | 12 | Comparador antes/depois | `references/comparador-template.html`; `e6d8a25` | view `comparador`; `GET /api/comparators/:slug` recupera o template original com URL pública e preview persistido; dashboard atual; `test/prospector.test.js` | **PRONTO** como comparador de artefatos persistidos; depende de preview/redesign factual real para demonstrar valor comercial |
@@ -23,7 +23,8 @@ de integração efetivamente acessível no CRM web.
 - Navegação: `prospeccao`, `intelligence`, `sites` e `comparador` estão restauradas pelo
   patch de produção; verificar visualmente no E2E é pendência.
 - Segurança: não há scraper novo, contato automático, publicação ou envio automático nesta
-  branch. A migration `20260915212624_add_prospector_reconciliation.sql` permanece local.
+  branch. A migration `20260915212624_add_prospector_reconciliation.sql` foi aplicada em
+  Production após auditoria de duplicidades e verificação pós-migration.
 - Evidência: o inventário histórico e a reexecução documentada em
   `docs/EVIDENCIA-E2E-LOCAL-PROSPECTOR-2026-09-15.md` comprovam o MVP local;
   a integração Supabase/Next ainda requer E2E próprio, sem substituir o material original.
