@@ -77,7 +77,8 @@ const patch = String.raw`
 
   nav=function(){
     var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=Number((DS.settings||{}).followup_days||4)});
-    var itens=[['geral','Visão geral',null],['prospeccao','Prospecção',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['intelligence','Inteligência',null],['sites','Sites / Preview',fil().filter(function(l){return['redesenhado','publicado','proposta','respondeu','fechado'].indexOf(l.status)>=0}).length],['comparador','Comparador',fil().filter(function(l){return l.slug&&['redesenhado','publicado','proposta','respondeu','fechado'].indexOf(l.status)>=0}).length],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
+    var previewCount=((window.DS&&DS.previews)||[]).filter(function(p){return p.lead_slug}).length;
+    var itens=[['geral','Visão geral',null],['prospeccao','Prospecção',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['intelligence','Inteligência',null],['sites','Sites / Preview',previewCount],['comparador','Comparador',previewCount],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
     if(!itens.some(function(i){return i[0]===view})) view='geral';
     document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\''+i[0]+'\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
     document.getElementById('titulo').textContent=itens.filter(function(i){return i[0]===view})[0][1];
