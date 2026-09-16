@@ -23,6 +23,15 @@ html = replaceRequired(
   "CRM comercial Datta. Operação autenticada e persistida no servidor.",
   "aviso operacional da POC"
 );
+// The base POC starts an asynchronous dsLoad() before this production patch is
+// evaluated. Its later render would overwrite the patched navigation and views.
+// Production boot is intentionally deferred to the guarded loader below.
+html = replaceRequired(
+  html,
+  "render();dsLoad();",
+  "render();",
+  "boot assíncrono da POC"
+);
 
 const patch = String.raw`
 <style>
@@ -77,11 +86,20 @@ const patch = String.raw`
 
   nav=function(){
     var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=Number((DS.settings||{}).followup_days||4)});
-    var itens=[['geral','Visão geral',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
+    var previewCount=((window.DS&&DS.previews)||[]).filter(function(p){return p.lead_slug}).length;
+    var itens=[['geral','Visão geral',null],['prospeccao','Prospecção',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['intelligence','Inteligência',null],['sites','Sites / Preview',previewCount],['comparador','Comparador',previewCount],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
     if(!itens.some(function(i){return i[0]===view})) view='geral';
     document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\''+i[0]+'\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
     document.getElementById('titulo').textContent=itens.filter(function(i){return i[0]===view})[0][1];
   };
+
+  var normalSetView=setView;
+  window.dsProspect=function(){var raw=document.getElementById('prospect-candidates').value, candidates;try{candidates=JSON.parse(raw)}catch(_){alert('Informe uma lista JSON de candidatos públicos.');return}apiJson('/api/prospects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:{niche:document.getElementById('prospect-niche').value,city:document.getElementById('prospect-city').value,region:document.getElementById('prospect-region').value,product:document.getElementById('prospect-product').value,search_radius_km:Number(document.getElementById('prospect-radius').value||0),target_quantity:Number(document.getElementById('prospect-target').value||0),search_limit:Number(document.getElementById('prospect-limit').value||0)},candidates:candidates})}).then(function(result){document.getElementById('prospect-result').textContent='Avaliados: '+result.evaluated+'; reconciliados: '+result.results.filter(function(x){return x.deduplicated}).length;return recarrega()}).then(dsLoad).catch(function(e){document.getElementById('prospect-result').textContent=e.message})};
+  setView=function(next){if(next!=='prospeccao')return normalSetView(next);view=next;nav();document.getElementById('view').innerHTML='<div class="painel"><h2>Pesquisa pública assistida</h2><p>Importe apenas candidatos obtidos por fontes públicas. E-mail não é obrigatório; fonte e rastreabilidade são obrigatórias. Não há scraping, envio ou contato automático.</p><div class="mrow"><div><label>Nicho</label><input id="prospect-niche"></div><div><label>Cidade</label><input id="prospect-city"></div><div><label>Região</label><input id="prospect-region"></div><div><label>Raio (km)</label><input id="prospect-radius" type="number" min="0" max="500"></div></div><div class="mrow"><div><label>Produto preferencial</label><select id="prospect-product"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div><div><label>Quantidade alvo</label><input id="prospect-target" type="number" min="1" max="100" value="10"></div><div><label>Limite de candidatos</label><input id="prospect-limit" type="number" min="1" max="25" value="25"></div></div><label>Candidatos públicos (JSON)</label><textarea id="prospect-candidates" rows="8" placeholder="[{&quot;slug&quot;:&quot;empresa-exemplo&quot;,&quot;nome&quot;:&quot;Empresa Exemplo&quot;,&quot;source_url&quot;:&quot;https://fonte-publica.exemplo&quot;,&quot;public_contact_type&quot;:&quot;telefone&quot;}]"></textarea><button onclick="dsProspect()">Salvar e deduplicar</button><p id="prospect-result"></p></div>'};
+  var oldIntelligence=vIntelligence;
+  vIntelligence=function(){return oldIntelligence()+'<div class="painel"><h2>Direção social para proposta</h2><p>Registre somente o que foi observado no perfil público. A direção criativa é uma demonstração sujeita à revisão; não publica conteúdo.</p><div class="mrow"><div><label>URL</label><input id="social-url"></div><div><label>Usuário</label><input id="social-user"></div><div><label>Bio / CTA</label><input id="social-bio"></div><div><label>Link</label><input id="social-link"></div></div><div class="mrow"><div><label>Consistência visual</label><input id="social-visual"></div><div><label>Frequência aparente</label><input id="social-frequency"></div><div><label>Recomendação</label><input id="social-recommendation"></div><div><label>Direção criativa</label><input id="social-direction"></div></div><label>Evidência pública</label><input id="social-evidence"><button onclick="dsSocialVisual()">Salvar auditoria social completa</button></div>'};
+  dsSocialVisual=function(){var g=function(id){return document.getElementById(id).value};dsPost('/api/social-audits',{lead_slug:document.getElementById('iq-lead').value,platform:document.getElementById('is-platform').value,url:g('social-url'),username:g('social-user'),bio:g('social-bio'),cta:g('social-bio'),link:g('social-link'),visual_identity:g('social-visual'),consistency_note:g('social-visual'),frequency_note:g('social-frequency'),factual_notes:g('is-notes'),recommendation:g('social-recommendation'),creative_direction:g('social-direction'),evidence:g('social-evidence')})};
+  dsCreateProposal=function(){var lead=document.getElementById('ws-lead').value.trim(),product=document.getElementById('ws-product').value,price=document.getElementById('ws-price').value;if(!lead){document.getElementById('ws-msg').textContent='Informe o slug de um lead existente.';return}var ids=function(items){return(items||[]).filter(function(x){return x.lead_slug===lead}).map(function(x){return x.id})};dsPost('/api/proposals',{lead_slug:lead,product_id:product,negotiated_price:price===''?null:Number(price),diagnosis_ids:ids(DS.diagnoses),preview_ids:ids(DS.previews),social_audit_ids:ids(DS.socialAudits),comparator:ids(DS.previews).length>0})};
 
   acoes=function(l){
     var a=[],slug=jsArg(l.slug);
