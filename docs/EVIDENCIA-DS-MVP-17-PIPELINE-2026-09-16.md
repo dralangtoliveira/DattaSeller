@@ -79,10 +79,12 @@ tinha override do build e usava o comando padrão do framework, que não executa
 o `prebuild` do pacote. Isso torna o item **IMPLEMENTADO MAS NÃO TOTALMENTE
 VALIDADO** até a publicação do ajuste.
 
-O arquivo `vercel.json` passa a fixar `pnpm run build`. Esse comando chama o
-`prebuild` existente, que sincroniza e aplica o patch do dashboard antes do
-`next build`. Um teste de regressão verifica ambos os scripts. Após o Preview
-desse ajuste ficar pronto, é obrigatório autenticar no domínio de Preview
-atual e repetir o reload da Central comercial para encerrar o E2E.
+O primeiro ajuste, `pnpm run build`, não resolveu o reload: o `pnpm` do
+ambiente Vercel não dispara os hooks `prebuild` automaticamente. O
+`vercel.json` agora fixa o comando explícito `node scripts/sync-dashboard.mjs
+&& node scripts/production-dashboard-patch.mjs && next build`. Um teste de
+regressão verifica os dois passos e a posição anterior ao build. Após o Preview
+desse ajuste ficar pronto, é obrigatório repetir o reload da Central comercial
+no domínio estável para encerrar o E2E.
 
 Não é necessário nem autorizado mudar Supabase Production para esta etapa.
