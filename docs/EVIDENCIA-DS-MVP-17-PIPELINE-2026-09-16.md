@@ -87,4 +87,11 @@ regressão verifica os dois passos e a posição anterior ao build. Após o Prev
 desse ajuste ficar pronto, é obrigatório repetir o reload da Central comercial
 no domínio estável para encerrar o E2E.
 
+A repetição mostrou que a Vercel ainda servia o `public/dashboard.html` do
+checkout inicial: o arquivo gerado não era versionado porque estava no
+`.gitignore`. O artefato é determinístico e agora passa a ser rastreado, com um
+teste que exige a integração Prospector no payload estático publicado. Isso
+elimina a divergência entre o dashboard gerado localmente e o arquivo estático
+entregue pelo Preview.
+
 Não é necessário nem autorizado mudar Supabase Production para esta etapa.

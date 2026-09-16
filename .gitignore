@@ -1,7 +1,6 @@
 node_modules/
 .next/
 .codex-web-store/
-public/dashboard.html
 .env*
 !.env.example
 __pycache__/

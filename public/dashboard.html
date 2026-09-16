@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<!-- TEMPLATE DO DASHBOARD (v2) — substituir __DADOS__ pelo JSON (ver SKILL.md). Salvar como dashboard.html na RAIZ da pasta conectada -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DattaSeller — CRM Comercial</title>
+<style>
+:root{
+ --paper:#F4F2EC;--surface:#FBFAF7;--white:#FFFFFF;--ink:#211F1C;--muted:#6F6B64;--line:#E3DFD5;
+ --accent:#C96D4D;--accent-2:#A95338;--accent-soft:#F5E3DB;
+ --ok:#6A9B72;--ok-soft:#E7EFE8;--warn:#C98A2D;--warn-soft:#F6ECD9;--cinza:#B7B2A7;
+ --novo:#7A8CA8;--rede:#9C7BB8;--pub:#5E9DA8;--prop:#C98A2D;--resp:#6A9B72;--fech:#4E8757;
+ --serif:Georgia,'Times New Roman',serif;--sans:-apple-system,'Segoe UI',Roboto,Inter,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);min-height:100vh;display:flex;overflow-x:hidden}
+aside{width:232px;min-height:100vh;background:var(--ink);color:#EDEAE3;padding:24px 14px;position:fixed;top:0;bottom:0;display:flex;flex-direction:column}
+.logo{display:flex;align-items:center;gap:10px;padding:0 10px 20px;border-bottom:1px solid #3A3835;margin-bottom:16px}
+.logo .burst{width:34px;height:34px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff}
+.logo b{font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.2px}
+.logo span{display:block;font-size:10.5px;color:#A8A399;margin-top:1px}
+nav{display:flex;flex-direction:column;gap:4px}
+nav button{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 30px;align-items:center;gap:8px;background:none;border:0;color:#CFC9BE;font-size:13.5px;font-weight:600;padding:10px 12px;border-radius:9px;cursor:pointer;text-align:left;font-family:var(--sans);transition:background .15s,color .15s}
+nav button:hover{background:#33312E;color:#fff}
+nav button:focus-visible,.acoes a:focus-visible,.pagin button:focus-visible,.cmp-tabs button:focus-visible,.btn-ct:focus-visible{outline:3px solid #D9775760;outline-offset:2px}
+nav button.on{background:var(--accent);color:#fff}
+nav button.on::before{content:'';position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:#F1B39A}
+nav button .qt{justify-self:end;min-width:24px;text-align:center;font-size:11px;background:#00000035;padding:2px 7px;border-radius:999px}
+.side-foot{margin-top:auto;font-size:11px;color:#A29B8F;padding:14px 10px 4px;line-height:1.55;max-width:190px}
+main{margin-left:232px;flex:1;min-width:0;padding:22px 28px 0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#view{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:14px}
+#view>.stats,#view>.painel,#view>.dica-drag,#view>.sites-grid{flex:0 0 auto}
+.topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;flex:0 0 auto}
+.topbar h1{font-family:var(--serif);font-size:26px;font-weight:600;margin:0;letter-spacing:-.2px}
+.topbar .upd{color:var(--muted);font-size:12px}
+.logout-btn{border:1px solid var(--line);background:var(--white);color:var(--ink);font-size:12px;font-weight:700;padding:8px 12px;border-radius:9px;cursor:pointer;font-family:var(--sans);transition:background .15s,border-color .15s,color .15s}
+.logout-btn:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-2)}
+.logout-btn:disabled{opacity:.6;cursor:wait}
+.logout-status{color:var(--muted);font-size:12px}
+.busca{margin-left:auto;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13.5px;width:260px;color:var(--ink);font-family:var(--sans);transition:border-color .15s,box-shadow .15s}
+.busca:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-height:88px;box-shadow:0 1px 2px #211F1C08}
+.stat .n{font-family:var(--serif);font-size:32px;font-weight:600;line-height:1.05}
+.stat .l{color:var(--muted);font-size:12px;margin-top:7px;font-weight:600}
+.stat.laranja .n{color:var(--accent)}.stat.verde .n{color:var(--fech)}.stat.ambar .n{color:var(--warn)}
+.painel{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:24px;box-shadow:0 1px 2px #211F1C06}
+.painel h2{font-family:var(--serif);font-size:17px;margin:0 0 14px;font-weight:600}
+.funil .linha{display:grid;grid-template-columns:138px 1fr 32px;align-items:center;gap:16px;margin:10px 0;font-size:12.5px}
+.funil .linha>b{text-align:right;font-variant-numeric:tabular-nums}
+.funil .barra{height:14px;border-radius:7px;background:var(--paper);overflow:hidden}
+.funil .fill{height:100%;border-radius:7px;min-width:2px}
+.fup-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.fup-item:last-child{border:0}
+.fup-item .dias{background:var(--warn-soft);color:var(--warn);font-weight:700;font-size:11px;padding:3px 9px;border-radius:12px;white-space:nowrap}
+.board{display:flex;gap:16px;overflow-x:auto;align-items:flex-start;flex:1;min-height:0;padding:2px 2px 12px}
+.board::-webkit-scrollbar,.cards::-webkit-scrollbar{height:9px;width:9px}
+.board::-webkit-scrollbar-thumb,.cards::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+.board::-webkit-scrollbar-thumb:hover,.cards::-webkit-scrollbar-thumb:hover{background:var(--cinza)}
+.col{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 10px 10px 14px;flex:0 0 276px;width:276px;display:flex;flex-direction:column;min-height:300px;max-height:calc(100vh - 168px)}
+.cards{flex:1;overflow-y:auto;min-height:116px;padding-right:6px}
+.col>h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;margin:2px 4px 14px;display:flex;justify-content:space-between;color:#4E4A43;flex:0 0 auto}
+.col>h3 span{color:var(--muted);font-variant-numeric:tabular-nums}
+.card{display:flex;flex-direction:column;background:var(--white);border:1px solid var(--line);border-top:3px solid var(--cor,var(--accent));border-radius:11px;padding:14px;margin-bottom:12px;box-shadow:0 2px 5px #211F1C0A}
+.card .nm{font-weight:700;font-size:14px}
+.card .mt{color:var(--muted);font-size:12px;margin:5px 0}
+.card .motivo{color:var(--muted);font-size:12px;font-style:italic;margin:7px 0;border-left:2px solid var(--line);padding-left:8px;line-height:1.45}
+.acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.acoes a{font-size:11px;font-weight:700;text-decoration:none;padding:6px 10px;border-radius:8px;background:var(--paper);color:#4E4A43;border:1px solid var(--line);transition:background .15s,border-color .15s,color .15s}
+.acoes a:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-2)}
+.acoes a.del{margin-left:auto;color:#A95338;background:#FAF2EF;border-color:#EECFC4}
+.acoes a.del:hover{background:#F5E3DB;border-color:#C96D4D}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:1px}
+.fup{background:var(--warn-soft);color:var(--warn)}
+.valor{color:var(--fech);font-weight:800;font-size:13px;margin-top:6px}
+select.st{font-size:11.5px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;background:var(--surface);color:var(--ink);font-family:var(--sans);margin-top:9px;width:100%}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;padding:10px;border-bottom:1px solid var(--line);background:var(--surface);cursor:pointer;white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:var(--surface)}
+.pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap}
+.painel.tab{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;margin-bottom:0}
+.twrap{flex:1;min-height:0;overflow:auto}
+.pagin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12.5px;color:var(--muted);flex:0 0 auto;border-top:1px solid var(--line);padding-top:12px}
+.pagin .info{margin-right:auto}
+.pagin button{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer;font-family:var(--sans)}
+.pagin button:hover{border-color:var(--accent);color:var(--accent-2)}
+.pagin button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pagin button:disabled{opacity:.4;cursor:default}
+.pagin select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12.5px;background:var(--white);color:var(--ink);font-family:var(--sans)}
+.sites-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.site-card{background:var(--white);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.site-card .prev{height:190px;overflow:hidden;border-bottom:1px solid var(--line);background:var(--paper)}
+.site-card iframe{width:200%;height:380px;border:0;transform:scale(.5);transform-origin:0 0;pointer-events:none}
+.site-card{display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s}
+.site-card:hover{box-shadow:0 6px 18px #00000014;transform:translateY(-2px)}
+.site-card .info{padding:14px 16px 12px}
+.s-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.s-nm{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-sub{color:var(--muted);font-size:12px;margin:3px 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-main{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.s-main a{text-align:center;padding:9px 6px;border-radius:9px;font-size:12.5px;font-weight:700;text-decoration:none}
+.s-main .prim{background:var(--accent);color:#fff}
+.s-main .prim:hover{background:var(--accent-2)}
+.s-main .sec{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.s-main .sec:hover{border-color:var(--accent);color:var(--accent-2)}
+.s-icons{display:flex;border-top:1px solid var(--line);padding-top:9px;margin:0 -4px}
+.s-icons a{flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--muted);text-decoration:none;padding:5px 2px;border-radius:7px}
+.s-icons a:hover{background:var(--paper);color:var(--accent-2)}
+.s-icons a.del:hover{color:#B0483B;background:#B0483B14}
+.fin-check{width:17px;height:17px;accent-color:var(--fech);cursor:pointer}
+select.mini{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;background:var(--surface);color:var(--ink);font-family:var(--sans);cursor:pointer}
+.btn-ct{display:inline-block;font-size:12px;font-weight:700;text-decoration:none;padding:6px 12px;border-radius:8px;margin:2px 4px 2px 0;white-space:nowrap}
+.btn-ct.ver{background:var(--accent);color:#fff}
+.btn-ct.ver:hover{background:var(--accent-2)}
+.btn-ct.baixar{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.btn-ct.baixar:hover{border-color:var(--accent);color:var(--accent-2)}
+.btn-ct.ass{background:var(--ok-soft);color:var(--ok)}
+.ct-pendente{background:#B7B2A733;color:#6E6A63}.ct-enviado{background:var(--warn-soft);color:var(--warn)}.ct-assinado{background:var(--ok-soft);color:var(--ok)}
+#doc-bg{position:fixed;inset:0;background:#000000AA;display:none;z-index:60;flex-direction:column}
+#doc-bg.aberto{display:flex}
+.doc-bar{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--ink);color:#EDEAE3;flex:0 0 auto}
+.doc-bar b{font-family:var(--serif);font-size:15px}
+.doc-bar .sp{flex:1}
+.doc-bar button{border:0;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.doc-bar .imp{background:var(--accent);color:#fff}
+.doc-bar .imp:hover{background:var(--accent-2)}
+.doc-bar .fech{background:#3A3835;color:#EDEAE3}
+#doc-frame{flex:1;border:0;width:100%;background:#E9E7E1}
+.vazio{color:var(--muted);font-size:12.5px;text-align:center;padding:14px 4px}
+.card[draggable=true]{cursor:grab}
+.card.arrastando{opacity:.45;transform:rotate(1.5deg)}
+.col.alvo{outline:2px dashed var(--accent);outline-offset:-4px;background:var(--accent-soft)}
+.dica-drag{color:var(--muted);font-size:11.5px;margin:0 0 10px}
+.hidden{display:none}
+.acoes a.del{color:#B0483B}
+.modo{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px}
+.modo.db{background:var(--ok-soft);color:var(--ok)}
+.modo.file{background:var(--warn-soft);color:var(--warn)}
+#modal-bg{position:fixed;inset:0;background:#00000055;display:none;align-items:center;justify-content:center;z-index:50}
+#modal-bg.aberto{display:flex}
+#modal{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:24px;width:460px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 18px 44px #211F1C2B}
+#modal h2{font-family:var(--serif);font-size:18px;margin:0 0 14px}
+#modal label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:10px 0 4px}
+#modal input,#modal select,#modal textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:13px;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+#modal input:focus,#modal select:focus,#modal textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#modal .mrow{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+#modal .mbot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+#modal .mbot button{border:0;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+#modal .salvar{background:var(--accent);color:#fff}
+#modal .salvar:hover{background:var(--accent-2)}
+#modal .cancelar{background:var(--paper);color:var(--ink);border:1px solid var(--line)!important}
+@media(max-width:860px){
+ body{display:block}
+ aside{position:sticky;z-index:40;top:0;width:100%;min-height:auto;padding:10px 12px;display:block}
+ .logo{padding:0 4px 10px;margin-bottom:8px}.logo .burst{width:30px;height:30px}.side-foot{display:none}
+ nav{flex-direction:row;overflow-x:auto;padding-bottom:2px}nav button{flex:0 0 auto;display:flex;min-width:max-content;padding:8px 10px}nav button.on::before{display:none}
+ main{margin-left:0;height:auto;min-height:calc(100vh - 112px);padding:18px 16px 0;overflow:visible}
+ #view{overflow:visible}.topbar{gap:10px;margin-bottom:16px}.busca{order:2;margin-left:0;width:100%}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat{padding:14px;min-height:78px}.stat .n{font-size:26px}
+ .painel{padding:18px}.board{min-height:420px}.col{max-height:none}.cmp-grid{grid-template-columns:1fr;min-height:720px}
+}
+@media(max-width:520px){.funil .linha{grid-template-columns:96px 1fr 24px;gap:8px}.fup-item{align-items:flex-start;flex-wrap:wrap}#modal .mrow{grid-template-columns:1fr}}
+@media(max-width:520px){
+ .painel{padding:14px;margin-bottom:14px}.painel h2{font-size:16px}
+ .twrap{margin:0 -14px;padding:0 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .twrap table{min-width:680px}.twrap button,.painel>button{min-height:38px}
+ .board{margin:0 -14px;padding-left:14px}.col{flex-basis:258px;width:258px}
+ .cmp-col iframe{min-height:360px}.cmp-grid{min-height:760px}
+ #modal{width:calc(100vw - 20px);max-width:none;padding:18px;max-height:92vh}
+ .doc-bar{padding:10px;gap:7px;flex-wrap:wrap}.doc-bar .sp{display:none}
+}
+@media(max-width:520px){
+ .stats{grid-template-columns:1fr}
+ .funil .linha{grid-template-columns:88px minmax(0,1fr) 20px;font-size:12px}
+}
+.cmp-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.cmp-tabs button{border:1px solid var(--line);background:var(--white);padding:8px 16px;border-radius:20px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted);font-family:var(--sans)}
+.cmp-tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1 1 auto;min-height:0}
+.cmp-col{display:flex;flex-direction:column;background:var(--white);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:0}
+.cmp-col .cab{padding:9px 14px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.cmp-col .cab.antes{color:var(--muted)} .cmp-col .cab.depois{color:var(--accent)}
+.cmp-col iframe{flex:1 1 auto;width:100%;border:0;min-height:0;background:#fff}
+@media(max-width:900px){.cmp-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><div class="burst">✳</div><div><b>DattaSeller</b><span>operação comercial local</span></div></div>
+  <nav id="nav"></nav>
+  <div class="side-foot">CRM comercial Datta. Operação autenticada e persistida no servidor.</div>
+</aside>
+<main>
+  <div class="topbar"><h1 id="titulo">Visão geral</h1><span class="upd" id="upd"></span><span class="modo file" id="modo" title="Abra pelo iniciar-dashboard.bat para salvar no banco">modo arquivo</span><button id="limpar-ov" style="display:none;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer;font-family:var(--sans)" onclick="if(confirm('Descartar as edições feitas neste navegador e voltar aos dados do plugin?')){localStorage.removeItem('prospector_ov');location.reload()}">limpar edições locais</button><button id="logout-btn" class="logout-btn" type="button">Sair</button><span id="logout-status" class="logout-status" role="status" aria-live="polite"></span><input class="busca" id="busca" placeholder="Buscar cliente, nicho, cidade..."></div>
+  <div id="view"></div>
+</main>
+<div id="doc-bg"><div class="doc-bar"><b id="doc-titulo">Contrato</b><span class="sp"></span><button class="imp" onclick="printDoc()">🖨 Imprimir / Salvar PDF</button><button class="fech" onclick="fecharDoc()">Fechar ✕</button></div><iframe id="doc-frame"></iframe></div>
+<div id="modal-bg" onclick="if(event.target===this)fecharEdit()"><div id="modal">
+<h2 id="m-titulo">Editar lead</h2>
+<label>Nome</label><input id="m-nome">
+<div class="mrow"><div><label>E-mail</label><input id="m-email"></div><div><label>Telefone</label><input id="m-telefone"></div></div>
+<div class="mrow"><div><label>WhatsApp (55DDDnúmero)</label><input id="m-whatsapp"></div><div><label>Cidade</label><input id="m-cidade"></div></div>
+<div class="mrow"><div><label>Nicho</label><input id="m-nicho"></div><div><label>Status</label><select id="m-status"></select></div></div>
+<div class="mrow"><div><label>Valor (R$)</label><input id="m-valor" type="number" step="50"></div><div><label>Data da proposta</label><input id="m-dataProposta" type="date"></div></div>
+<div class="mrow"><div><label>Manutenção mensal (R$)</label><input id="m-manutencao" type="number" step="10"></div><div><label>Pagamento recebido?</label><select id="m-pago"><option value="0">Não</option><option value="1">Sim</option></select></div></div>
+<div class="mrow"><div><label>Contrato</label><select id="m-contratoStatus"><option value="pendente">Pendente</option><option value="enviado">Enviado</option><option value="assinado">Assinado</option></select></div><div><label>Data do contrato</label><input id="m-contratoEm" type="date"></div></div>
+<div class="mrow"><div><label>CPF/CNPJ do cliente</label><input id="m-docCliente" placeholder="para o contrato"></div><div><label>Endereço do cliente</label><input id="m-endCliente" placeholder="rua, nº — para o contrato"></div></div>
+<label>URL publicada</label><input id="m-urlNova">
+<div class="mrow"><div><label>Instagram público</label><input id="m-instagram_url"></div><div><label>Fonte pública</label><input id="m-source_url"></div></div>
+<div class="mrow"><div><label>Fonte verificada em</label><input id="m-source_checked_at" placeholder="AAAA-MM-DD"></div><div><label>Tipo de contato público</label><input id="m-public_contact_type" placeholder="e-mail, WhatsApp, formulário..."></div></div>
+<div class="mrow"><div><label>Produto sugerido</label><input id="m-product_suggested" placeholder="Datta360 ou Datta VPS"></div><div><label>Status de entrega</label><input id="m-delivery_status" placeholder="manual / pendente"></div></div>
+<label>Motivo do produto / próxima ação</label><textarea id="m-product_reason" rows="2"></textarea>
+<label>Próxima ação</label><input id="m-next_action" placeholder="Aguardar aprovação humana para contato">
+<label>Checkout oficial (somente URL configurada)</label><input id="m-checkout_url" placeholder="vazio = Datta VPS desabilitado">
+<div class="mrow"><div><label>Checkout apresentado em</label><input id="m-checkout_presented_at" readonly></div><div><label>Checkout clicado em</label><input id="m-checkout_clicked_at" readonly></div></div>
+<label>Qualificação estruturada (JSON)</label><textarea id="m-qualification_json" rows="2"></textarea>
+<label>Auditoria do site (JSON)</label><textarea id="m-site_audit_json" rows="2"></textarea>
+<label>Auditoria do Instagram (JSON)</label><textarea id="m-instagram_audit_json" rows="2"></textarea>
+<label>Observações</label><textarea id="m-obs" rows="2"></textarea>
+<div class="mbot"><button class="cancelar" onclick="fecharEdit()">Cancelar</button><button class="salvar" onclick="salvarEdit()">Salvar</button></div>
+</div></div>
+<script id="dados" type="application/json">{"atualizado":"","leads":[]}</script>
+<script>
+var D=JSON.parse(document.getElementById('dados').textContent);
+var OV=JSON.parse(localStorage.getItem('prospector_ov')||'{}');
+var MODE='file';
+function aplicaOv(arr){return arr.filter(function(l){return !(OV[l.slug]&&OV[l.slug]._del)}).map(function(l){return Object.assign({},l,OV[l.slug]||{})})}
+var leads=aplicaOv(D.leads||[]);
+if(Object.keys(OV).length)document.getElementById('limpar-ov')&&(document.getElementById('limpar-ov').style.display='inline-block');
+fetch('/api/leads',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){MODE='db';leads=j;fetch('/api/config',{cache:'no-store'}).then(function(r){return r.json()}).then(function(c){CFG=(c&&c.contratante!==undefined)?c.contratante:c;VPS=(c&&c.dattavps)||{};if(view==='config')render()});var m=document.getElementById('modo');m.textContent='banco conectado';m.className='modo db';m.title='Alterações salvas no banco SQLite local';var lb=document.getElementById('limpar-ov');if(lb)lb.style.display='none';render()}).catch(function(){});
+var CORES={novo:'var(--novo)',redesenhado:'var(--rede)',publicado:'var(--pub)',proposta:'var(--prop)',respondeu:'var(--resp)',fechado:'var(--fech)',descartado:'var(--cinza)'};
+var NOMES={novo:'Novo',redesenhado:'Redesenhado',publicado:'Publicado',proposta:'Proposta enviada',respondeu:'Respondeu',fechado:'Fechado',descartado:'Descartado'};
+var ORDEM=['novo','redesenhado','publicado','proposta','respondeu','fechado'];
+var view='geral',busca='',sortCol='nome',sortAsc=true,pag=1,porPag='auto';
+function pagSize(){if(porPag!=='auto')return porPag;var v=document.getElementById('view');var h=v?v.clientHeight:600;return Math.max(4,Math.floor((h-165)/59))}
+document.getElementById('upd').textContent='atualizado em '+(D.atualizado||'—');
+function dias(iso){if(!iso)return 0;return Math.floor((Date.now()-new Date(iso+'T12:00:00'))/864e5)}
+function ativos(){return fil().filter(function(l){return l.status!=='descartado'})}
+function fil(){var b=busca.toLowerCase();return leads.filter(function(l){return !b||((l.nome||'')+(l.nicho||'')+(l.cidade||'')+(l.status||'')).toLowerCase().indexOf(b)>=0})}
+ function recarrega(){return fetch('/api/leads',{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){leads=(Array.isArray(j)?j:[]).filter(function(l){return /^[a-z0-9][a-z0-9-]{0,71}$/.test(String(l.slug||''))});render()})}
+function criarLeadVisual(){var nome=document.getElementById('novo-nome').value.trim(),contato=document.getElementById('novo-contato').value.trim(),fonte=document.getElementById('novo-fonte').value.trim();if(!nome){document.getElementById('novo-msg').textContent='Informe o nome.';return}var slug=nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:slug,nome:nome,telefone:contato,status:'novo',source_url:fonte,source_checked_at:new Date().toISOString(),public_contact_type:contato?'telefone':''})}).then(function(r){return r.json()}).then(function(x){if(x.erro){document.getElementById('novo-msg').textContent=x.erro;return}recarrega()})}
+function salvarOv(slug,ch){
+ if(MODE==='db'){fetch('/api/leads/'+encodeURIComponent(slug),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(ch)}).then(recarrega);return}
+ OV[slug]=Object.assign(OV[slug]||{},ch);localStorage.setItem('prospector_ov',JSON.stringify(OV));leads=aplicaOv(D.leads||[]);render()}
+function deletar(slug){if(!confirm('Excluir este lead do painel?'))return;
+ if(MODE==='db'){fetch('/api/leads/'+encodeURIComponent(slug),{method:'DELETE'}).then(recarrega);return}
+ OV[slug]=Object.assign(OV[slug]||{},{_del:true});localStorage.setItem('prospector_ov',JSON.stringify(OV));leads=aplicaOv(D.leads||[]);render()}
+var CFG={},VPS={};
+var editSlug=null;
+function abrirEdit(slug){editSlug=slug;var l=leads.filter(function(x){return x.slug===slug})[0]||{};
+ document.getElementById('m-titulo').textContent='Editar — '+(l.nome||slug);
+ document.getElementById('m-status').innerHTML=Object.keys(NOMES).map(function(st){return '<option value="'+st+'"'+(l.status===st?' selected':'')+'>'+NOMES[st]+'</option>'}).join('');
+ ['nome','email','telefone','whatsapp','cidade','nicho','valor','dataProposta','urlNova','obs','manutencao','contratoEm','docCliente','endCliente','instagram_url','source_url','source_checked_at','public_contact_type','product_suggested','delivery_status','product_reason','next_action','checkout_url','checkout_presented_at','checkout_clicked_at','qualification_json','site_audit_json','instagram_audit_json'].forEach(function(k){document.getElementById('m-'+k).value=l[k]==null?'':l[k]});
+ document.getElementById('m-pago').value=l.pago?1:0;document.getElementById('m-contratoStatus').value=l.contratoStatus||'pendente';
+ document.getElementById('modal-bg').classList.add('aberto')}
+function fecharEdit(){document.getElementById('modal-bg').classList.remove('aberto');editSlug=null}
+function salvarEdit(){if(!editSlug)return;var ch={};
+ ['nome','email','telefone','whatsapp','cidade','nicho','urlNova','obs','dataProposta','docCliente','endCliente','instagram_url','source_url','source_checked_at','public_contact_type','product_suggested','delivery_status','product_reason','next_action','checkout_url','qualification_json','site_audit_json','instagram_audit_json'].forEach(function(k){ch[k]=document.getElementById('m-'+k).value||null});
+ ch.status=document.getElementById('m-status').value;
+ var v=document.getElementById('m-valor').value;ch.valor=v===''?null:parseFloat(v);
+ if(ch.status==='fechado'){if(!ch.valor||ch.valor<=0){alert('Informe um valor positivo antes de fechar.');return}if(!confirm('Confirma manualmente que o cliente fechou e que o valor informado está correto?'))return;ch.closingConfirmed=true;ch.valor_fechado=ch.valor}
+ var mn=document.getElementById('m-manutencao').value;ch.manutencao=mn===''?null:parseFloat(mn);
+ ch.pago=parseInt(document.getElementById('m-pago').value);ch.contratoStatus=document.getElementById('m-contratoStatus').value;
+ var slug=editSlug;fecharEdit();salvarOv(slug,ch)}
+function setView(v){view=v;render()}
+function dsLogout(){
+ var button=document.getElementById('logout-btn'),status=document.getElementById('logout-status');
+ if(!button)return;
+ button.disabled=true;button.textContent='Saindo…';status.textContent='Encerrando sessão…';
+ fetch('/api/auth/logout',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'}})
+  .then(function(r){if(!r.ok)throw 0;return r.json()})
+  .then(function(){window.location.replace('/login')})
+  .catch(function(){button.disabled=false;button.textContent='Sair';status.textContent='Não foi possível encerrar a sessão. Verifique a conexão e tente novamente.'});
+}
+document.getElementById('logout-btn').addEventListener('click',dsLogout);
+function nav(){
+ var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=4});
+ var fechadosN=fil().filter(function(l){return l.status==='fechado'}).length;
+ var previewCount=((window.DS&&DS.previews)||[]).filter(function(p){return p.lead_slug}).length;
+ var itens=[['geral','Visão geral',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['intelligence','Diagnóstico',null],['workspace','Central comercial',null],['timeline','Timeline',null],['sites','Sites',previewCount],['comparador','Comparador',previewCount],['followup','Follow-ups',fu.length],['contratos','Contratos',((window.DS&&DS.contracts)||[]).length],['financeiro','Financeiro',null],['config','Configurações',null]];
+ document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\''+i[0]+'\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
+ document.getElementById('titulo').textContent=itens.filter(function(i){return i[0]===view})[0][1];
+}
+function pillStatus(s){return '<span class="pill" style="background:color-mix(in srgb,'+CORES[s]+' 18%,white);color:'+CORES[s]+'">'+NOMES[s]+'</span>'}
+ function acoes(l){var a=[],slug=jsArg(l.slug);
+  if(/^https?:\/\//i.test(String(l.siteAntigo||'')))a.push('<a href="'+esc(l.siteAntigo)+'" target="_blank" rel="noopener">antigo</a>');
+ if(l.slug&&['redesenhado','publicado','proposta','respondeu','fechado'].indexOf(l.status)>=0){a.push('<a href="sites/'+esc(l.slug)+'/'+esc(l.slug)+'.html" target="_blank">página</a>');a.push('<a href="sites/'+esc(l.slug)+'/'+esc(l.slug)+'-editor.html" target="_blank">editar site</a>')}
+  if(/^https?:\/\//i.test(String(l.urlNova||'')))a.push('<a href="'+esc(l.urlNova)+'" target="_blank" rel="noopener">no ar ↗</a>');
+  if(/^\d{6,20}$/.test(String(l.whatsapp||'')))a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">whatsapp</a>');
+  if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||'')))a.push('<a href="mailto:'+encodeURIComponent(l.email)+'">e-mail</a>');
+ var produto=(l.product_suggested||'').toLowerCase();
+  if((produto.indexOf('vps')>=0||produto.indexOf('ambos')>=0)&&vpsDisponivel())a.push(l.checkout_presented_at?'<a href="#" onclick="abrirCheckoutVps(decodeURIComponent(\''+slug+'\'));return false">checkout DattaVPS ↗</a>':'<a href="#" onclick="apresentarVps(decodeURIComponent(\''+slug+'\'));return false">apresentar DattaVPS</a>');
+  a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
+  a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
+ return '<div class="acoes">'+a.join('')+'</div>'}
+function vpsDisponivel(){return VPS.enabled===true&&/^https:\/\//i.test(VPS.checkout_url||'')&&(VPS.offer_name||'')&&(VPS.offer_description||'')&&parseFloat(VPS.offer_price)>0}
+function apresentarVps(slug){var agora=new Date().toISOString();salvarOv(slug,{checkout_url:VPS.checkout_url,checkout_presented_at:agora,delivery_status:'checkout_apresentado'})}
+function abrirCheckoutVps(slug){var agora=new Date().toISOString();fetch('/api/leads/'+encodeURIComponent(slug),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({checkout_url:VPS.checkout_url,checkout_clicked_at:agora,delivery_status:'checkout_acessado'})}).then(recarrega);window.open(VPS.checkout_url,'_blank','noopener,noreferrer')}
+
+function card(l){var f=l.status==='proposta'&&dias(l.dataProposta)>=4?'<span class="tag fup">follow-up '+dias(l.dataProposta)+'d</span>':'';
+ return '<div class="card" draggable="true" ondragstart="dragIni(event,decodeURIComponent(\''+jsArg(l.slug)+'\'))" ondragend="dragFim(event)" style="--cor:'+esc(CORES[l.status]||'')+'"><div class="nm">'+esc(l.nome)+f+'</div><div class="mt">'+(l.nota?'★ '+esc(l.nota)+' ('+esc(l.avaliacoes)+')':'')+(l.cidade?' · '+esc(l.cidade):'')+'</div>'+(l.motivo?'<div class="motivo">'+esc(l.motivo)+'</div>':'')+(l.obs?'<div class="mt">'+esc(l.obs)+'</div>':'')+(l.valor?'<div class="valor">R$ '+l.valor.toLocaleString('pt-BR')+(l.manutencao?' <span style="color:var(--muted);font-weight:600;font-size:11px">+ R$ '+l.manutencao.toLocaleString('pt-BR')+'/mês</span>':'')+'</div>':'')+acoes(l)+'</div>'}
+function vGeral(){
+ var ls=fil(),at=ativos();
+ var props=ls.filter(function(l){return l.status==='proposta'});
+ var fu=props.filter(function(l){return dias(l.dataProposta)>=4});
+ var fech=ls.filter(function(l){return l.status==='fechado'});
+ var receita=fech.reduce(function(a,l){return a+(l.valor||0)},0);
+ var pot=at.length*700;
+ var html='<div class="stats">'+[['Leads ativos',at.length,''],['Propostas na rua',props.length,''],['Follow-ups pendentes',fu.length,'ambar'],['Fechados',fech.length,'verde'],['Receita fechada','R$ '+receita.toLocaleString('pt-BR'),'verde'],['Potencial (R$700/página)','R$ '+pot.toLocaleString('pt-BR'),'laranja']].map(function(s){return '<div class="stat '+s[2]+'"><div class="n">'+s[1]+'</div><div class="l">'+s[0]+'</div></div>'}).join('')+'</div>';
+ var max=Math.max.apply(null,ORDEM.map(function(s){return ls.filter(function(l){return l.status===s}).length}).concat([1]));
+ html+='<div class="painel funil"><h2>Funil do pipeline</h2>'+ORDEM.map(function(s){var n=ls.filter(function(l){return l.status===s}).length;return '<div class="linha"><span>'+NOMES[s]+'</span><div class="barra"><div class="fill" style="width:'+(n/max*100)+'%;background:'+CORES[s]+'"></div></div><b>'+n+'</b></div>'}).join('')+'</div>';
+  html+='<div class="painel"><h2>Follow-ups pendentes (4+ dias sem resposta)</h2>'+(fu.length?fu.map(function(l){return '<div class="fup-item"><b>'+esc(l.nome)+'</b><span class="dias">'+dias(l.dataProposta)+' dias</span><span style="color:var(--muted);font-size:12px">proposta em '+esc(l.dataProposta)+'</span>'+(l.whatsapp?'<a style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent-2)" href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">chamar no WhatsApp →</a>':'')+'</div>'}).join(''):'<div class="vazio">Nenhum follow-up pendente. 👌</div>')+'</div>';
+ return html}
+function vPipeline(){var por={};fil().forEach(function(l){(por[l.status]=por[l.status]||[]).push(l)});
+ return '<p class="dica-drag">Arraste um card para mudar o status — os automáticos (redesenhado, publicado, proposta) o plugin move sozinho; use o arrasto principalmente para <b>Respondeu</b> e <b>Fechado</b>.</p><div class="board">'+ORDEM.concat(['descartado']).map(function(s){var arr=por[s]||[];return '<div class="col" data-st="'+s+'" ondragover="dragSobre(event)" ondragleave="dragSai(event)" ondrop="solta(event,\''+s+'\')"><h3>'+NOMES[s]+'<span>'+arr.length+'</span></h3><div class="cards">'+(arr.length?arr.map(card).join(''):'<div class="vazio">solte aqui</div>')+'</div></div>'}).join('')+'</div>'}
+function vClientes(){var ls=fil().slice().sort(function(a,b){var x=a[sortCol]||'',y=b[sortCol]||'';return(x<y?-1:x>y?1:0)*(sortAsc?1:-1)});
+ var pp=pagSize();var total=ls.length,paginas=Math.max(1,Math.ceil(total/pp));if(pag>paginas)pag=paginas;
+ var ini=(pag-1)*pp,fim=Math.min(ini+pp,total);ls=ls.slice(ini,fim);
+ return '<div class="painel"><h2>Novo lead</h2><div class="mrow"><div><label>Nome/empresa</label><input id="novo-nome" placeholder="Empresa pública"></div><div><label>Telefone público (e-mail opcional)</label><input id="novo-contato" placeholder="(11) 99999-9999"></div></div><label>URL da fonte pública</label><input id="novo-fonte" placeholder="https://..."><button style="margin-top:10px" onclick="criarLeadVisual()">Criar lead</button> <span id="novo-msg"></span></div><div class="painel tab"><div class="twrap"><table><thead><tr>'+[['nome','Cliente'],['nota','Nota'],['avaliacoes','Aval.'],['cidade','Cidade'],['status','Status'],['valor','Valor'],['x','Contato / páginas']].map(function(c){return '<th onclick="ordenar(\''+c[0]+'\')">'+c[1]+(sortCol===c[0]?(sortAsc?' ↑':' ↓'):'')+'</th>'}).join('')+'</tr></thead><tbody>'+ls.map(function(l){return '<tr><td><b>'+l.nome+'</b><div style="color:var(--muted);font-size:11.5px">'+(l.email||'sem e-mail')+'</div></td><td>'+(l.nota?'★ '+l.nota:'—')+'</td><td>'+(l.avaliacoes||'—')+'</td><td>'+(l.cidade||'—')+'</td><td>'+pillStatus(l.status)+'</td><td>'+(l.valor?'R$ '+l.valor.toLocaleString('pt-BR'):'—')+'</td><td>'+acoes(l)+'</td></tr>'}).join('')+'</tbody></table></div><div class="pagin"><span class="info">Mostrando '+(total?ini+1:0)+'–'+fim+' de '+total+' clientes</span></div></div>'}
+function irPag(n){pag=n;render()}
+function mudaPorPag(v){porPag=v==='auto'?'auto':parseInt(v);pag=1;render()}
+function vSites(){var ls=fil().filter(function(l){return['redesenhado','publicado','proposta','respondeu','fechado'].indexOf(l.status)>=0});
+ return ls.length?'<div class="sites-grid">'+ls.map(function(l){
+   var pg='sites/'+esc(l.slug)+'/'+esc(l.slug)+'.html';
+   var prim=/^https?:\/\//i.test(String(l.urlNova||''))?'<a class="prim" href="'+esc(l.urlNova)+'" target="_blank" rel="noopener">Ver no ar ↗</a>':'<a class="prim" href="'+pg+'" target="_blank">Ver página</a>';
+  var ic=[];
+   if(/^https?:\/\//i.test(String(l.siteAntigo||'')))ic.push('<a href="'+esc(l.siteAntigo)+'" target="_blank" rel="noopener" title="site antigo do cliente">antigo</a>');
+   if(l.urlNova)ic.push('<a href="'+pg+'" target="_blank" title="versão local">local</a>');
+   if(/^\d{6,20}$/.test(String(l.whatsapp||'')))ic.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">whatsapp</a>');
+   if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||'')))ic.push('<a href="mailto:'+encodeURIComponent(l.email)+'">e-mail</a>');
+   ic.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+jsArg(l.slug)+'\'));return false">✎ dados</a>');
+   ic.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+jsArg(l.slug)+'\'));return false">✕</a>');
+   return '<div class="site-card"><div class="prev"><iframe src="'+pg+'" loading="lazy"></iframe></div><div class="info"><div class="s-head"><span class="s-nm">'+esc(l.nome)+'</span>'+pillStatus(l.status)+'</div><div class="s-sub">'+[l.nicho,l.cidade,(l.nota?'★ '+esc(l.nota)+' ('+esc(l.avaliacoes)+')':null)].filter(Boolean).map(esc).join(' · ')+'</div><div class="s-main">'+prim+'<a class="sec" href="sites/'+esc(l.slug)+'/'+esc(l.slug)+'-editor.html" target="_blank">Editar site</a></div><div class="s-icons">'+ic.join('')+'</div></div></div>'
+ }).join('')+'</div>':'<div class="painel vazio">Nenhum preview revisado ainda. Crie e revise um preview na Central comercial.</div>'}
+function vFollowup(){var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=4});
+ return '<div class="painel"><h2>Propostas aguardando follow-up</h2>'+(fu.length?fu.map(card).join(''):'<div class="vazio">Nenhum follow-up pendente.</div>')+'</div>'}
+function abrirContrato(slug,nome){document.getElementById('doc-titulo').textContent='Contrato — '+nome;document.getElementById('doc-frame').src='sites/'+slug+'/contrato-'+slug+'.html';document.getElementById('doc-bg').classList.add('aberto')}
+function fecharDoc(){document.getElementById('doc-bg').classList.remove('aberto');document.getElementById('doc-frame').src='about:blank'}
+function printDoc(){var f=document.getElementById('doc-frame');try{f.contentWindow.focus();f.contentWindow.print()}catch(e){window.open(f.src,'_blank');alert('Abri o contrato em nova aba — use Ctrl+P para imprimir/salvar PDF.')}}
+function pillCt(st){st=st||'pendente';return '<span class="pill ct-'+st+'">'+st.charAt(0).toUpperCase()+st.slice(1)+'</span>'}
+function vContratos(){var ls=fil().filter(function(l){return l.status==='fechado'});
+ if(!ls.length)return '<div class="painel vazio">Nenhum cliente fechado ainda. Quando fechar, arraste o card pra "Fechado" e peça ao Codex: /contrato [cliente].</div>';
+ return '<div class="painel" style="overflow-x:auto"><table><thead><tr><th>Cliente</th><th>Valor</th><th>Manutenção</th><th>Contrato</th><th>Data</th><th>Pago</th><th>Ações</th></tr></thead><tbody>'+ls.map(function(l){
+  var doc='sites/'+l.slug+'/contrato-'+l.slug+'.html';
+   var acao=(l.contratoStatus&&l.contratoStatus!=='pendente')?'<a href="#" class="btn-ct ver" onclick="abrirContrato(decodeURIComponent(\''+jsArg(l.slug)+'\'),decodeURIComponent(\''+jsArg(l.nome)+'\'));return false" title="abrir a folha do contrato aqui no painel">👁 Ver contrato</a><a href="sites/'+esc(l.slug)+'/contrato-'+esc(l.slug)+'.docx" download class="btn-ct baixar" title="baixa o Word travado que vai pro cliente">⬇ Baixar .docx</a>'+(l.contratoStatus==='assinado'?'<a href="sites/'+esc(l.slug)+'/contrato-'+esc(l.slug)+'-assinado.docx" download class="btn-ct ass">✓ Assinado</a>':'')+'':'<span style="color:var(--muted);font-size:12px">peça /contrato ao Codex</span>';
+   return '<tr><td><b>'+esc(l.nome)+'</b></td><td>'+(l.valor?'R$ '+l.valor.toLocaleString('pt-BR'):'—')+'</td><td>'+(l.manutencao?'R$ '+l.manutencao.toLocaleString('pt-BR')+'/mês':'—')+'</td><td><select class="mini" onchange="salvarOv(decodeURIComponent(\''+jsArg(l.slug)+'\'),{contratoStatus:this.value})">'+['pendente','enviado','assinado'].map(function(cs){return '<option value="'+cs+'"'+((l.contratoStatus||'pendente')===cs?' selected':'')+'>'+cs+'</option>'}).join('')+'</select></td><td>'+esc(l.contratoEm||'—')+'</td><td><input type="checkbox" class="fin-check" '+(l.pago?'checked':'')+' onchange="salvarOv(decodeURIComponent(\''+jsArg(l.slug)+'\'),{pago:this.checked?1:0})"></td><td>'+acao+'</td></tr>'
+ }).join('')+'</tbody></table></div>'}
+function vFinanceiro(){var ls=fil().filter(function(l){return l.status==='fechado'});
+ var recebido=ls.filter(function(l){return l.pago}).reduce(function(a,l){return a+(l.valor||0)},0);
+ var areceber=ls.filter(function(l){return !l.pago}).reduce(function(a,l){return a+(l.valor||0)},0);
+ var mrr=ls.reduce(function(a,l){return a+(l.manutencao||0)},0);
+ var fmt=function(n){return 'R$ '+n.toLocaleString('pt-BR')};
+ var html='<div class="stats">'+[['Recebido',fmt(recebido),'verde'],['A receber',fmt(areceber),'ambar'],['Manutenções (MRR)',fmt(mrr)+'/mês','laranja'],['Projeção 12 meses',fmt(recebido+areceber+mrr*12),'verde']].map(function(x){return '<div class="stat '+x[2]+'"><div class="n">'+x[1]+'</div><div class="l">'+x[0]+'</div></div>'}).join('')+'</div>';
+  html+='<div class="painel" style="overflow-x:auto"><h2>Fechamentos</h2>'+(ls.length?'<table><thead><tr><th>Cliente</th><th>Valor</th><th>Pago</th><th>Manutenção/mês</th><th>Contrato</th></tr></thead><tbody>'+ls.map(function(l){return '<tr><td><b>'+esc(l.nome)+'</b></td><td>'+(l.valor?fmt(l.valor):'—')+'</td><td><input type="checkbox" class="fin-check" '+(l.pago?'checked':'')+' onchange="salvarOv(decodeURIComponent(\''+jsArg(l.slug)+'\'),{pago:this.checked?1:0})"></td><td>'+(l.manutencao?fmt(l.manutencao):'—')+'</td><td>'+pillCt(l.contratoStatus)+'</td></tr>'}).join('')+'</tbody></table>':'<div class="vazio">Sem fechamentos ainda — a projeção começa no primeiro card arrastado pra Fechado.</div>')+'</div>';
+ html+='<div class="painel"><h2>Como o financeiro se alimenta</h2><p style="font-size:13px;color:var(--muted);margin:0">Valor e manutenção entram quando você fecha (drag no kanban ou ✎ dados). "Pago" você marca aqui com um clique. O contrato muda pra "enviado" quando o Codex gera via /contrato — e pra "assinado" quando você marcar.</p></div>';
+ return html}
+var CFG_CAMPOS=[['nome','Nome completo / razão social'],['cpfCnpj','CPF ou CNPJ'],['endereco','Endereço (rua, nº, bairro)'],['cidadeUf','Cidade/UF'],['email','E-mail'],['whatsapp','WhatsApp (55DDDnúmero)']];
+function vConfig(){
+ var db=MODE==='db';
+ var campos=CFG_CAMPOS.map(function(c){return '<div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:12px 0 4px">'+c[1]+'</label><input id="cfg-'+c[0]+'" value="'+((CFG[c[0]]||'').replace(/"/g,'&quot;'))+'" '+(db?'':'disabled')+' style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;font-family:var(--sans);color:var(--ink);background:var(--surface)"></div>'}).join('');
+ var vpsOk=vpsDisponivel(),vpsStatus=vpsOk?'Oferta ativa':'Aguardando configuração';
+ var vpsCampos='<div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:12px 0 4px">Nome da oferta</label><input id="vps-offer_name" value="'+((VPS.offer_name||'').replace(/"/g,'&quot;'))+'" '+(db?'':'disabled')+' style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px"></div><div><label>Descrição curta aprovada</label><textarea id="vps-offer_description" rows="2" '+(db?'':'disabled')+'>'+((VPS.offer_description||'').replace(/</g,'&lt;'))+'</textarea></div><div class="mrow"><div><label>Preço oficial (R$)</label><input id="vps-offer_price" type="number" min="0" step="0.01" value="'+(VPS.offer_price||'')+'" '+(db?'':'disabled')+'></div><div><label>Disponibilidade</label><select id="vps-enabled" '+(db?'':'disabled')+'><option value="0"'+(VPS.enabled?'':' selected')+'>Desabilitada</option><option value="1"'+(VPS.enabled?' selected':'')+'>Ativa</option></select></div></div><div><label>URL oficial HTTPS do checkout</label><input id="vps-checkout_url" type="url" value="'+((VPS.checkout_url||'').replace(/"/g,'&quot;'))+'" '+(db?'':'disabled')+' style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px"></div>';
+ return '<div class="painel" style="max-width:640px"><h2>Meus dados — quem assina os contratos</h2><p style="font-size:13px;color:var(--muted);margin:0 0 6px">Preencha uma vez e todo contrato gerado pelo /contrato já sai com os seus dados de CONTRATADO(A) completos. Fica salvo no prospector-config.json, no seu computador.</p>'+campos+'<div style="margin-top:18px;display:flex;gap:10px;align-items:center"><button '+(db?'':'disabled')+' onclick="salvarCfg()" style="border:0;border-radius:10px;padding:11px 22px;font-size:13.5px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff">Salvar meus dados</button><span id="cfg-ok" style="color:var(--ok);font-weight:700;font-size:13px;display:none">salvo ✓</span>'+(db?'':'<span style="color:var(--warn);font-size:12.5px;font-weight:600">abra pelo iniciar-dashboard.bat para editar — ou dite os dados ao Codex no /setup</span>')+'</div></div>'+
+ '<div class="painel" style="max-width:640px"><h2>Oferta DattaVPS <span class="pill" style="margin-left:8px">'+vpsStatus+'</span></h2><p style="font-size:13px;color:var(--muted);margin:0">O CTA aparece somente em leads indicados para DattaVPS/ambos quando esta oferta estiver ativa. Apresentação e clique ficam registrados separadamente. O clique não confirma pagamento, provisionamento ou entrega.</p>'+vpsCampos+'<div style="margin-top:18px;display:flex;gap:10px;align-items:center"><button '+(db?'':'disabled')+' onclick="salvarVps()" style="border:0;border-radius:10px;padding:11px 22px;font-size:13.5px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff">Salvar oferta</button><span id="vps-ok" style="font-size:13px;font-weight:700"></span></div></div>'+
+ '<div class="painel" style="max-width:640px"><h2>Publicação e credenciais</h2><p style="font-size:13px;color:var(--muted);margin:0">A publicação usa o fluxo /publicar com ChatGPT Sites. Dados de acesso permanecem fora da interface e do repositório.</p></div>'+
+ '<div class="painel" style="max-width:640px"><h2>E os dados do cliente?</h2><p style="font-size:13px;color:var(--muted);margin:0">CPF/CNPJ e endereço do cliente entram quando ele fechar: peça pelo WhatsApp e, após receber autorização, (1) cole a resposta para o Codex no /contrato ou (2) preencha no ✎ dados do card. O que faltar sai como "preencher" na minuta.</p></div>'}
+function salvarCfg(){var body={};CFG_CAMPOS.forEach(function(c){body[c[0]]=document.getElementById('cfg-'+c[0]).value||''});
+ fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({contratante:body})}).then(function(){CFG=body;var ok=document.getElementById('cfg-ok');ok.style.display='inline';setTimeout(function(){ok.style.display='none'},2000)})}
+function salvarVps(){var body={offer_name:document.getElementById('vps-offer_name').value.trim(),offer_description:document.getElementById('vps-offer_description').value.trim(),offer_price:document.getElementById('vps-offer_price').value,checkout_url:document.getElementById('vps-checkout_url').value.trim(),enabled:document.getElementById('vps-enabled').value==='1'};var out=document.getElementById('vps-ok');fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({dattavps:body})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.erro||'Não foi possível salvar');return j})}).then(function(){VPS=body;render()}).catch(function(e){out.style.color='var(--danger)';out.textContent=e.message})}
+function ordenar(c){if(c==='x')return;if(sortCol===c)sortAsc=!sortAsc;else{sortCol=c;sortAsc=true}pag=1;render()}
+var cmpSel=null;
+var dsPreviewEditId=null;
+var dsPreviewDetail=null;
+function dsCreatePreview(){var lead=document.getElementById('preview-lead').value.trim();if(!lead){alert('Informe um lead existente.');return}dsPost('/api/previews',{lead_slug:lead,kind:'redesign'})}
+function dsSelectPreview(id){dsPreviewEditId=id;fetch('/api/previews/'+id+'/data').then(function(r){return r.json()}).then(function(x){dsPreviewDetail=x;render()})}
+function dsSavePreview(){var id=dsPreviewEditId;if(!id)return;fetch('/api/previews/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:document.getElementById('preview-title').value,body:document.getElementById('preview-body').value,cta:document.getElementById('preview-cta').value,contact:document.getElementById('preview-contact').value})}).then(function(r){return r.json()}).then(function(x){if(x.error)alert(x.error);else dsLoad()})}
+function vPreviewWorkspace(){var previews=DS.previews||[], p=previews.filter(function(x){return x.id===dsPreviewEditId})[0], detail=dsPreviewDetail||{};var list=previews.map(function(x){return '<button onclick="dsSelectPreview(\''+x.id+'\')">editar '+esc(x.lead_slug)+'</button> <a href="'+esc(x.url)+'" target="_blank">abrir ↗</a> <a href="/api/previews/'+esc(x.id)+'/editor" target="_blank">editor visual ↗</a>'}).join(' · ');var editor=p?'<div class="painel"><h2>Editor de preview <small style="color:var(--accent)">REVISÃO HUMANA</small></h2><p style="font-size:12px;color:var(--muted)">O editor visual reutiliza a camada original do Prospector e exporta HTML limpo. A revisão abaixo atualiza somente este preview persistido.</p><p><a href="/api/previews/'+esc(p.id)+'/editor" target="_blank">Abrir editor visual original ↗</a></p><label>Título</label><input id="preview-title" value="'+esc(detail.lead_slug||p.lead_slug)+'"><label>Corpo</label><textarea id="preview-body" rows="5">Prévia revisada pelo operador.</textarea><div class="mrow"><div><label>CTA</label><input id="preview-cta" value="Fale conosco"></div><div><label>Contato público</label><input id="preview-contact" value=""></div></div><button onclick="dsSavePreview()">Salvar revisão</button><p style="font-size:12px;color:var(--muted)">Somente conteúdo revisado pelo operador é publicado no preview local.</p></div>':'';return '<div class="painel"><h2>Preview local assistido</h2><div class="mrow"><div><label>Lead</label><input id="preview-lead" list="preview-leads" placeholder="slug existente"><datalist id="preview-leads">'+leads.map(function(l){return '<option value="'+esc(l.slug)+'">'+esc(l.nome)+'</option>'}).join('')+'</datalist></div><div style="align-self:end"><button onclick="dsCreatePreview()">Gerar preview factual</button></div></div><div style="margin-top:10px">'+(list||'<small>Nenhum preview local ainda.</small>')+'</div></div>'+editor}
+function vComparador(){var previewSlugs={};(DS.previews||[]).forEach(function(p){if(p.lead_slug)previewSlugs[p.lead_slug]=true});var ls=fil().filter(function(l){return l.slug&&previewSlugs[l.slug]});
+ if(!ls.length)return vPreviewWorkspace()+'<div class="painel"><div class="vazio">Sem preview ainda — gere uma demonstração factual acima, revise-a no editor e o antes/depois aparecerá aqui.</div></div>';
+ if(!cmpSel||!ls.some(function(l){return l.slug===cmpSel}))cmpSel=ls[0].slug;
+ var l=ls.filter(function(x){return x.slug===cmpSel})[0];
+ var antiga=l.siteAntigo?((l.siteAntigo.indexOf('http')===0?l.siteAntigo:'https://'+l.siteAntigo)):null;
+ var preview=(DS.previews||[]).filter(function(p){return p.lead_slug===l.slug})[0];
+ var nova=preview?preview.url:'sites/'+l.slug+'/'+l.slug+'.html';
+  return '<div class="cmp-tabs">'+ls.map(function(x){return '<button class="'+(x.slug===cmpSel?'on':'')+'" onclick="cmpSel=\''+jsArg(x.slug)+'\';render()">'+esc(x.nome)+'</button>'}).join('')+'</div>'
+  +'<div class="cmp-grid"><div class="cmp-col"><div class="cab antes">Antes — site atual'+(antiga?' · <a href="'+esc(antiga)+'" target="_blank" rel="noopener" style="color:inherit">abrir ↗</a>':'')+'</div>'+(antiga?'<iframe src="'+esc(antiga)+'" loading="lazy"></iframe>':'<div class="vazio" style="padding:30px">Sem URL do site antigo registrada.</div>')+'</div>'
+  +'<div class="cmp-col"><div class="cab depois">Depois — '+(preview?'preview local persistido':'nova versão')+' · <a href="'+esc(nova)+'" target="_blank" rel="noopener" style="color:inherit">abrir ↗</a></div><iframe src="'+esc(nova)+'"></iframe></div></div>'
+ +'<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Alguns sites antigos bloqueiam visualização embutida — se o lado "Antes" ficar em branco, use o link "abrir ↗".'+(preview?' <a href="/api/comparators/'+esc(l.slug)+'" target="_blank">Abrir comparador original ↗</a>':'')+'</div>'+vPreviewWorkspace()}
+var DS={products:[],proposals:[],emails:[],orders:[],checkouts:[],payments:[],contracts:[],handoffs:[],commissions:[],previews:[],qualifications:[],diagnoses:[],socialAudits:[],financial:{},timeline:[],settings:{}};
+var dsEmailEditId=null;
+var dsProposalEditId=null;
+ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(x){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]})}
+ function jsArg(v){return encodeURIComponent(String(v==null?'':v)).replace(/'/g,'%27')}
+function money(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+function dsLoad(){return Promise.all(['products','proposals','emails','orders','checkouts','payments','contracts','handoffs','commissions','financial','timeline','settings','previews','qualifications','diagnoses'].map(function(n){return fetch('/api/'+n).then(function(r){return r.json()}).then(function(x){DS[n]=x})}),fetch('/api/social-audits').then(function(r){return r.json()}).then(function(x){DS.socialAudits=x})).then(render).catch(function(){})}
+function dsPost(path,body){return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}).then(function(r){return r.json()}).then(function(x){if(x.error||x.erro)alert(x.error||x.erro);return dsLoad()})}
+function dsCreateProposal(){var lead=document.getElementById('ws-lead').value.trim(),product=document.getElementById('ws-product').value,price=document.getElementById('ws-price').value;if(!lead){document.getElementById('ws-msg').textContent='Informe o slug de um lead existente.';return}dsPost('/api/proposals',{lead_slug:lead,product_id:product,negotiated_price:price===''?null:Number(price)})}
+function dsSelectProposal(id){dsProposalEditId=id;render()}
+function dsSaveProposal(){var id=dsProposalEditId;if(!id)return;fetch('/api/proposals/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({negotiated_price:Number(document.getElementById('proposal-price').value),terms:document.getElementById('proposal-terms').value,valid_days:Number(document.getElementById('proposal-validity').value)})}).then(function(r){return r.json()}).then(function(x){if(x.error)alert(x.error);else dsLoad()})}
+function dsEmail(proposal){var lead=(DS.proposals.filter(function(p){return p.id===proposal})[0]||{}).lead_slug;dsPost('/api/emails',{lead_slug:lead,proposal_id:proposal,subject:'Proposta personalizada para revisão',body:'Olá, preparei uma proposta factual para sua revisão humana.'})}
+function dsSelectEmail(id){dsEmailEditId=id;render()}
+function dsSaveEmail(){var id=dsEmailEditId;if(!id)return;fetch('/api/emails/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({subject:document.getElementById('email-subject').value,body:document.getElementById('email-body').value})}).then(function(r){return r.json()}).then(function(x){if(x.error)alert(x.error);else dsLoad()})}
+function dsTransitionEmail(id,status){dsPost('/api/emails/'+id+'/transition',{status:status,fixture:status})}
+function dsOrder(id){dsPost('/api/orders',{proposal_id:id})}
+function dsCheckout(id,status){dsPost('/api/orders/'+id+'/checkout',status?{result:status}:{})}
+function dsPayment(id,status){dsPost('/api/orders/'+id+'/payment',{status:status})}
+function dsContract(id){dsPost('/api/orders/'+id+'/contract',{})}
+function dsContractState(id,status){dsPost('/api/contracts/'+id+'/transition',{status:status})}
+function dsOpenContract(id){document.getElementById('doc-titulo').textContent='Minuta de contrato local';document.getElementById('doc-frame').src='/api/contracts/'+id+'/html';document.getElementById('doc-bg').classList.add('aberto')}
+function dsHandoff(id,status){dsPost('/api/orders/'+id+'/handoff',{status:status})}
+function vWorkspace(){var props=DS.proposals||[], emails=DS.emails||[], orders=DS.orders||[];var productOptions=(DS.products||[]).filter(function(p){return p.active}).map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'}).join('');
+ return '<div class="painel"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><h2 style="margin-right:auto">Central comercial <small style="color:var(--accent)">MODO DEMONSTRAÇÃO</small></h2><button onclick="dsLoad()">↻ Atualizar</button></div><div class="mrow"><div><label>Slug do lead</label><input id="ws-lead" list="ws-leads" placeholder="lead existente"><datalist id="ws-leads">'+leads.map(function(l){return '<option value="'+esc(l.slug)+'">'+esc(l.nome)+'</option>'}).join('')+'</datalist></div><div><label>Produto</label><select id="ws-product">'+productOptions+'</select></div><div><label>Preço negociado</label><input id="ws-price" type="number" min="0" step="0.01" placeholder="preço-base"></div></div><button onclick="dsCreateProposal()">+ Criar proposta</button> <span id="ws-msg"></span><div class="twrap"><table><thead><tr><th>Proposta</th><th>Lead</th><th>Valores</th><th>Validade</th><th>E-mail</th><th>Artefatos</th><th>Pedido</th></tr></thead><tbody>'+props.map(function(p){var es=emails.filter(function(e){return e.proposal_id===p.id});var o=orders.filter(function(x){return x.lead_slug===p.lead_slug&&x.product_id===p.product_id})[0];var a=p.artifacts&&typeof p.artifacts==='object'?p.artifacts:{},previews=Array.isArray(a.preview_ids)?a.preview_ids:[],diagnoses=Array.isArray(a.diagnosis_ids)?a.diagnosis_ids:[],social=Array.isArray(a.social_audit_ids)?a.social_audit_ids:[];var artifacts=(previews.length?previews.map(function(x){return '<a href="/api/previews/'+esc(x)+'" target="_blank">preview ↗</a>'}).join(' '):'')+(a.comparator?' <a href="/api/comparators/'+esc(p.lead_slug)+'" target="_blank">comparador ↗</a>':'')+(diagnoses.length?' <small>diagnóstico: '+esc(diagnoses.join(', '))+'</small>':'')+(social.length?' <small>social: '+esc(social.join(', '))+'</small>':'')||'<small>sem artefatos</small>';return '<tr><td><b>'+esc(p.product_id)+'</b><br><small>v'+esc(p.version)+' · '+esc(p.status)+'</small><br><button onclick="dsSelectProposal(\''+p.id+'\')">editar</button></td><td>'+esc(p.lead_slug)+'</td><td>base '+money(p.base_price)+'<br>neg. '+money(p.negotiated_price)+' · desconto '+money(p.discount)+' · margem '+money(p.margin)+'</td><td>'+esc(p.valid_until)+'</td><td><button onclick="dsEmail(\''+p.id+'\')">rascunho</button> '+es.map(function(e){return '<button onclick="dsSelectEmail(\''+e.id+'\')">editar</button><button onclick="dsTransitionEmail(\''+e.id+'\',\''+(e.status==='draft'?'reviewed':e.status==='reviewed'?'approved':e.status==='approved'?'sent_simulated':'positive_reply')+'\')">'+esc(e.status)+'</button>'}).join(' ')+'</td><td>'+artifacts+'</td><td>'+ (o?'<button onclick="dsCheckout(\''+o.id+'\')">checkout</button>':'<button onclick="dsOrder(\''+p.id+'\')">criar</button>')+'</td></tr>'}).join('')+'</tbody></table></div></div>'+vProposalEditor()+vEmailEditor()+vOrders()}
+function vProposalEditor(){var p=(DS.proposals||[]).filter(function(x){return x.id===dsProposalEditId})[0];if(!p)return '';return '<div class="painel"><h2>Editar proposta <small style="color:var(--accent)">v'+esc(p.version)+' · MODO DEMONSTRAÇÃO</small></h2><p>Preço-base '+money(p.base_price)+' · desconto '+money(p.discount)+' · margem '+money(p.margin)+'</p><div class="mrow"><div><label>Preço negociado</label><input id="proposal-price" type="number" min="0" step="0.01" value="'+esc(p.negotiated_price)+'"></div><div><label>Validade (dias)</label><input id="proposal-validity" type="number" min="1" value="7"></div><div><label>Condições</label><input id="proposal-terms" value="'+esc(p.terms)+'"></div></div><button onclick="dsSaveProposal()">Salvar nova versão</button></div>'}
+var dsProposalEditorBase=vProposalEditor;
+vProposalEditor=function(){var p=(DS.proposals||[]).filter(function(x){return x.id===dsProposalEditId})[0], html=dsProposalEditorBase();if(!p||!p.artifacts||!Array.isArray(p.artifacts.preview_ids)||!p.artifacts.preview_ids.length)return html;return html.slice(0,-6)+'<p><a href="/api/proposals/'+esc(p.id)+'/cover" target="_blank">Abrir capa de proposta ↗</a></p></div>'}
+function vEmailEditor(){var e=(DS.emails||[]).filter(function(x){return x.id===dsEmailEditId})[0];if(!e)return '';var history=(DS.timeline||[]).filter(function(x){return x.lead_slug===e.lead_slug&&x.event.indexOf('email.')===0}).map(function(x){return '<li>'+esc(x.event)+' · '+esc(x.created_at)+'</li>'}).join('')||'<li>Sem eventos.</li>';return '<div class="painel"><h2>Central de e-mail <small style="color:var(--accent)">MODO DEMONSTRAÇÃO</small></h2><p><b>Para:</b> '+esc(e.recipient||'não informado')+' · <b>Status:</b> '+esc(e.status)+' · <b>Tentativas:</b> '+e.attempt+'</p><label>Assunto</label><input id="email-subject" value="'+esc(e.subject)+'"><label>Preview / corpo</label><textarea id="email-body" rows="8">'+esc(e.body)+'</textarea><div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button onclick="dsSaveEmail()">Salvar rascunho</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'reviewed\')">Enviar para revisão</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'approved\')">Aprovar</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'sent_simulated\')">Simular envio</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'positive_reply\')">Resposta positiva</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'negative_reply\')">Resposta negativa</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'bounce\')">Falha/bounce</button> <button onclick="dsTransitionEmail(\''+e.id+'\',\'no_reply\')">Sem resposta / follow-up</button></div><h3 style="margin-top:16px">Histórico local</h3><ul style="margin:0;padding-left:18px">'+history+'</ul></div>'}
+function vOrders(){var orders=DS.orders||[];return '<div class="painel"><h2>Pedidos, checkout, pagamento e handoff</h2><div class="twrap"><table><thead><tr><th>Pedido</th><th>Produto / valor</th><th>Checkout</th><th>Pagamento</th><th>Contrato</th><th>Handoff</th></tr></thead><tbody>'+orders.map(function(o){var ck=(DS.checkouts||[]).filter(function(x){return x.order_id===o.id})[0],pay=(DS.payments||[]).filter(function(x){return x.order_id===o.id})[0],ct=(DS.contracts||[]).filter(function(x){return x.order_id===o.id})[0],h=(DS.handoffs||[]).filter(function(x){return x.order_id===o.id})[0];var contractCell=ct?esc(ct.status)+' <button onclick="dsOpenContract(\''+ct.id+'\')">ver minuta</button><button onclick="dsContractState(\''+ct.id+'\',\'sent_simulated\')">enviar</button><button onclick="dsContractState(\''+ct.id+'\',\'signed\')">assinar</button><button onclick="dsContractState(\''+ct.id+'\',\'refused\')">recusar</button><button onclick="dsContractState(\''+ct.id+'\',\'cancelled\')">cancelar</button>':'<button onclick="dsContract(\''+o.id+'\')">gerar</button>';var handoffCell=h?esc(h.status)+' <small>tentativas: '+Number(h.retry_count||0)+'</small> <button onclick="dsHandoff(\''+o.id+'\',\'delivered\')">entregar</button>'+(h.status==='failed'?'<button onclick="dsHandoff(\''+o.id+'\',\'sent\')">retry</button>':'<button onclick="dsHandoff(\''+o.id+'\',\'failed\')">falhar</button>'):'—';return '<tr><td><small>'+esc(o.id)+'</small><br>'+esc(o.lead_slug)+'</td><td>'+esc(o.product_id)+'<br>'+money(o.negotiated_price)+'</td><td>'+(ck?esc(ck.status):'<button onclick="dsCheckout(\''+o.id+'\')">abrir</button>')+' '+(ck&&ck.status==='open'?'<button onclick="dsCheckout(\''+o.id+'\',\'completed\')">concluir</button><button onclick="dsCheckout(\''+o.id+'\',\'abandoned\')">abandonar</button><button onclick="dsCheckout(\''+o.id+'\',\'expired\')">expirar</button>':'')+'</td><td>'+(pay?esc(pay.status):'')+' <button onclick="dsPayment(\''+o.id+'\',\'approved\')">aprovar</button><button onclick="dsPayment(\''+o.id+'\',\'declined\')">recusar</button><button onclick="dsPayment(\''+o.id+'\',\'cancelled\')">cancelar</button><button onclick="dsPayment(\''+o.id+'\',\'refunded\')">reembolsar</button></td><td>'+contractCell+'</td><td>'+handoffCell+'</td></tr>'}).join('')+'</tbody></table></div></div>'}
+function vContractsLocal(){var contracts=DS.contracts||[], orders=DS.orders||[];return '<div class="painel"><h2>Contratos locais <small style="color:var(--accent)">MODO DEMONSTRAÇÃO</small></h2><p style="font-size:12px;color:var(--muted)">Minuta HTML e gerador DOCX reutilizados do Prospector. O download é produzido localmente sob demanda.</p><div class="twrap"><table><thead><tr><th>Contrato</th><th>Pedido / lead</th><th>Status</th><th>Atualizado</th><th>Ações</th></tr></thead><tbody>'+contracts.map(function(ct){var o=orders.filter(function(x){return x.id===ct.order_id})[0]||{};return '<tr><td><small>'+esc(ct.id)+'</small></td><td>'+esc(o.lead_slug||ct.order_id)+'<br>'+esc(o.product_id||'')+'</td><td>'+esc(ct.status)+'</td><td>'+esc(ct.updated_at||ct.created_at)+'</td><td><button onclick="dsOpenContract(\''+ct.id+'\')">ver minuta</button> <a href="/api/contracts/'+ct.id+'/docx" download>baixar DOCX</a> <button onclick="dsContractState(\''+ct.id+'\',\'sent_simulated\')">enviar</button> <button onclick="dsContractState(\''+ct.id+'\',\'signed\')">assinar</button> <button onclick="dsContractState(\''+ct.id+'\',\'refused\')">recusar</button> <button onclick="dsContractState(\''+ct.id+'\',\'cancelled\')">cancelar</button></td></tr>'}).join('')+'</tbody></table></div></div>'}
+function vFinanceiroLocal(){var f=DS.financial||{};return '<div class="stats">'+[['Receita',f.revenue],['Recebido',f.received],['A receber',f.receivable],['Custo',f.cost],['Margem',f.margin],['MRR',f.mrr],['Comissão',f.commission]].map(function(x){return '<div class="stat"><div class="n">'+money(x[1])+'</div><div class="l">'+x[0]+'</div></div>'}).join('')+'</div><div class="painel"><h2>Comissões</h2>'+((DS.commissions||[]).map(function(x){return '<p>'+esc(x.seller)+' — base '+money(x.base)+' · '+x.pct+'% = <b>'+money(x.amount)+'</b></p>'}).join('')||'<div class="vazio">Sem comissões.</div>')+'</div>'}
+function vTimeline(){return '<div class="painel"><h2>Timeline persistida</h2>'+((DS.timeline||[]).map(function(e){return '<div class="fup-item"><b>'+esc(e.event)+'</b><span>'+esc(e.lead_slug||'')+'</span><small>'+esc(e.created_at)+'</small></div>'}).join('')||'<div class="vazio">Sem eventos.</div>')+'</div>'}
+function dsSplit(id){return document.getElementById(id).value.split('\n').map(function(x){return x.trim()}).filter(Boolean)}
+function dsQualifyVisual(){var lead=document.getElementById('iq-lead').value;dsPost('/api/qualifications',{lead_slug:lead,facts:dsSplit('iq-facts'),hypotheses:dsSplit('iq-hypotheses'),recommendation:document.getElementById('iq-product').value,reason:document.getElementById('iq-reason').value,confidence:document.getElementById('iq-confidence').value,validation_question:document.getElementById('iq-question').value,next_action:document.getElementById('iq-next').value,owner:'Operador local'})}
+function dsDiagnoseVisual(){dsPost('/api/diagnoses',{lead_slug:document.getElementById('iq-lead').value,criteria:[{criterion:document.getElementById('id-criterion').value,observed_state:document.getElementById('id-state').value,evidence:document.getElementById('id-evidence').value,recommendation:document.getElementById('id-recommendation').value}]})}
+function dsSocialVisual(){dsPost('/api/social-audits',{lead_slug:document.getElementById('iq-lead').value,platform:document.getElementById('is-platform').value,factual_notes:document.getElementById('is-notes').value})}
+function vIntelligence(){var opts=leads.map(function(l){return '<option value="'+esc(l.slug)+'">'+esc(l.nome)+' · '+esc(l.slug)+'</option>'}).join('');return '<div class="painel"><h2>Qualificação, diagnóstico e redes sociais <small style="color:var(--accent)">MODO DEMONSTRAÇÃO</small></h2><p>Registre somente fatos observados e hipóteses explicitamente identificadas.</p><div class="mrow"><div><label>Lead</label><select id="iq-lead">'+opts+'</select></div><div><label>Produto sugerido</label><select id="iq-product"><option value="insufficient">insuficiente</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div><div><label>Confiança</label><select id="iq-confidence"><option>low</option><option>medium</option><option>high</option></select></div></div><label>Fatos observados (um por linha)</label><textarea id="iq-facts" rows="3" placeholder="CTA ausente"></textarea><label>Hipóteses a validar (uma por linha)</label><textarea id="iq-hypotheses" rows="3" placeholder="precisa validar escopo"></textarea><div class="mrow"><div><label>Motivo</label><input id="iq-reason" placeholder="baseado em fato observado"></div><div><label>Pergunta de validação</label><input id="iq-question"></div><div><label>Próxima ação</label><input id="iq-next" value="proposta"></div></div><button onclick="dsQualifyVisual()">Salvar qualificação</button><hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><div class="mrow"><div><label>Critério do diagnóstico</label><input id="id-criterion" value="CTA"></div><div><label>Estado observado</label><input id="id-state" placeholder="ausente"></div><div><label>Evidência factual</label><input id="id-evidence" placeholder="página pública observada"></div><div><label>Recomendação</label><input id="id-recommendation" placeholder="inserir CTA"></div></div><button onclick="dsDiagnoseVisual()">Registrar diagnóstico</button><div class="mrow" style="margin-top:16px"><div><label>Rede pública</label><select id="is-platform"><option>instagram</option><option>tiktok</option></select></div><div><label>Notas factuais</label><input id="is-notes" placeholder="perfil público observado"></div></div><button onclick="dsSocialVisual()">Registrar auditoria social</button><div class="twrap" style="margin-top:18px"><table><thead><tr><th>Lead</th><th>Recomendação</th><th>Confiança</th><th>Diagnóstico</th><th>Rede social</th></tr></thead><tbody>'+leads.map(function(l){var q=(DS.qualifications||[]).filter(function(x){return x.lead_slug===l.slug})[0],d=(DS.diagnoses||[]).filter(function(x){return x.lead_slug===l.slug})[0],s=(DS.socialAudits||[]).filter(function(x){return x.lead_slug===l.slug})[0];return '<tr><td><b>'+esc(l.nome)+'</b><br><button onclick="abrirEdit(\''+l.slug+'\')">editar dados</button></td><td>'+esc((q||{}).recommendation||'insuficiente')+'<br><small>'+esc((q||{}).reason||'')+'</small></td><td>'+esc((q||{}).confidence||'—')+'</td><td>'+((d&&'registrado')||'—')+'</td><td>'+((s&&esc(s.platform))||'—')+'</td></tr>'}).join('')+'</tbody></table></div></div>'}
+function dsSetting(id){var e=document.getElementById(id);return e?(e.type==='number'?Number(e.value):e.value):''}
+function dsSaveSettings(){var body={company_name:dsSetting('set-company'),seller_name:dsSetting('set-seller'),phone:dsSetting('set-phone'),whatsapp:dsSetting('set-whatsapp'),region:dsSetting('set-region'),identity:dsSetting('set-identity'),language:dsSetting('set-language'),email_provider:dsSetting('set-email-provider'),email_sender:dsSetting('set-email-sender'),email_reply_to:dsSetting('set-email-reply'),spf_status:dsSetting('set-spf'),dkim_status:dsSetting('set-dkim'),dmarc_status:dsSetting('set-dmarc'),hour_limit:dsSetting('set-hour-limit'),day_limit:dsSetting('set-day-limit'),followup_days:dsSetting('set-followup'),demo_mode:dsSetting('set-demo')==='true'};fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(){dsLoad()})}
+function vGeneralSettings(){var s=DS.settings||{};function val(k){return esc(s[k]==null?'':s[k])}return '<div class="painel"><h2>Operação local <small style="color:var(--accent)">MODO '+(s.demo_mode?'DEMO':'LOCAL')+'</small></h2><div class="mrow"><div><label>Empresa</label><input id="set-company" value="'+val('company_name')+'"></div><div><label>Vendedor</label><input id="set-seller" value="'+val('seller_name')+'"></div><div><label>Telefone</label><input id="set-phone" value="'+val('phone')+'"></div><div><label>WhatsApp</label><input id="set-whatsapp" value="'+val('whatsapp')+'"></div><div><label>Região</label><input id="set-region" value="'+val('region')+'"></div><div><label>Idioma</label><input id="set-language" value="'+val('language')+'"></div></div><div class="mrow"><div><label>Provider de e-mail</label><select id="set-email-provider"><option '+(s.email_provider==='mock'?'selected':'')+'>mock</option></select></div><div><label>Remetente</label><input id="set-email-sender" value="'+val('email_sender')+'"></div><div><label>Responder para</label><input id="set-email-reply" value="'+val('email_reply_to')+'"></div><div><label>Follow-up (dias)</label><input id="set-followup" type="number" min="1" value="'+val('followup_days')+'"></div></div><div class="mrow"><div><label>Limite/hora</label><input id="set-hour-limit" type="number" min="0" value="'+val('hour_limit')+'"></div><div><label>Limite/dia</label><input id="set-day-limit" type="number" min="0" value="'+val('day_limit')+'"></div><div><label>SPF</label><input id="set-spf" value="'+val('spf_status')+'"></div><div><label>DKIM</label><input id="set-dkim" value="'+val('dkim_status')+'"></div><div><label>DMARC</label><input id="set-dmarc" value="'+val('dmarc_status')+'"></div><div><label>Modo</label><select id="set-demo"><option value="true" '+(s.demo_mode?'selected':'')+'>DEMO</option><option value="false" '+(!s.demo_mode?'selected':'')+'>Local</option></select></div></div><button onclick="dsSaveSettings()">Salvar operação</button><p style="font-size:12px;color:var(--muted)">Provider real, senha, token e chave não são armazenados nesta POC; o adapter mock é o único provider local disponível.</p></div>'}
+function vOfferRules(){return '<div class="painel"><h2>Oferta, CTA e checkout externo</h2><p style="font-size:12px;color:var(--muted)">Informação comercial configurável. Checkout real não é aberto nem cobrado por esta POC.</p>'+DS.products.map(function(p){return '<div class="mrow" style="padding:8px 0;border-top:1px solid var(--line)"><div><b>'+esc(p.name)+'</b><input id="o-'+p.id+'-desc" value="'+esc(p.description||'')+'" placeholder="descrição aprovada"></div><div><label>CTA</label><input id="o-'+p.id+'-cta" value="'+esc(p.cta_label||'')+'" placeholder="ex.: Solicitar proposta"></div><div><label>Disponibilidade</label><select id="o-'+p.id+'-avail">'+['available','paused','prelaunch','waiting_configuration','unavailable'].map(function(x){return '<option '+(p.availability===x?'selected':'')+'>'+x+'</option>'}).join('')+'</select></div><div><label>Checkout HTTPS (opcional)</label><input id="o-'+p.id+'-url" type="url" value="'+esc(p.checkout_url||'')+'" placeholder="https://..."><button onclick="fetch(\'/api/products/'+p.id+'\',{method:\'PUT\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({description:document.getElementById(\'o-'+p.id+'-desc\').value,cta_label:document.getElementById(\'o-'+p.id+'-cta\').value,availability:document.getElementById(\'o-'+p.id+'-avail\').value,checkout_url:document.getElementById(\'o-'+p.id+'-url\').value})}).then(dsLoad)">salvar oferta</button></div></div>'}).join('')+'</div>'}
+function vConfigLocal(){var ps=(DS.products||[]).map(function(p){return '<tr><td>'+esc(p.name)+'</td><td><input id="p-'+p.id+'-price" type="number" value="'+p.public_price+'"></td><td><input id="p-'+p.id+'-cost" type="number" value="'+p.cost+'"></td><td><input id="p-'+p.id+'-commission" type="number" min="0" value="'+p.commission_pct+'"></td><td><input id="p-'+p.id+'-discount" type="number" min="0" value="'+p.max_discount_pct+'"></td><td><select id="p-'+p.id+'-currency"><option '+(p.currency==='BRL'?'selected':'')+'>BRL</option><option '+(p.currency==='USD'?'selected':'')+'>USD</option></select></td><td><input id="p-'+p.id+'-terms" value="'+esc(p.terms||'')+'" placeholder="condições"></td><td><select id="p-'+p.id+'-active"><option value="1" '+(p.active?'selected':'')+'>Ativa</option><option value="0" '+(!p.active?'selected':'')+'>Inativa</option></select></td><td><button onclick="fetch(\'/api/products/'+p.id+'\',{method:\'PUT\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({public_price:Number(document.getElementById(\'p-'+p.id+'-price\').value),base_price:Number(document.getElementById(\'p-'+p.id+'-price\').value),cost:Number(document.getElementById(\'p-'+p.id+'-cost\').value),commission_pct:Number(document.getElementById(\'p-'+p.id+'-commission\').value),max_discount_pct:Number(document.getElementById(\'p-'+p.id+'-discount\').value),currency:document.getElementById(\'p-'+p.id+'-currency\').value,terms:document.getElementById(\'p-'+p.id+'-terms\').value,active:Number(document.getElementById(\'p-'+p.id+'-active\').value)})}).then(dsLoad)">salvar</button></td></tr>'}).join('');return vGeneralSettings()+vOfferRules()+'<div class="painel"><h2>Catálogo DEMO / TESTE</h2><div class="twrap"><table><thead><tr><th>Oferta</th><th>Preço</th><th>Custo</th><th>Comissão %</th><th>Desconto máx. %</th><th>Moeda</th><th>Condições</th><th>Status</th><th></th></tr></thead><tbody>'+ps+'</tbody></table></div><button style="margin-top:12px" onclick="if(confirm(\'Resetar apenas transações DEMO?\'))dsPost(\'/api/demo/reset\',{})">Resetar dados DEMO</button></div>'}
+ vClientes=function(){var ls=fil().slice().sort(function(a,b){var x=a[sortCol]||'',y=b[sortCol]||'';return(x<y?-1:x>y?1:0)*(sortAsc?1:-1)}),pp=pagSize(),total=ls.length,paginas=Math.max(1,Math.ceil(total/pp));if(pag>paginas)pag=paginas;var ini=(pag-1)*pp,fim=Math.min(ini+pp,total);ls=ls.slice(ini,fim);return '<div class="painel"><h2>Novo lead</h2><div class="mrow"><div><label>Nome/empresa</label><input id="novo-nome" placeholder="Empresa pública"></div><div><label>Telefone público (e-mail opcional)</label><input id="novo-contato" placeholder="(11) 99999-9999"></div></div><label>URL da fonte pública</label><input id="novo-fonte" placeholder="https://..."><button style="margin-top:10px" onclick="criarLeadVisual()">Criar lead</button> <span id="novo-msg"></span></div><div class="painel tab"><div class="twrap"><table><thead><tr><th>Cliente</th><th>E-mail</th><th>Cidade</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead><tbody>'+ls.map(function(l){return '<tr><td><b>'+esc(l.nome)+'</b></td><td>'+esc(l.email||'sem e-mail')+'</td><td>'+esc(l.cidade||'—')+'</td><td>'+pillStatus(l.status)+'</td><td>'+(l.valor?'R$ '+l.valor.toLocaleString('pt-BR'):'—')+'</td><td>'+acoes(l)+'</td></tr>'}).join('')+'</tbody></table></div><div class="pagin"><span class="info">Mostrando '+(total?ini+1:0)+'–'+fim+' de '+total+' clientes</span></div></div>'}
+ function render(){nav();var views={geral:vGeral,pipeline:vPipeline,clientes:vClientes,sites:vSites,comparador:vComparador,followup:vFollowup,contratos:vContractsLocal,financeiro:vFinanceiroLocal,config:vConfigLocal,workspace:vWorkspace,timeline:vTimeline,intelligence:vIntelligence};document.getElementById('view').innerHTML=(views[view]||vGeral)()}
+var dragSlug=null;
+function dragIni(e,slug){dragSlug=slug;e.target.classList.add('arrastando');e.dataTransfer.effectAllowed='move'}
+function dragFim(e){e.target.classList.remove('arrastando')}
+function dragSobre(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('alvo')}
+function dragSai(e){e.currentTarget.classList.remove('alvo')}
+function solta(e,st){e.preventDefault();e.currentTarget.classList.remove('alvo');if(!dragSlug)return;
+ var ch={status:st};
+ if(st==='fechado'){var v=prompt('Fechou! Valor confirmado (R$):','');if(v===null||v===''||isNaN(parseFloat(v))||parseFloat(v)<=0)return;if(!confirm('Confirma manualmente o fechamento e o valor informado?'))return;ch.valor=parseFloat(v);ch.valor_fechado=parseFloat(v);ch.closingConfirmed=true}
+ if(st==='proposta'&&!leads.filter(function(l){return l.slug===dragSlug})[0].dataProposta)ch.dataProposta=new Date().toISOString().slice(0,10);
+ salvarOv(dragSlug,ch);dragSlug=null}
+document.getElementById('busca').addEventListener('input',function(){busca=this.value;pag=1;render()});
+var rsz;window.addEventListener('resize',function(){clearTimeout(rsz);rsz=setTimeout(render,150)});
+render();dsLoad();
+</script>
+
+<script>
+(function(){
+  var originalTransitionEmail = dsTransitionEmail;
+  var originalEmailEditor = vEmailEditor;
+  var originalGeneralSettings = vGeneralSettings;
+
+  window.dsQuickEmail = function(slug){
+    var lead = (leads || []).filter(function(l){ return l.slug === slug; })[0];
+    if(!lead || !lead.email || lead.email.indexOf('@') < 1){
+      alert('Este lead não possui e-mail válido cadastrado.');
+      return;
+    }
+
+    var existing = (DS.emails || []).filter(function(e){
+      return e.lead_slug === slug && ['draft','reviewed','approved','failed'].indexOf(e.status) >= 0;
+    })[0];
+
+    view = 'workspace';
+    if(existing){
+      dsEmailEditId = existing.id;
+      render();
+      return;
+    }
+
+    fetch('/api/emails', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        lead_slug: slug,
+        subject: 'Contato Datta360',
+        body: 'Olá,\n\nEdite esta mensagem antes do envio.\n\nAtenciosamente,\nDatta360'
+      })
+    }).then(function(r){
+      return r.json().then(function(data){ return {ok:r.ok,data:data}; });
+    }).then(function(result){
+      if(!result.ok || result.data.error || result.data.erro) throw new Error(result.data.error || result.data.erro || 'Não foi possível criar o rascunho.');
+      dsEmailEditId = result.data.id;
+      return dsLoad();
+    }).catch(function(error){
+      alert(error.message || 'Não foi possível abrir o e-mail no DattaSeller.');
+    });
+  };
+
+  window.dsSendRealEmail = function(emailId){
+    if(!confirm('Enviar este e-mail agora pelo Resend?')) return Promise.resolve();
+    return fetch('/api/email-send', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email_id: emailId})
+    }).then(function(r){
+      return r.json().then(function(data){ return {ok:r.ok,data:data}; });
+    }).then(function(result){
+      if(!result.ok || result.data.error) throw new Error(result.data.error || 'Falha no envio.');
+      alert('E-mail enviado pelo Resend para ' + result.data.recipient + '.');
+      return dsLoad();
+    }).catch(function(error){
+      alert(error.message || 'Falha no envio pelo Resend.');
+    });
+  };
+
+  dsTransitionEmail = function(id, status){
+    if(status === 'sent_simulated') return dsSendRealEmail(id);
+    return originalTransitionEmail(id, status);
+  };
+
+  vEmailEditor = function(){
+    var result = originalEmailEditor();
+    if(!result) return result;
+    var email = (DS.emails || []).filter(function(e){ return e.id === dsEmailEditId; })[0];
+    if(email){
+      var lead = (leads || []).filter(function(l){ return l.slug === email.lead_slug; })[0];
+      if(!email.recipient && lead && lead.email){
+        result = result.replace('<b>Para:</b> não informado', '<b>Para:</b> ' + esc(lead.email));
+      }
+    }
+    return result.replace(/<button onclick="dsTransitionEmail\('([^']+)','sent_simulated'\)">Simular envio<\/button>/g, '<button onclick="dsSendRealEmail(\'$1\')">Enviar via Resend</button>');
+  };
+
+  vGeneralSettings = function(){
+    var result = originalGeneralSettings();
+    var settings = DS.settings || {};
+    var select = '<select id="set-email-provider"><option value="mock" ' + (settings.email_provider === 'mock' ? 'selected' : '') + '>mock</option><option value="resend" ' + (settings.email_provider === 'resend' ? 'selected' : '') + '>resend</option></select>';
+    result = result.replace(/<select id="set-email-provider">.*?<\/select>/, select);
+    result = result.replace('Provider real, senha, token e chave não são armazenados nesta POC; o adapter mock é o único provider local disponível.', 'A chave do Resend permanece somente no servidor. O envio real exige revisão, aprovação e confirmação humana.');
+    return result;
+  };
+
+  document.addEventListener('click', function(event){
+    var target = event.target && event.target.closest ? event.target.closest('a[href^="mailto:"]') : null;
+    if(!target) return;
+    event.preventDefault();
+    var href = target.getAttribute('href') || '';
+    var address = decodeURIComponent(href.slice(7).split('?')[0]).trim().toLowerCase();
+    var lead = (leads || []).filter(function(l){ return String(l.email || '').trim().toLowerCase() === address; })[0];
+    if(!lead){
+      alert('Não foi possível localizar o lead deste e-mail no DattaSeller.');
+      return;
+    }
+    dsQuickEmail(lead.slug);
+  });
+})();
+</script>
+
+<style>
+#modo,#limpar-ov{display:none!important}
+.prod-alert{background:#fff7e8;border:1px solid #efd39a;border-radius:10px;padding:12px 14px;margin:0 0 16px;font-size:12.5px;color:#6d5524}
+.prod-ok{background:#edf6ef;border:1px solid #bed9c4;border-radius:10px;padding:12px 14px;margin:0 0 16px;font-size:12.5px;color:#315d39}
+.prod-error{background:#fff0ee;border:1px solid #e5b8b0;border-radius:10px;padding:18px;margin:10px 0;color:#7f2f24}
+.readonly-state{display:inline-block;padding:3px 8px;border-radius:8px;background:var(--paper);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+</style>
+<script>
+(function(){
+  function apiJson(path, options){
+    return fetch(path, options || {cache:'no-store'}).then(function(r){
+      if(r.status===401){ window.location.replace('/login'); throw new Error('Sessão expirada.'); }
+      return r.json().catch(function(){return {}}).then(function(data){
+        if(!r.ok || data.error || data.erro) throw new Error(data.error || data.erro || ('Erro HTTP '+r.status));
+        return data;
+      });
+    });
+  }
+  function fail(error){
+    var el=document.getElementById('view');
+    var upd=document.getElementById('upd');
+    if(upd) upd.textContent='sincronização indisponível';
+    if(el) el.innerHTML='<div class="prod-error"><b>CRM indisponível.</b><br>Não foi possível carregar os dados do servidor. Nenhuma alteração local foi aplicada.<br><small>'+esc((error&&error.message)||'Falha de conexão')+'</small></div>';
+  }
+  function markSynced(){
+    var upd=document.getElementById('upd');
+    if(upd) upd.textContent='sincronizado em '+new Date().toLocaleString('pt-BR');
+  }
+
+  var oldSave=salvarOv, oldDelete=deletar;
+  salvarOv=function(slug,ch){
+    if(MODE!=='db'){ alert('CRM sem conexão com o banco. A alteração não foi salva.'); return; }
+    return oldSave(slug,ch);
+  };
+  deletar=function(slug){
+    if(MODE!=='db'){ alert('CRM sem conexão com o banco. A exclusão não foi executada.'); return; }
+    return oldDelete(slug);
+  };
+  recarrega=function(){
+    return apiJson('/api/leads',{cache:'no-store'}).then(function(data){MODE='db';leads=(Array.isArray(data)?data:[]).filter(function(l){return /^[a-z0-9][a-z0-9-]{0,71}$/.test(String(l.slug||''))});return leads}).catch(function(e){fail(e);throw e});
+  };
+  dsLoad=function(){
+    var names=['products','proposals','emails','orders','checkouts','payments','contracts','handoffs','commissions','financial','timeline','settings','previews','qualifications','diagnoses'];
+    var jobs=names.map(function(n){return apiJson('/api/'+n,{cache:'no-store'}).then(function(x){DS[n]=x})});
+    jobs.push(apiJson('/api/social-audits',{cache:'no-store'}).then(function(x){DS.socialAudits=x}));
+    return Promise.all(jobs).then(function(){markSynced();render()}).catch(function(e){fail(e);throw e});
+  };
+
+  NOMES={novo:'Novo lead',redesenhado:'Qualificado',publicado:'Em preparação',proposta:'Proposta enviada',respondeu:'Em negociação',fechado:'Fechado',descartado:'Perdido'};
+
+  nav=function(){
+    var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=Number((DS.settings||{}).followup_days||4)});
+    var previewCount=((window.DS&&DS.previews)||[]).filter(function(p){return p.lead_slug}).length;
+    var itens=[['geral','Visão geral',null],['prospeccao','Prospecção',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['intelligence','Inteligência',null],['sites','Sites / Preview',previewCount],['comparador','Comparador',previewCount],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
+    if(!itens.some(function(i){return i[0]===view})) view='geral';
+    document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\''+i[0]+'\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
+    document.getElementById('titulo').textContent=itens.filter(function(i){return i[0]===view})[0][1];
+  };
+
+  var normalSetView=setView;
+  window.dsProspect=function(){var raw=document.getElementById('prospect-candidates').value, candidates;try{candidates=JSON.parse(raw)}catch(_){alert('Informe uma lista JSON de candidatos públicos.');return}apiJson('/api/prospects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:{niche:document.getElementById('prospect-niche').value,city:document.getElementById('prospect-city').value,region:document.getElementById('prospect-region').value,product:document.getElementById('prospect-product').value,search_radius_km:Number(document.getElementById('prospect-radius').value||0),target_quantity:Number(document.getElementById('prospect-target').value||0),search_limit:Number(document.getElementById('prospect-limit').value||0)},candidates:candidates})}).then(function(result){document.getElementById('prospect-result').textContent='Avaliados: '+result.evaluated+'; reconciliados: '+result.results.filter(function(x){return x.deduplicated}).length;return recarrega()}).then(dsLoad).catch(function(e){document.getElementById('prospect-result').textContent=e.message})};
+  setView=function(next){if(next!=='prospeccao')return normalSetView(next);view=next;nav();document.getElementById('view').innerHTML='<div class="painel"><h2>Pesquisa pública assistida</h2><p>Importe apenas candidatos obtidos por fontes públicas. E-mail não é obrigatório; fonte e rastreabilidade são obrigatórias. Não há scraping, envio ou contato automático.</p><div class="mrow"><div><label>Nicho</label><input id="prospect-niche"></div><div><label>Cidade</label><input id="prospect-city"></div><div><label>Região</label><input id="prospect-region"></div><div><label>Raio (km)</label><input id="prospect-radius" type="number" min="0" max="500"></div></div><div class="mrow"><div><label>Produto preferencial</label><select id="prospect-product"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div><div><label>Quantidade alvo</label><input id="prospect-target" type="number" min="1" max="100" value="10"></div><div><label>Limite de candidatos</label><input id="prospect-limit" type="number" min="1" max="25" value="25"></div></div><label>Candidatos públicos (JSON)</label><textarea id="prospect-candidates" rows="8" placeholder="[{&quot;slug&quot;:&quot;empresa-exemplo&quot;,&quot;nome&quot;:&quot;Empresa Exemplo&quot;,&quot;source_url&quot;:&quot;https://fonte-publica.exemplo&quot;,&quot;public_contact_type&quot;:&quot;telefone&quot;}]"></textarea><button onclick="dsProspect()">Salvar e deduplicar</button><p id="prospect-result"></p></div>'};
+  var oldIntelligence=vIntelligence;
+  vIntelligence=function(){return oldIntelligence()+'<div class="painel"><h2>Direção social para proposta</h2><p>Registre somente o que foi observado no perfil público. A direção criativa é uma demonstração sujeita à revisão; não publica conteúdo.</p><div class="mrow"><div><label>URL</label><input id="social-url"></div><div><label>Usuário</label><input id="social-user"></div><div><label>Bio / CTA</label><input id="social-bio"></div><div><label>Link</label><input id="social-link"></div></div><div class="mrow"><div><label>Consistência visual</label><input id="social-visual"></div><div><label>Frequência aparente</label><input id="social-frequency"></div><div><label>Recomendação</label><input id="social-recommendation"></div><div><label>Direção criativa</label><input id="social-direction"></div></div><label>Evidência pública</label><input id="social-evidence"><button onclick="dsSocialVisual()">Salvar auditoria social completa</button></div>'};
+  dsSocialVisual=function(){var g=function(id){return document.getElementById(id).value};dsPost('/api/social-audits',{lead_slug:document.getElementById('iq-lead').value,platform:document.getElementById('is-platform').value,url:g('social-url'),username:g('social-user'),bio:g('social-bio'),cta:g('social-bio'),link:g('social-link'),visual_identity:g('social-visual'),consistency_note:g('social-visual'),frequency_note:g('social-frequency'),factual_notes:g('is-notes'),recommendation:g('social-recommendation'),creative_direction:g('social-direction'),evidence:g('social-evidence')})};
+  dsCreateProposal=function(){var lead=document.getElementById('ws-lead').value.trim(),product=document.getElementById('ws-product').value,price=document.getElementById('ws-price').value;if(!lead){document.getElementById('ws-msg').textContent='Informe o slug de um lead existente.';return}var ids=function(items){return(items||[]).filter(function(x){return x.lead_slug===lead}).map(function(x){return x.id})};dsPost('/api/proposals',{lead_slug:lead,product_id:product,negotiated_price:price===''?null:Number(price),diagnosis_ids:ids(DS.diagnoses),preview_ids:ids(DS.previews),social_audit_ids:ids(DS.socialAudits),comparator:ids(DS.previews).length>0})};
+
+  acoes=function(l){
+    var a=[],slug=jsArg(l.slug);
+    if(/^\d{6,20}$/.test(String(l.whatsapp||''))) a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>');
+    if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\''+slug+'\'));return false">e-mail</a>');
+    a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
+    a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
+    return '<div class="acoes">'+a.join('')+'</div>';
+  };
+
+  vGeral=function(){
+    var ls=fil(), at=ls.filter(function(l){return l.status!=='descartado'&&l.status!=='fechado'});
+    var props=(DS.proposals||[]).filter(function(p){return p.status!=='revised'});
+    var fu=ls.filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=Number((DS.settings||{}).followup_days||4)});
+    var paidOrders=(DS.orders||[]).filter(function(o){return o.status==='paid'}), fin=DS.financial||{};
+    var html='<div class="prod-ok"><b>CRM conectado.</b> Leads, propostas, e-mails e timeline são persistidos no servidor.</div>';
+    html+='<div class="stats">'+[['Leads em andamento',at.length,''],['Propostas registradas',props.length,''],['Follow-ups pendentes',fu.length,'ambar'],['Vendas confirmadas',paidOrders.length,'verde'],['Receita registrada',money(fin.revenue||0),'verde'],['Recebido registrado',money(fin.received||0),'verde']].map(function(s){return '<div class="stat '+s[2]+'"><div class="n">'+s[1]+'</div><div class="l">'+s[0]+'</div></div>'}).join('')+'</div>';
+    var max=Math.max.apply(null,ORDEM.map(function(s){return ls.filter(function(l){return l.status===s}).length}).concat([1]));
+    html+='<div class="painel funil"><h2>Funil comercial</h2>'+ORDEM.map(function(s){var n=ls.filter(function(l){return l.status===s}).length;return '<div class="linha"><span>'+NOMES[s]+'</span><div class="barra"><div class="fill" style="width:'+(n/max*100)+'%;background:'+CORES[s]+'"></div></div><b>'+n+'</b></div>'}).join('')+'</div>';
+    html+='<div class="painel"><h2>Follow-ups pendentes</h2>'+(fu.length?fu.map(function(l){return '<div class="fup-item"><b>'+esc(l.nome)+'</b><span class="dias">'+dias(l.dataProposta)+' dias</span><span style="color:var(--muted);font-size:12px">proposta em '+esc(l.dataProposta||'')+'</span></div>'}).join(''):'<div class="vazio">Nenhum follow-up pendente.</div>')+'</div>';
+    return html;
+  };
+
+  var oldPipeline=vPipeline;
+  vPipeline=function(){
+    return oldPipeline().replace('Arraste um card para mudar o status — os automáticos (redesenhado, publicado, proposta) o plugin move sozinho; use o arrasto principalmente para <b>Respondeu</b> e <b>Fechado</b>.','Arraste os cards para atualizar o estágio comercial. O fechamento deve ser confirmado pelo fluxo comercial.');
+  };
+  var oldDrop=solta;
+  solta=function(e,st){
+    if(st==='fechado'){e.preventDefault();e.currentTarget.classList.remove('alvo');dragSlug=null;alert('Use o fluxo comercial para confirmar o fechamento.');return}
+    return oldDrop(e,st);
+  };
+
+  var oldClientes=vClientes;
+  vClientes=function(){
+    return oldClientes()
+      .replace('Nome/empresa','Nome / empresa')
+      .replace('Telefone público (e-mail opcional)','Telefone / contato')
+      .replace('URL da fonte pública','Origem / URL (opcional)')
+      .replace('Contato / páginas','Contato / ações');
+  };
+
+  vFollowup=function(){
+    var prazo=Number((DS.settings||{}).followup_days||4);
+    var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=prazo});
+    return '<div class="painel"><h2>Propostas aguardando follow-up</h2><p style="font-size:12px;color:var(--muted)">Prazo configurado: '+prazo+' dia(s).</p>'+(fu.length?fu.map(card).join(''):'<div class="vazio">Nenhum follow-up pendente.</div>')+'</div>';
+  };
+
+  ['dsOrder','dsCheckout','dsPayment','dsContractState','dsHandoff'].forEach(function(name){
+    window[name]=function(){alert('Ação de simulação desativada em produção. Use a integração real do produto/checkout.')};
+  });
+
+  vOrders=function(){
+    var orders=DS.orders||[];
+    if(!orders.length) return '<div class="painel"><h2>Pedidos e integrações</h2><div class="vazio">Nenhum pedido registrado.</div></div>';
+    return '<div class="painel"><h2>Pedidos e integrações</h2><div class="prod-alert"><b>Somente leitura:</b> checkout, pagamento, contrato e entrega dependem das integrações reais.</div><div class="twrap"><table><thead><tr><th>Pedido</th><th>Lead</th><th>Produto / valor</th><th>Checkout</th><th>Pagamento</th><th>Contrato</th><th>Entrega</th></tr></thead><tbody>'+orders.map(function(o){var ck=(DS.checkouts||[]).filter(function(x){return x.order_id===o.id})[0],pay=(DS.payments||[]).filter(function(x){return x.order_id===o.id})[0],ct=(DS.contracts||[]).filter(function(x){return x.order_id===o.id})[0],h=(DS.handoffs||[]).filter(function(x){return x.order_id===o.id})[0];return '<tr><td><small>'+esc(o.id)+'</small></td><td>'+esc(o.lead_slug)+'</td><td>'+esc(o.product_id)+'<br>'+money(o.negotiated_price)+'</td><td><span class="readonly-state">'+esc((ck&&ck.status)||'aguardando integração')+'</span></td><td><span class="readonly-state">'+esc((pay&&pay.status)||'aguardando confirmação')+'</span></td><td><span class="readonly-state">'+esc((ct&&ct.status)||'não gerado')+'</span></td><td><span class="readonly-state">'+esc((h&&h.status)||'não iniciado')+'</span></td></tr>'}).join('')+'</tbody></table></div></div>';
+  };
+
+  var oldWorkspace=vWorkspace;
+  vWorkspace=function(){
+    return oldWorkspace()
+      .replace(/<small style="color:var\(--accent\)">MODO DEMONSTRAÇÃO<\/small>/g,'')
+      .replace(/ · MODO DEMONSTRAÇÃO/g,'')
+      .replace('Pedidos, checkout, pagamento e handoff','Pedidos e integrações');
+  };
+
+  var oldFinance=vFinanceiroLocal;
+  vFinanceiroLocal=function(){
+    return '<div class="prod-alert">Indicadores operacionais do CRM. Pagamentos só são definitivos quando confirmados pelo gateway integrado.</div>'+oldFinance();
+  };
+
+  var oldGeneral=vGeneralSettings;
+  vGeneralSettings=function(){
+    return oldGeneral()
+      .replace('Operação local','Configuração da operação')
+      .replace(/MODO (DEMO|LOCAL)/g,'')
+      .replace(/<div><label>Modo<\/label><select id="set-demo">[\s\S]*?<\/select><\/div>/,'')
+      .replace('Provider real, senha, token e chave não são armazenados nesta POC; o adapter mock é o único provider local disponível.','A chave do Resend permanece somente no servidor. O envio real exige revisão, aprovação e confirmação humana.');
+  };
+
+  var oldOffer=vOfferRules;
+  vOfferRules=function(){
+    return oldOffer()
+      .replace('Oferta, CTA e checkout externo','Produtos, CTA e checkout')
+      .replace('Informação comercial configurável. Checkout real não é aberto nem cobrado por esta POC.','Configure a URL oficial de checkout de cada produto. O pagamento deve ser confirmado pelo retorno do provedor.');
+  };
+
+  var oldConfig=vConfigLocal;
+  vConfigLocal=function(){
+    return oldConfig()
+      .replace('Catálogo DEMO / TESTE','Catálogo comercial')
+      .replace(/<button style="margin-top:12px"[^>]*>Resetar dados DEMO<\/button>/,'');
+  };
+
+  var oldPost=dsPost;
+  dsPost=function(path,body){
+    return oldPost(path,body);
+  };
+
+  var side=document.querySelector('.side-foot');
+  if(side) side.textContent='CRM comercial Datta. Operação autenticada e persistida no servidor.';
+
+  recarrega().then(function(){return dsLoad()}).catch(function(){});
+})();
+</script>
+</body>
+</html>
