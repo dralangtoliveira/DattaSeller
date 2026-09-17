@@ -706,7 +706,8 @@ render();
   vConfigLocal=function(){
     return oldConfig()
       .replace('Catálogo DEMO / TESTE','Catálogo comercial')
-      .replace(/<button style="margin-top:12px"[^>]*>Resetar dados DEMO<\/button>/,'');
+      .replace(/<button[^>]*\/api\/demo\/reset[^>]*>[^<]*<\/button>/g,'')
+      .replace(/<button[^>]*>Resetar dados DEMO<\/button>/g,'');
   };
 
   var oldPost=dsPost;

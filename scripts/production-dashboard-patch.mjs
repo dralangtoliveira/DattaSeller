@@ -11,6 +11,13 @@ function replaceRequired(source, expected, replacement, description) {
   return source.replace(expected, replacement);
 }
 
+function requireTarget(source, expected, description) {
+  if (!source.includes(expected)) {
+    throw new Error(`dashboard.html sem alvo esperado: ${description}; patch de produção não aplicado`);
+  }
+  return source;
+}
+
 html = replaceRequired(
   html,
   "<title>DattaSeller — Painel comercial local</title>",
@@ -191,7 +198,8 @@ const patch = String.raw`
   vConfigLocal=function(){
     return oldConfig()
       .replace('Catálogo DEMO / TESTE','Catálogo comercial')
-      .replace(/<button style="margin-top:12px"[^>]*>Resetar dados DEMO<\/button>/,'');
+      .replace(/<button[^>]*\/api\/demo\/reset[^>]*>[^<]*<\/button>/g,'')
+      .replace(/<button[^>]*>Resetar dados DEMO<\/button>/g,'');
   };
 
   var oldPost=dsPost;
@@ -207,6 +215,8 @@ const patch = String.raw`
 </script>`;
 
 if (!html.includes("</body>")) throw new Error("dashboard.html sem </body>; patch de produção não aplicado");
+// O controle de reset da POC é removido em runtime; o alvo precisa existir no build para o patch não falhar em silêncio.
+html = requireTarget(html, "/api/demo/reset", "botão de reset DEMO da POC");
 html = html.replace("</body>", `${patch}\n</body>`);
 writeFileSync(target, html, "utf8");
 console.log(`Dashboard ajustado para CRM de produção: ${target}`);
