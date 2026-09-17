@@ -1,6 +1,10 @@
 import { Resend } from "resend";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resendConfigurationError } from "@/lib/email/provider";
+// @ts-expect-error helper is deliberately exercised by node:test without a build step.
+import { buildFollowUpDraft, canScheduleFollowUp } from "@/lib/email/follow-up.js";
+// @ts-expect-error helper is deliberately exercised by node:test without a build step.
+import { contractDocxFilename, contractDocxMime, renderContractDocx } from "@/lib/contracts/docx.js";
 import { canGenerateContract, canSoftDeleteLead, firstDisallowedKey, isSafeLeadSlug, LEAD_INPUT_KEYS, sellerName, SOCIAL_AUDIT_INPUT_KEYS } from "@/lib/hardening/guards";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { duplicateOf, isPublicHttpUrl, normalizeEmail, normalizePhone, normalizeQualification, normalizeUrl } from "@/lib/prospector.js";
@@ -39,6 +43,25 @@ async function settings(db: Db) {
   if (error) throw error;
   return Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
 }
+async function followUp(db: Db, emailId: string) {
+  const { data: parent, error: parentError } = await db.from("ds_emails").select("*").eq("id", emailId).maybeSingle();
+  if (parentError) return storageUnavailable();
+  if (!parent) return out({ error: "email_not_found" }, 404);
+  if (!canScheduleFollowUp(parent.status)) return out({ error: "follow_up_requires_sent_email" }, 409);
+  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("email_id", emailId).eq("status", "scheduled").limit(1).maybeSingle();
+  if (openError) return storageUnavailable();
+  if (open) return out({ ok: true, duplicate: true, follow_up: open, email_id: open.detail });
+  const config = await settings(db);
+  const draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days });
+  const row = { id: id("email"), lead_slug: parent.lead_slug, proposal_id: parent.proposal_id || null, sender: parent.sender || null, recipient: parent.recipient || null, reply_to: parent.reply_to || null, subject: draft.subject, body: draft.body, status: "draft", provider: "mock", attempt: 0 };
+  const { data: email, error: insertError } = await db.from("ds_emails").insert(row).select().single();
+  if (insertError) return storageUnavailable();
+  const record = { id: id("fup"), lead_slug: parent.lead_slug, email_id: parent.id, status: "scheduled", due_at: draft.due_at, detail: email.id };
+  const { error: recordError } = await db.from("ds_followups").insert(record);
+  if (recordError) { await db.from("ds_emails").delete().eq("id", email.id); return storageUnavailable(); }
+  await event(db, parent.lead_slug, "email.follow_up.scheduled", email.id);
+  return out({ ok: true, duplicate: false, follow_up: record, email }, 201);
+}
 const leadToUi = (l: Record<string, unknown>) => ({ ...l, siteAntigo: l.site_antigo, urlNova: l.url_nova, dataProposta: l.data_proposta, contratoStatus: l.contrato_status, contratoEm: l.contrato_em, docCliente: l.doc_cliente, endCliente: l.end_cliente });
 const uiToLead = (l: Record<string, unknown>) => {
   const x = Object.fromEntries(Object.entries(l).filter(([key]) => LEAD_INPUT_KEYS.has(key))) as Record<string, unknown>;
@@ -51,6 +74,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
   const auth = await context(); if (!auth) return out({ error: "unauthorized" }, 401);
   const { db } = auth; const parts = (await params).path; const root = parts[0];
   if (root === "settings") return out(await settings(db));
+  if (root === "contracts" && parts[2] === "docx") {
+    const { data: contract, error: contractError } = await db.from("ds_contracts").select("*").eq("id", parts[1]).maybeSingle();
+    if (contractError) return storageUnavailable();
+    if (!contract) return out({ error: "contract_not_found" }, 404);
+    const { data: order, error: orderError } = await db.from("ds_orders").select("*,ds_leads(nome,empresa,cidade),ds_products(is_demo,terms)").eq("id", contract.order_id).maybeSingle();
+    if (orderError) return storageUnavailable();
+    if (!order) return out({ error: "order_not_found" }, 404);
+    const lead = (order.ds_leads ?? {}) as Record<string, string>, product = (order.ds_products ?? {}) as Record<string, unknown>;
+    if (product?.is_demo === true) return out({ error: "demo_product_contract_forbidden" }, 409);
+    const file = renderContractDocx({ clientName: lead?.nome || order.lead_slug, company: lead?.empresa, city: lead?.cidade, offerName: order.offer_name, currency: order.currency, value: order.negotiated_price, terms: product?.terms, status: contract.status, sellerName: order.seller, generatedAt: contract.created_at, reference: contract.id }) as BlobPart;
+    return new Response(new Blob([file], { type: contractDocxMime }), { headers: { "Content-Type": contractDocxMime, "Content-Disposition": `attachment; filename="${contractDocxFilename(contract.id)}"`, "Cache-Control": "no-store" } });
+  }
   if (root === "products") { const { data, error } = await db.from("ds_products").select("*").order("id"); return error ? storageUnavailable() : out(data); }
   if (root === "leads") { const { data, error } = await db.from("ds_leads").select("*").is("deleted_at", null).order("updated_at", { ascending: false }); return error ? storageUnavailable() : out((data ?? []).map(leadToUi)); }
   if (root === "config") return out({ contratante: await settings(db), dattavps: {} });
@@ -90,6 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const { error } = await db.from("ds_proposals").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "proposal.created", row.id); return out(row);
   }
   if (root === "emails" && parts[2] === "transition") return transitionEmail(db, parts[1], body.status, body.fixture);
+  if (root === "emails" && parts[2] === "follow-up") return followUp(db, parts[1]);
   if (root === "emails") { const row = { id: id("email"), lead_slug: body.lead_slug, proposal_id: body.proposal_id || null, subject: String(body.subject || "Proposta DattaSeller"), body: String(body.body || "Olá, segue a proposta para sua revisão."), status: "draft", provider: "mock", attempt: 0 }; const { error } = await db.from("ds_emails").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "email.draft", row.id); return out(row); }
   if (root === "orders" && parts[2] === "checkout") return checkout(db, parts[1], body.result);
   if (root === "orders" && parts[2] === "payment") return payment(db, parts[1], body.status || "pending");
@@ -109,7 +145,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ path
   if (parts[0] === "leads" && parts[1]) { if (!isSafeLeadSlug(parts[1])) return out({ error: "invalid_lead_slug" }, 400); const disallowed = firstDisallowedKey(body, LEAD_INPUT_KEYS); if (disallowed) return out({ error: "lead_field_not_allowed" }, 400); const row = uiToLead(body); delete row.slug; if (row.status === "fechado") { const value = Number(row.valor_fechado ?? row.valor); if (body.closingConfirmed !== true || value <= 0) return out({ error: "Fechamento exige confirmação explícita e valor_fechado positivo." }, 400); row.valor = value; row.valor_fechado = value; row.closing_confirmed_at = now(); } row.updated_at = now(); const { error } = await db.from("ds_leads").update(row).eq("slug", parts[1]).is("deleted_at", null); return error ? storageUnavailable() : out({ ok: true }); }
   if (parts[0] === "settings") { const allowed = new Set(["company_name","seller_name","signature","phone","whatsapp","region","identity","language","demo_mode","limits","email_provider","email_sender","email_reply_to","spf_status","dkim_status","dmarc_status","hour_limit","day_limit","followup_days"]); const rows = Object.entries(body).filter(([key]) => allowed.has(key) && !/(secret|key|password)/i.test(key)).map(([key, value]) => ({ key, value, updated_at: now() })); if (rows.length) await db.from("ds_settings").upsert(rows); return out(await settings(db)); }
   if (parts[0] === "products" && parts[1]) { const allowed = ["name","billing","public_price","base_price","cost","commission_pct","max_discount_pct","currency","active","terms","description","checkout_url","cta_label","availability"]; const row = Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key))); row.updated_at = now(); const { data, error } = await db.from("ds_products").update(row).eq("id", parts[1]).select().single(); return error ? storageUnavailable() : out(data); }
-  if (parts[0] === "emails" && parts[1]) { if (!String(body.subject || "").trim() || !String(body.body || "").trim()) return out({ error: "Assunto e corpo são obrigatórios" }, 400); const { data: current } = await db.from("ds_emails").select("*").eq("id", parts[1]).single(); if (!current || !["draft","reviewed"].includes(current.status)) return out({ error: "Somente rascunhos ou e-mails em revisão podem ser editados" }, 400); const { data } = await db.from("ds_emails").update({ subject: body.subject.trim(), body: body.body.trim(), updated_at: now() }).eq("id", parts[1]).select().single(); await event(db, current.lead_slug, "email.edited", current.id); return out(data); }
+  if (parts[0] === "emails" && parts[1]) { if (!String(body.subject || "").trim() || !String(body.body || "").trim()) return out({ error: "Assunto e corpo são obrigatórios" }, 400); const { data: current } = await db.from("ds_emails").select("*").eq("id", parts[1]).single(); if (!current || !["draft","reviewed","failed"].includes(current.status)) return out({ error: "Somente rascunhos, e-mails em revisão ou envios que falharam podem ser editados" }, 400); const patch: Record<string, unknown> = { subject: body.subject.trim(), body: body.body.trim(), updated_at: now() }; if (current.status === "failed") { patch.status = "draft"; patch.error = null; } const { data } = await db.from("ds_emails").update(patch).eq("id", parts[1]).select().single(); await event(db, current.lead_slug, "email.edited", current.id); return out(data); }
   if (parts[0] === "proposals" && parts[1]) { const { data: p } = await db.from("ds_proposals").select("*,ds_products(cost,max_discount_pct)").eq("id", parts[1]).single(); if (!p) return out({ error: "Proposta não encontrada" }, 404); const price = Number(body.negotiated_price ?? p.negotiated_price), discount = Number(p.base_price) - price, product = p.ds_products as unknown as { cost: number; max_discount_pct: number }; if (price <= 0 || discount > Number(p.base_price) * Number(product.max_discount_pct) / 100) return out({ error: "Preço inválido ou desconto acima do máximo" }, 400); await db.from("ds_proposals").update({ status: "revised" }).eq("id", p.id); const row = { ...p, ds_products: undefined, id: id("prop"), negotiated_price: price, discount, margin: price - Number(product.cost), terms: body.terms ?? p.terms, valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(), version: Number(p.version) + 1, status: "draft", created_at: now() }; await db.from("ds_proposals").insert(row); await event(db, p.lead_slug, "proposal.revised", row.id); return out(row); }
   if (parts[0] === "previews" && parts[1]) { const content = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:24px"><small>PREVIEW / DEMO — revisão humana obrigatória</small><h1>${escapeHtml(body.title)}</h1><p>${escapeHtml(body.body)}</p><p><b>CTA:</b> ${escapeHtml(body.cta)}</p><p><b>Contato:</b> ${escapeHtml(body.contact)}</p></body>`; const { data } = await db.from("ds_previews").update({ content }).eq("id", parts[1]).select().single(); return out(data); }
   return out({ error: "route_not_found" }, 404);

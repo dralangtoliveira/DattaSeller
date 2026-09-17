@@ -68,6 +68,26 @@ const emailPatch = String.raw`
     });
   };
 
+  window.dsScheduleFollowUp = function(emailId){
+    return fetch('/api/emails/' + emailId + '/follow-up', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: '{}'
+    }).then(function(r){
+      return r.json().then(function(data){ return {ok:r.ok,data:data}; });
+    }).then(function(result){
+      if(!result.ok || result.data.error){
+        var code = result.data.error || '';
+        if(code === 'follow_up_requires_sent_email') throw new Error('O follow-up só pode ser agendado depois de um envio com desfecho: enviado, sem resposta ou resposta genérica.');
+        throw new Error(code || 'Não foi possível agendar o follow-up.');
+      }
+      alert(result.data.duplicate ? 'Já existe um follow-up agendado para este envio.' : 'Follow-up criado como novo rascunho. Revise, aprove e envie pelo mesmo fluxo.');
+      return dsLoad();
+    }).catch(function(error){
+      alert(error.message || 'Não foi possível agendar o follow-up.');
+    });
+  };
+
   dsTransitionEmail = function(id, status){
     if(status === 'sent_simulated') return dsSendRealEmail(id);
     return originalTransitionEmail(id, status);
@@ -83,7 +103,8 @@ const emailPatch = String.raw`
         result = result.replace('<b>Para:</b> não informado', '<b>Para:</b> ' + esc(lead.email));
       }
     }
-    return result.replace(/<button onclick="dsTransitionEmail\('([^']+)','sent_simulated'\)">Simular envio<\/button>/g, '<button onclick="dsSendRealEmail(\'$1\')">Enviar via Resend</button>');
+    result = result.replace(/<button onclick="dsTransitionEmail\('([^']+)','sent_simulated'\)">Simular envio<\/button>/g, '<button onclick="dsSendRealEmail(\'$1\')">Enviar via Resend</button>');
+    return result.replace(/<button onclick="dsSendRealEmail\('([^']+)'\)">Enviar via Resend<\/button>/g, '<button onclick="dsSendRealEmail(\'$1\')">Enviar via Resend</button> <button onclick="dsScheduleFollowUp(\'$1\')">Criar follow-up</button>');
   };
 
   vGeneralSettings = function(){
