@@ -164,3 +164,36 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | operador humano (conectar o Notion) |
 | evidência | nenhuma ferramenta ou recurso do Notion disponível |
 | condição de revisão | conector do Notion disponível; a comparação deve preservar a origem histórica e nunca substituir decisão conflitante em silêncio |
+
+## D-011 — Gate de CI da Vercel extraído do PR #6
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | incorporar o gate de CI da Vercel de forma isolada |
+| decisão | aproveitar **somente** os commits `a4260a8` e `1340746` do PR #6 (`finalize/crm-proposal-artifacts`), ambos restritos a `vercel.json`, em branch própria `codex/vercel-ci-gate`, por cherry-pick seletivo; o gate passa a rodar `npm test` antes do build explícito na Vercel |
+| motivo | preservar o trabalho do PR #6 sem incorporar as mudanças funcionais de proposta que disputam implementação com a canônica |
+| fonte | auditoria commit a commit do PR #6 |
+| commit | cherry-picks `ae16332` (origem `a4260a8`) e `b01a7eb` (origem `1340746`) sobre `a466cf3`; PR #13 |
+| caminho | `vercel.json`; auditoria em `docs/REC-GIT-001-CLASSIFICACAO-LINHAS-EM-RISCO-2026-09-17.md` |
+| componente | CI / Vercel |
+| cards afetados | REC-GIT-001 |
+| responsável | Codex (execução); merge pendente de autorização humana |
+| evidência | `npm test` 56/56, `sync-dashboard`, `production-dashboard-patch` e `next build` com exit 0; `tsc --noEmit` exit 0; `git diff --check` exit 0; secret scan sem ocorrência; diff contra a canônica restrito a `vercel.json` |
+| condição de revisão | se o PR #6 for redesenhado ou incorporado, reconciliar a origem |
+
+## D-012 — Linhas Git em risco: preservar e classificar, sem descartar
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | destino das linhas divergentes |
+| decisão | nenhuma decisão de merge, descarte, exclusão ou force push foi tomada; as linhas foram inventariadas e classificadas em A (incorporado), B (necessário), C (potencialmente obsoleto) e D (decisão humana); os 3 commits funcionais do PR #6, os 3 commits locais de `hardening/audited-production-fixes`, os 6 commits locais de `codex/mvp-local-ready` e o merge de `codex/venda-rapida-proposta` ficam preservados e pendentes |
+| motivo | existe trabalho não publicado e implementações paralelas legítimas; descarte silencioso perderia histórico |
+| fonte | `merge-base`, `git rev-list --left-right --count`, `git cherry`, listagem de arquivos por commit e verificação de existência na canônica |
+| caminho | `docs/REC-GIT-001-CLASSIFICACAO-LINHAS-EM-RISCO-2026-09-17.md` |
+| componente | Git / processo |
+| cards afetados | REC-GIT-001 |
+| responsável | operador humano (decisão); Codex (inventário) |
+| evidência | tabelas por linha com SHA, arquivos e classificação |
+| condição de revisão | decisão explícita sobre cada linha classificada como B, C ou D |
