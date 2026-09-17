@@ -81,3 +81,76 @@ presumo o mapeamento.**
 
 Enquanto isso, o E2E autenticado (Final Gate n. 4) não pode declarar
 Production: o commit servido pelo domínio é **desconhecido**.
+
+## Passos exatos para o desbloqueio (sem executar nada que exija credencial)
+
+### A. Autenticar a Vercel no scope `datta-x`
+
+```powershell
+pnpm dlx vercel@latest login        # ou: npx vercel login
+pnpm dlx vercel@latest whoami       # confirmar usuário e scope ativo
+```
+
+O `config.json` da CLI já aponta `currentTeam = team_4LMpNJbFqbxdJk09FLoNpimg`.
+Se o login entrar em outro time, use `--scope datta-x` em cada comando.
+
+Alternativa sem CLI: criar um token com acesso ao scope `datta-x` e exportar
+apenas em memória (`$env:VERCEL_TOKEN`). **Não** gravar o valor em arquivo do
+repositório.
+
+### B. Identificar inequivocamente projeto, deployment, alias e commit
+
+Com a CLI autenticada, dentro do repositório (`.vercel/` **não** está no
+`.gitignore` deste repositório — confira `git status` antes de qualquer commit):
+
+```powershell
+pnpm dlx vercel@latest link --yes --project v0-project --scope datta-x
+pnpm dlx vercel@latest alias ls --scope datta-x | Select-String crm.datta360
+pnpm dlx vercel@latest inspect crm.datta360.com.br --scope datta-x
+pnpm dlx vercel@latest ls --prod --scope datta-x
+```
+
+Ou pela API, com token válido:
+
+```powershell
+$h = @{ Authorization = "Bearer $env:VERCEL_TOKEN" }
+$team = 'team_4LMpNJbFqbxdJk09FLoNpimg'
+$prj  = 'prj_3Ez3knpVYfSBOsbJLEm2jhNYiAWM'
+Invoke-RestMethod "https://api.vercel.com/v9/projects/$prj/domains?teamId=$team" -Headers $h
+Invoke-RestMethod "https://api.vercel.com/v6/deployments?projectId=$prj&teamId=$team&target=production&limit=5" -Headers $h
+Invoke-RestMethod "https://api.vercel.com/v4/aliases?teamId=$team" -Headers $h | Select-Object -ExpandProperty aliases | Where-Object alias -eq 'crm.datta360.com.br'
+```
+
+Registrar aqui: **project ID**, **deployment ID**, **URL do deployment**,
+**alias**, **branch** (`meta.githubCommitRef`) e **commit**
+(`meta.githubCommitSha`) que servem Production.
+
+### C. Executar o E2E autenticado contra esse deployment
+
+```powershell
+$env:DS_E2E_CONFIRM='yes'
+$env:DS_E2E_BASE_URL='https://crm.datta360.com.br'   # ou a URL do deployment identificado
+$env:DS_E2E_EMAIL='<admin com ds_users.role = admin>'
+$env:DS_E2E_PASSWORD='<senha do admin>'
+$env:NEXT_PUBLIC_SUPABASE_URL='<url do projeto Supabase>'
+$env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='<publishable key>'
+$env:DS_E2E_EMAIL_TO='<caixa controlada que recebe o e-mail do teste>'
+npm run e2e:authenticated
+```
+
+Rode primeiro contra o deployment identificado; só depois de aprovado trate o
+domínio como Production. Nenhuma promoção para Production é feita por este
+passo.
+
+### D. Variáveis e credenciais necessárias (nomes apenas — valores nunca aqui)
+
+| Nome | Onde vive | Para que serve |
+| --- | --- | --- |
+| `VERCEL_TOKEN` | ambiente local da execução | consultar projeto, domínios, aliases e deployments |
+| `DS_E2E_CONFIRM` | ambiente do E2E | confirmação explícita; sem `yes` o script não executa |
+| `DS_E2E_BASE_URL` | ambiente do E2E | endereço do ambiente testado |
+| `DS_E2E_EMAIL` / `DS_E2E_PASSWORD` | ambiente do E2E | login do admin no Supabase Auth |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ambiente do E2E | montar a sessão exatamente como o CRM monta |
+| `DS_E2E_EMAIL_TO` | ambiente do E2E | caixa controlada que recebe o e-mail do teste |
+| `RESEND_API_KEY` | servidor do ambiente testado | envio real; sem ela o passo de envio aparece como `BLOCKED` |
+| `email_provider` | `ds_settings` do ambiente testado | precisa ser `resend` para o envio sair do modo mock |
