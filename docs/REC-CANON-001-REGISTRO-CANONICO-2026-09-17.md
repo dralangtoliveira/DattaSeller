@@ -377,3 +377,20 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | operador humano (credencial/autorização) |
 | evidência | `302` + `location = https://vercel.com/sso-api?url=…&nonce=…` + `set-cookie: _vercel_sso_nonce=…`; tentativa de derivar a URL do novo deployment resultou em 404 e foi classificada como inconclusiva, sem contradizer o estado `success` do deployment |
 | condição de revisão | disponibilidade de bypass de proteção, de token da Vercel ou de decisão de rodar contra o domínio de Production |
+
+## D-024 — Trabalho não reconciliado do repositório irmão `dattax` encerrado
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | risco de perda levantado por auditoria independente na cópia `dattax-codex-backend` |
+| decisão | validar o pacote no próprio repositório de origem e publicá-lo na branch de execução `codex/backend` do `dattax`; **não** trazer nenhum arquivo para o DattaSeller e não propor merge entre os repositórios |
+| motivo | havia 18 arquivos rastreados modificados e 38 arquivos novos sem commit naquele worktree, sem nenhuma referência no registro canônico do DattaSeller; o material existia apenas em disco |
+| fonte | auditoria adversarial do próprio supervisor no repositório irmão |
+| commit | `cc69a3b`, `cec1821`, `b305707`, `7e44b4e` e `f2b6cef`, enviados para `origin/codex/backend` (repo `dralangtoliveira/dattax`, PR #6) |
+| caminho | `docs/REC-GIT-001-CLASSIFICACAO-LINHAS-EM-RISCO-2026-09-17.md` (Anexo); checkpoint do outro repositório em `CONTINUIDADE.md` |
+| componente | governança de repositórios |
+| cards afetados | REC-GIT-001 |
+| responsável | Codex (execução) |
+| evidência | 450 testes, `tsc --noEmit`, 16 contratos `check:*`, `next build`, `git diff --check` limpo e varredura de segredos sem ocorrência no HEAD publicado; regressão real do contrato de backup/RLS (`investigator_notes`) corrigida antes do commit; CI do HEAD `035be04` verde e CI do push pendente de conferência |
+| condição de revisão | conferir o CI dos commits `7e44b4e`/`f2b6cef` na próxima execução; nenhum efeito sobre o DattaSeller além do registro |
