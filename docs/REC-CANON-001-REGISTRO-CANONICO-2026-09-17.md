@@ -394,3 +394,20 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | Codex (execução) |
 | evidência | 450 testes, `tsc --noEmit`, 16 contratos `check:*`, `next build`, `git diff --check` limpo e varredura de segredos sem ocorrência no HEAD publicado; regressão real do contrato de backup/RLS (`investigator_notes`) corrigida antes do commit; CI do HEAD `035be04` verde e CI do push pendente de conferência |
 | condição de revisão | conferir o CI dos commits `7e44b4e`/`f2b6cef` na próxima execução; nenhum efeito sobre o DattaSeller além do registro |
+
+## D-025 — CI do pacote publicado no repositório irmão `dattax` conferido e verde
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | condição de revisão deixada em aberto por D-024 |
+| decisão | fechar a condição: o CI da branch `codex/backend` do repositório `dralangtoliveira/dattax` está verde em **todos** os commits do pacote publicado, inclusive os dois que D-024 mandou conferir (`7e44b4e` e `f2b6cef`); a branch está sincronizada com `origin/codex/backend` em `a882ece`; nenhum efeito sobre o DattaSeller além deste registro |
+| motivo | D-024 publicou o material não reconciliado e deixou como pendência explícita a conferência do CI de `7e44b4e`/`f2b6cef` nesta execução |
+| fonte | `gh run list --branch codex/backend` (consulta somente leitura, sem escrita no repositório irmão) |
+| commit | `7e44b4e` → runs `35269834764` e `35269840575`; `f2b6cef` → `35269988887` e `35269994487`; `035be04` → `35261912877` e `35261916856`; `0d112e2` → `35270446984` e `35270452953`; `a882ece` → `35270598573` e `35270606353` |
+| caminho | `docs/REC-GIT-001-CLASSIFICACAO-LINHAS-EM-RISCO-2026-09-17.md` (Anexo) |
+| componente | governança de repositórios |
+| cards afetados | REC-GIT-001 |
+| responsável | Codex (verificação) |
+| evidência | 10 execuções do workflow `CI` sobre os 5 SHAs do pacote, todas com `conclusion = success`; `git status -sb` do `dattax` mostra `codex/backend...origin/codex/backend` sem divergência |
+| condição de revisão | qualquer novo push para `codex/backend` reabre a conferência; permanece observado (não tocado) um arquivo não rastreado `"Novo(a) Documento de Texto.txt"` no worktree do `dattax`, sem relação com o pacote |
