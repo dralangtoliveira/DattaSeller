@@ -345,3 +345,19 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | operador humano (credencial) |
 | evidência | `invalidToken: true`; sem acesso a `/v9/projects`, `/v6/deployments` e `/v4/aliases` |
 | condição de revisão | token válido disponível e deployment de Production identificado |
+
+## D-022 — Baseline do schema de Production e separação das linhagens de SQL
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | o que existe em Production e o que é seguro reaplicar sem ledger |
+| decisão | registrar o baseline: Production contém exatamente as 20 tabelas `ds_*` da linha web; a linhagem local (`db/migrations`, `db/verification`) **não** está aplicada; o schema base `20260914031102_dattaseller_web_schema.sql` é o único arquivo **não reaplicável** (20 `create table` sem guarda); as outras três migrations são reaplicáveis; `supabase db push` contra Production fica proibido enquanto não houver ledger |
+| motivo | sem ledger, um push tentaria reaplicar do zero; o baseline é a fonte para um backfill futuro e evita decisão inventada |
+| fonte | consulta somente leitura a `information_schema.tables` + análise de guardas por arquivo |
+| caminho | `docs/AUDITORIA-MIGRATIONS-BASELINE-2026-09-17.md` |
+| componente | banco Supabase Production / operação |
+| cards afetados | governança de migrations, OPS-COUPON-001 |
+| responsável | Codex (auditoria); backfill do ledger depende de autorização humana |
+| evidência | lista das 20 tabelas; `tabela_existe = false` para `schema_migrations`; tabela de guardas por arquivo |
+| condição de revisão | adoção de ledger, criação de `supabase/seed.sql` ou qualquer novo arquivo em `supabase/migrations/` |
