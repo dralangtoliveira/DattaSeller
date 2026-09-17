@@ -197,3 +197,53 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | operador humano (decisão); Codex (inventário) |
 | evidência | tabelas por linha com SHA, arquivos e classificação |
 | condição de revisão | decisão explícita sobre cada linha classificada como B, C ou D |
+
+## D-013 — Release Candidate do Final Gate
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | Release Candidate em Preview para fechar o Final Gate n. 4 |
+| decisão | criar `codex/release-candidate-final-gate` a partir da base exata `origin/hardening/phase-a-containment-clean` (`a466cf3`), com `--no-track`, integrando **somente** PR #13 (gate de CI), PR #12 (harness E2E) e PR #10 (cupom); PR #6, PR #1 e as linhas classificadas como B/C/D ficam fora |
+| motivo | reunir o conjunto necessário para o Final Gate sem promover Production e sem incorporar trabalho não reconciliado |
+| fonte | instrução do responsável de 2026-09-17 |
+| commit | cherry-picks `a6b027b` + `3d12fbc` (← `ae16332` + `b01a7eb`, PR #13), `7d4f57a` (← `2803071`, PR #12), `207a870` (← `3db2a32`, PR #10) |
+| caminho | branch `codex/release-candidate-final-gate`; SHA `207a870cf6097daf08bf3ed58fd48544c8c9d3f4` |
+| componente | release / integração |
+| cards afetados | Final Gate n. 4, OPS-COUPON-001, REC-GIT-001 |
+| responsável | Codex (execução); promoção para Production depende de autorização humana |
+| evidência | 69/69 testes (local e no build da Vercel), `tsc` limpo, `git diff --check` limpo, secret scan sem ocorrência, Preview `READY` em `dpl_Ch1BxNEDDWy5ynRSw9neWFNXZPKz` (`https://v0-project-4u03bmicy-datta-x.vercel.app`), log do build mostrando `Running "npm test && … && next build"` e `ℹ tests 69` |
+| condição de revisão | qualquer novo commit no RC ou mudança de escopo exige nova auditoria |
+
+## D-014 — Bloqueios de autorização do Final Gate
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | o que impede fechar o Final Gate n. 4 agora |
+| decisão | não aplicar migration, não executar o E2E real e não promover Production sem autorização expressa; registrar os bloqueios com precisão |
+| motivo | todos os itens restantes mudam estado de banco, de ambiente ou de Production |
+| fonte | análise do runbook da migration, das variáveis da Vercel e do seed do schema |
+| caminho | `docs/RUNBOOK-MIGRATION-OPS-COUPON-001-2026-09-17.md` |
+| componente | banco, Vercel, E2E |
+| cards afetados | OPS-COUPON-001, DS-WEB-RESEND-001, Final Gate n. 4 |
+| responsável | operador humano |
+| evidência | (1) `RESEND_API_KEY` existe na Vercel apenas com alvo `production`, não `preview`; (2) o seed `20260914031102_dattaseller_web_schema.sql` grava `email_provider = 'mock'`, então o envio real exige mudar essa configuração no `ds_settings` — o que afeta o mesmo banco de Production; (3) o runner do E2E exige `DS_E2E_*` e credenciais de admin, que não existem neste ambiente; (4) a migration não pode ser aplicada sem autorização |
+| condição de revisão | após as autorizações, registrar as evidências de banco, do envio real e do reload |
+
+## D-015 — Migration do cupom aplicada e validada
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | aplicar `20260917000000_add_order_coupon.sql` em Production |
+| decisão | aplicar **somente** esse SQL pela Management API do Supabase em `vkvkzoulbljampcbxaim`, após confirmar o projeto e capturar o baseline read-only; sem `db push` e sem outras migrations |
+| motivo | o Release Candidate `207a870` grava `public_price`, `coupon_code` e `coupon_status` ao criar pedido; sem as colunas, `POST /api/orders` falha e o Final Gate não passa de pedido |
+| fonte | autorização expressa do responsável em 2026-09-17 |
+| commit | blob `54852562cfaca9b23467222de70733b2d40d71ee` (RC `207a870`), SHA-256 `16c847fc5e95e447906bbc60e43c0969eb3e3a0673b45e68cfb38f4328f95a0e` |
+| caminho | `supabase/migrations/20260917000000_add_order_coupon.sql`; evidência em `docs/RUNBOOK-MIGRATION-OPS-COUPON-001-2026-09-17.md` (seção 10) |
+| componente | banco Supabase Production (`vkvkzoulbljampcbxaim`, org `vercel_icfg_D06arwCZ1aVDFEX08W1VGslP`, `sa-east-1`) |
+| cards afetados | OPS-COUPON-001, Final Gate n. 4 |
+| responsável | Codex (execução) sob autorização expressa do responsável |
+| evidência | baseline 14 colunas / 3 constraints / 0 pedidos → depois 17 colunas / 5 constraints / 0 pedidos; os 2 checks novos presentes com a definição esperada; `linhas_incompativeis = 0`; leitura segura de `ds_orders` sem erro; nenhum `update`/`insert`/`delete` |
+| condição de revisão | rollback documentado e não exercido; revisar se algum dia for necessário remover o cupom |
