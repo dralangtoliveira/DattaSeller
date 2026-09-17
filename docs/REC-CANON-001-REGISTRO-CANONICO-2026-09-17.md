@@ -247,3 +247,101 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | Codex (execução) sob autorização expressa do responsável |
 | evidência | baseline 14 colunas / 3 constraints / 0 pedidos → depois 17 colunas / 5 constraints / 0 pedidos; os 2 checks novos presentes com a definição esperada; `linhas_incompativeis = 0`; leitura segura de `ds_orders` sem erro; nenhum `update`/`insert`/`delete` |
 | condição de revisão | rollback documentado e não exercido; revisar se algum dia for necessário remover o cupom |
+
+## D-016 — D-015 verificada de forma independente no banco de Production
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | conferir no banco real o que D-015 afirma ter aplicado |
+| decisão | **CONFIRMADO**: o estado atual de `public.ds_orders` corresponde integralmente ao registrado — 17 colunas (as 3 novas nulas, com tipo esperado), 5 constraints na tabela, 0 pedidos, 0 violações do teto; as duas constraints existem com a definição exata registrada |
+| motivo | o supervisor não aceita a afirmação do executor; a verificação foi feita por consulta somente leitura, sem repetir a evidência do próprio executor |
+| fonte | Management API do Supabase (`POST /v1/projects/vkvkzoulbljampcbxaim/database/query`), somente `SELECT` |
+| caminho | `docs/VERIFICACAO-D015-MIGRATION-CUPOM-2026-09-17.md` |
+| componente | banco Supabase Production |
+| cards afetados | OPS-COUPON-001, Final Gate n. 4 |
+| responsável | Codex (execução e decisão) |
+| evidência | contagens `{colunas:17, constraints:5, pedidos:0}`; `violacoes:0`; `pg_get_constraintdef` das duas constraints; nenhuma mutação executada |
+| condição de revisão | qualquer novo DDL em `ds_orders` exige nova verificação |
+
+## D-017 — Risco residual do cupom refutado no estado atual dos dados
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | divergência entre o desconto do cupom (`public_price - negotiated_price`) e o `discount` do pedido (`base_price - negotiated_price`) |
+| decisão | **sem instância viva**: os 4 produtos têm `public_price` e `base_price` preenchidos e iguais (`public_difere_de_base = 0`); o risco permanece registrado como condição de dados, não como defeito |
+| motivo | a revisão apontou o caso como possível; a consulta mostrou que ele não ocorre hoje |
+| fonte | consulta somente leitura a `public.ds_products` |
+| caminho | `docs/REVISAO-OPS-COUPON-001-TETO-DE-PRECO-2026-09-17.md` |
+| componente | banco Supabase Production / OPS-COUPON-001 |
+| cards afetados | OPS-COUPON-001 |
+| responsável | Codex |
+| evidência | `{"total":4,"sem_public_price":0,"sem_base_price":0,"public_difere_de_base":0}` |
+| condição de revisão | primeiro produto cadastrado com `public_price` diferente de `base_price` |
+
+## D-018 — Revisão adversarial do caminho do dinheiro: achado P2 corrigido
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | validação do teto do preço público na linha do cupom |
+| decisão | corrigir: a **criação** de proposta (`POST /proposals`) não aplicava o teto do preço público, e `createOrder` dependia do banco para barrar, devolvendo 500 (`storageUnavailable`) em vez de 400 de validação; ambos passam a usar `negotiatedPriceError` antes de gravar |
+| motivo | reproduzido por execução: preço 120 com `public_price`/`base_price` 100 era aceito pela guarda antiga e violava a constraint `ds_orders_public_price_ceiling`; o efeito era erro enganoso depois da proposta já aceita |
+| fonte | revisão adversarial do commit, com prova executável |
+| commit | `5bade0c` em `codex/ops-coupon-001` (PR #10) e cherry-pick `de2c228` em `codex/release-candidate-final-gate` |
+| caminho | `docs/REVISAO-OPS-COUPON-001-TETO-DE-PRECO-2026-09-17.md` |
+| componente | CRM web / pedidos e propostas / financeiro |
+| cards afetados | OPS-COUPON-001, Final Gate n. 4 |
+| responsável | Codex (revisão, correção e verificação) |
+| evidência | 66 testes na linha do cupom e 71 no RC, 0 falhas; `tsc --noEmit` exit 0; `git diff --check` exit 0; build `success` na Vercel para `de2c228` |
+| condição de revisão | reaparecimento de preço acima do preço público em qualquer caminho de escrita |
+
+## D-019 — RC revisado: `de2c228` substitui `207a870`
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | reauditoria do Release Candidate após novo commit (exigida pela condição de revisão de D-013) |
+| decisão | o RC passa a ser `de2c228` (`207a870` + correção D-018); o conteúdo autorizado por D-013 permanece o mesmo, com o acréscimo da correção do teto de preço na mesma feature |
+| motivo | D-013 declara que qualquer novo commit no RC exige nova auditoria; a correção do achado P2 foi integrada antes de qualquer promoção |
+| fonte | gate local reproduzido e deployment da Vercel do novo commit |
+| commit | `de2c228a42606818f6d40edbeeec49c567e83dce` |
+| caminho | `docs/VERIFICACAO-RC-FINAL-GATE-2026-09-17.md` |
+| componente | release / integração / CI |
+| cards afetados | Final Gate n. 4, OPS-COUPON-001 |
+| responsável | Codex |
+| evidência | 71/71 testes, `tsc` limpo, `git diff --check` limpo, `next build` exit 0; deployment GitHub/Vercel `6511101429` (`ref = de2c228`, `environment = Preview`, estado `success`); gate de testes dentro do `buildCommand` do `vercel.json` |
+| condição de revisão | novo commit no RC, mudança de escopo ou promoção para Production |
+
+## D-020 — Production sem ledger de migrations
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | rastreio das migrations aplicadas em Production |
+| decisão | registrar o achado: `supabase_migrations.schema_migrations` **não existe** no projeto de Production, logo não há histórico versionado do que foi aplicado; um `supabase db push` futuro tentaria reaplicar todo o conjunto e depende da idempotência de cada script, que ainda não foi auditada |
+| motivo | a verificação read-only da migration do cupom (D-016) esbarrou na ausência do ledger |
+| fonte | consulta somente leitura `select to_regclass('supabase_migrations.schema_migrations') is not null` → `false` |
+| caminho | `docs/VERIFICACAO-D015-MIGRATION-CUPOM-2026-09-17.md` |
+| componente | banco Supabase Production / operação |
+| cards afetados | OPS-COUPON-001, governança de migrations |
+| responsável | Codex (auditoria pendente); adoção do registro baseline depende de autorização humana por tocar Production |
+| evidência | `{"tabela_existe": false}` |
+| condição de revisão | auditoria de idempotência concluída e baseline definido |
+
+## D-021 — Bloqueios humanos remanescentes e a ação única
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | o que impede fechar o Final Gate n. 4 |
+| decisão | manter o bloqueio de credencial e declarar **uma** ação humana: autenticar a Vercel no scope `datta-x` na CLI desta máquina (`vercel login`) e dispor do token apenas em memória (`$env:VERCEL_TOKEN`), sem gravar no repositório |
+| motivo | sem token válido não se identifica o deployment que serve `crm.datta360.com.br`, não se lê o log de build do Preview e não se inspecionam as variáveis do alvo; o E2E autenticado, que é o passo seguinte, já está documentado com os nomes das credenciais necessárias em `docs/EVIDENCIA-PRODUCTION-DEPLOYMENT-2026-09-17.md` (seção D) |
+| fonte | tentativas registradas em D-008 e D-014 |
+| caminho | `docs/EVIDENCIA-PRODUCTION-DEPLOYMENT-2026-09-17.md` |
+| componente | Vercel / Production / Final Gate n. 4 |
+| cards afetados | Final Gate n. 4, DS-WEB-RESEND-001 |
+| responsável | operador humano (credencial) |
+| evidência | `invalidToken: true`; sem acesso a `/v9/projects`, `/v6/deployments` e `/v4/aliases` |
+| condição de revisão | token válido disponível e deployment de Production identificado |
