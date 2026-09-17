@@ -361,3 +361,19 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | Codex (auditoria); backfill do ledger depende de autorização humana |
 | evidência | lista das 20 tabelas; `tabela_existe = false` para `schema_migrations`; tabela de guardas por arquivo |
 | condição de revisão | adoção de ledger, criação de `supabase/seed.sql` ou qualquer novo arquivo em `supabase/migrations/` |
+
+## D-023 — O Preview da Vercel está protegido por SSO
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | pré-requisito do E2E autenticado do Final Gate n. 4 |
+| decisão | registrar o achado: uma requisição anônima ao Preview responde `302` para `https://vercel.com/sso-api?...` com `_vercel_sso_nonce`, ou seja, o ambiente de Preview está protegido por **Vercel Authentication**; o E2E só pode rodar contra um Preview com **Protection Bypass for Automation** (cabeçalho `x-vercel-protection-bypass`), contra o domínio público de Production, ou depois de desligar a proteção — as três opções dependem de credencial ou de autorização humana |
+| motivo | o plano do E2E em D-014 assumia alcançar um ambiente por HTTP; a sondagem mostrou que o Preview é inacessível anonimamente, o que precisaria ser descoberto apenas na hora da execução |
+| fonte | sondagem HTTP somente leitura com `Invoke-WebRequest` (sem seguir redirecionamento) |
+| caminho | `docs/VERIFICACAO-RC-FINAL-GATE-2026-09-17.md` (seção "Sondagem HTTP do Preview") |
+| componente | Vercel / Preview / Final Gate n. 4 |
+| cards afetados | Final Gate n. 4, DS-WEB-RESEND-001 |
+| responsável | operador humano (credencial/autorização) |
+| evidência | `302` + `location = https://vercel.com/sso-api?url=…&nonce=…` + `set-cookie: _vercel_sso_nonce=…`; tentativa de derivar a URL do novo deployment resultou em 404 e foi classificada como inconclusiva, sem contradizer o estado `success` do deployment |
+| condição de revisão | disponibilidade de bypass de proteção, de token da Vercel ou de decisão de rodar contra o domínio de Production |

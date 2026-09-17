@@ -74,3 +74,30 @@ pendente de credencial.
 
 Uma reprodução local verde não substitui os itens 1 a 3: ela apenas remove a
 dúvida sobre o código que será promovido.
+
+## Sondagem HTTP do Preview — achado novo
+
+1. Tentativa de derivar a URL do novo deployment a partir do id exibido no
+   dashboard (`v0-project-4jxfXQPbg1cxsB1EQzgK8oVcZevN-datta-x.vercel.app`):
+   `/login` e `/` responderam **404**. Ou seja, o id do dashboard não é o
+   segmento usado na URL do deployment. A sondagem é **inconclusiva** e não
+   contradiz o estado `success` registrado pelo GitHub — apenas confirma que a
+   URL de Preview não é derivável sem token.
+2. A URL de Preview registrada em D-013
+   (`https://v0-project-4u03bmicy-datta-x.vercel.app/login`) responde:
+
+```
+status  = 302
+server  = Vercel
+location= https://vercel.com/sso-api?url=https%3A%2F%2Fv0-project-4u03bmicy-datta-x.vercel.app%2Flogin&nonce=…
+set-cookie: _vercel_sso_nonce=…; Max-Age=3600; Path=/; Secure; HttpOnly; SameSite=Lax
+```
+
+**Consequência direta para o Final Gate n. 4:** os deployments de Preview estão
+protegidos por **Vercel Authentication (SSO)**. O E2E autenticado não consegue
+sequer alcançar `/login` em um Preview sem uma das três condições: (a) um
+**Protection Bypass for Automation** do projeto, enviado no cabeçalho
+`x-vercel-protection-bypass`; (b) execução contra o domínio público de
+Production; ou (c) desligar a proteção do Preview — mudança de estado que não
+se faz sem autorização. Nenhuma das três está disponível hoje, e isso passa a
+fazer parte do bloqueio de credencial registrado em D-021.
