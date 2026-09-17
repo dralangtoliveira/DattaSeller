@@ -93,3 +93,24 @@ test("a migration guarda o cupom e recusa preço negociado acima do preço públ
   assert.match(migration, /negotiated_price <= public_price/);
   assert.match(migration, /'issued', 'applied', 'cancelled'/);
 });
+
+test("a criação da proposta também recusa preço acima do preço público", () => {
+  const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
+  const postStart = route.indexOf("export async function POST");
+  const postSection = route.slice(postStart, route.indexOf("export async function PUT"));
+  assert.ok(postStart > 0, "a rota POST precisa existir");
+  assert.match(postSection, /negotiatedPriceError\(\{ publicPrice: product\.public_price, basePrice: base, negotiatedPrice: price, maxDiscountPct: product\.max_discount_pct \}\)/);
+  assert.doesNotMatch(postSection, /if \(price <= 0 \|\| discount > base \* Number\(product\.max_discount_pct\) \/ 100\)/);
+  assert.equal(negotiatedPriceError({ publicPrice: 100, basePrice: 100, negotiatedPrice: 120, maxDiscountPct: 20 }), "negotiated_price_above_public_price");
+  assert.equal(negotiatedPriceError({ publicPrice: 100, basePrice: 100, negotiatedPrice: 79, maxDiscountPct: 20 }), "discount_above_max");
+});
+
+test("a criação do pedido repete o teto antes de gravar a linha do pedido", () => {
+  const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
+  const orderStart = route.indexOf("async function createOrder");
+  const orderSection = route.slice(orderStart, route.indexOf("async function checkout"));
+  assert.ok(orderStart > 0, "a função createOrder precisa existir");
+  assert.match(orderSection, /const priceError = negotiatedPriceError\(\{ publicPrice: product\.public_price, basePrice: p\.base_price, negotiatedPrice: p\.negotiated_price, maxDiscountPct: product\.max_discount_pct \}\)/);
+  assert.match(orderSection, /if \(priceError\) return out\(\{ error: priceError \}, 400\)/);
+  assert.ok(orderSection.indexOf("if (priceError)") < orderSection.indexOf('from("ds_orders").insert(row)'), "o teto precisa ser checado antes do insert do pedido");
+});
