@@ -98,3 +98,36 @@ compartilha ancestral com a canônica e não é alvo de merge.
 
 Nada acima autoriza descarte: as classificações **C** e **D** existem
 justamente para preservar o material até decisão explícita.
+
+## Anexo — repositório irmão `dattax` (não é uma linha do DattaSeller)
+
+Data: 2026-09-17. Registro de governança, não de execução: o achado abaixo foi
+levantado por uma verificação independente e **encerrado** no mesmo dia.
+
+- **Repositório distinto.** `C:\Users\dr_al\OneDrive\Documentos\GitHub\dattax-codex-backend`
+  é um worktree da branch `codex/backend` do repositório
+  `github.com/dralangtoliveira/dattax` (PR #6 aberto). O DattaSeller é
+  `github.com/dralangtoliveira/DattaSeller`. Nada do `dattax` faz parte da
+  canônica do DattaSeller e este documento não propõe merge entre os dois.
+- **Risco encontrado.** Naquela cópia havia **18 arquivos rastreados modificados
+  e 38 arquivos novos não versionados** (pacote EV-*, board "DattaX — EVOLUÇÃO"):
+  rotas de investigação, notas do investigador com migration própria, Atlas em
+  React Flow, catálogo Marketplace interno, contexto de IA, documentação e
+  testes. Todo o conteúdo era recuperável apenas do disco local.
+- **Risco encerrado.** O pacote foi validado e publicado na branch de execução
+  do `dattax`: `cc69a3b` (notas + RLS + contratos), `cec1821` (comandos,
+  contexto, rastreabilidade), `b305707` (Atlas, Marketplace, consolidação do
+  CaseManager), `7e44b4e` (documentação EV) e `f2b6cef` (checkpoint em
+  `CONTINUIDADE.md`), todos enviados para `origin/codex/backend`.
+- **Regressão real corrigida antes do commit.** O contrato de backup
+  (`scripts/backup-contract.mjs`) e o de RLS (`scripts/rls-schema-contract.mjs`)
+  não conheciam a tabela nova `investigator_notes`; sem a correção, a validação
+  de backup/restauração e o manifesto de grants ficariam incompletos.
+- **Evidência local no HEAD publicado.** 450 testes, `tsc --noEmit`, 16
+  contratos `check:*`, `next build`, `git diff --check` limpo e varredura de
+  segredos sem ocorrência. CI do `dattax` para `035be04` verde; o CI do push de
+  `7e44b4e`/`f2b6cef` deve ser conferido na próxima execução.
+- **Consequência para o DattaSeller:** nenhuma. Não há arquivo compartilhado,
+  dependência de build, variável de ambiente ou migration em comum entre os dois
+  repositórios; a referência aqui serve apenas para que o mesmo material não seja
+  reclassificado como "linha em risco" no futuro.
