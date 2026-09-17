@@ -20,6 +20,11 @@ de integração efetivamente acessível no CRM web.
 
 ## Requisitos transversais
 
+O fechamento formal do inventário `DS-MVP-01` a `DS-MVP-48` na linha web está
+em [`FECHAMENTO-INVENTARIO-DS-MVP-2026-09-16.md`](FECHAMENTO-INVENTARIO-DS-MVP-2026-09-16.md):
+41 itens PRONTO (web), 5 PARCIAL (web) e 2 NÃO MIGRADO por decisão de
+contenção. Este documento mede a linha atual; o inventário 17 mede a linha local.
+
 - Navegação: `prospeccao`, `intelligence`, `sites` e `comparador` estão restauradas pelo
   patch de produção; verificar visualmente no E2E é pendência.
 - Segurança: não há scraper novo, contato automático, publicação ou envio automático nesta
