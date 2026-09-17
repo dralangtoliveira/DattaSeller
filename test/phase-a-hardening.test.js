@@ -89,3 +89,13 @@ test("the production dashboard patch fails explicitly when a required target cha
   assert.match(patch, /título da POC/);
   assert.match(patch, /aviso operacional da POC/);
 });
+
+test("the production patch keeps the DEMO reset control out of the published dashboard", () => {
+  const patch = readFileSync(new URL("../scripts/production-dashboard-patch.mjs", import.meta.url), "utf8");
+  const dashboard = readFileSync(new URL("../public/dashboard.html", import.meta.url), "utf8");
+  assert.match(patch, /function requireTarget\(/);
+  assert.ok(patch.includes('requireTarget(html, "/api/demo/reset"'), "o build precisa falhar quando o alvo do reset DEMO desaparecer");
+  assert.ok(patch.includes("/api\\/demo\\/reset"), "a remoção em runtime precisa ser ancorada no endpoint, não na ordem dos atributos");
+  assert.ok(patch.includes("<button[^>]*>Resetar dados DEMO<\\/button>"), "a remoção por rótulo precisa permanecer como segunda barreira");
+  assert.ok(dashboard.includes("/api/demo/reset"), "o artefato publicado precisa conter o alvo que o patch remove");
+});
