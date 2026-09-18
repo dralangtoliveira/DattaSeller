@@ -97,7 +97,10 @@ export function scanPaths(files, root) {
 function main() {
   const target = process.argv[2];
   const root = target ? resolve(process.cwd(), target) : process.cwd();
-  const files = target ? directoryFiles(root) : trackedFiles(root);
+  // Em CI sem repositório Git completo a listagem por `git ls-files` volta vazia;
+  // nesse caso varremos o diretório, para a barreira nunca virar um passe falso.
+  const tracked = target ? [] : trackedFiles(root);
+  const files = target ? directoryFiles(root) : tracked.length ? tracked : directoryFiles(root);
   const findings = scanPaths(files, root);
   if (findings.length) {
     console.error(`Varredura de segredos: ${findings.length} ocorrência(s). Nenhum valor foi impresso.`);
