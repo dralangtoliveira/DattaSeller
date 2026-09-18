@@ -126,11 +126,101 @@ Preview passa a falhar antes de publicar se uma credencial real aparecer.
    explícita; a canônica pode ser a branch que publica, então nem mesclar docs é
    neutro.
 
+## Missão Final Gate n. 4 — auditoria dos bloqueios externos (2026-09-18)
+
+Regra vigente: a **PR #14** é a candidata principal de integração; as PRs #6,
+#10, #11, #12 e #13 permanecem intactas até a #14 passar todos os gates. Nada
+foi mesclado e nenhum deploy de Production foi feito.
+
+### 1. Vercel — não há sessão válida (BLOQUEIO A)
+
+Auditado sem inventar estado:
+
+- `vercel` **não está no PATH** desta máquina;
+- `%USERPROFILE%\.vercel\auth.json` **não existe**;
+- `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` **não estão no ambiente**.
+
+Único artefato local é o link do projeto em `.vercel/project.json` (arquivo, não
+credencial): `projectName: v0-project`, `projectId: prj_3Ez3knpVYfSBOsbJLEm2jhNYiAWM`,
+`orgId: team_4LMpNJbFqbxdJk09FLoNpimg`. Isso **não** prova qual deployment serve
+`crm.datta360.com.br` — a associação de domínio continua **desconhecida** e não
+será presumida.
+
+Quando houver acesso válido, coletar nesta ordem: projeto/Project ID e scope
+confirmados na API; deployment de Production associado ao domínio; commit SHA
+servido; variáveis de ambiente necessárias ao CRM (somente nomes e presença);
+se o Preview da #14 exige autenticação Vercel (SSO); e se o runner E2E consegue
+atingir esse Preview.
+
+### 2. Final Gate n. 4 — E2E preparado, execução depende de acesso
+
+Variáveis exigidas (somente nomes): `DS_E2E_BASE_URL`, `DS_E2E_EMAIL`,
+`DS_E2E_PASSWORD`, `DS_E2E_EMAIL_TO`, `DS_E2E_CONFIRM` (precisa ser `yes`) e,
+para o cliente Supabase, `NEXT_PUBLIC_SUPABASE_URL` e
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Valores nunca são impressos.
+
+Cadeia validada em `lib/e2e/plan.js` (27 passos, na ordem do Registro Canônico) e
+em `scripts/e2e-authenticated.mjs`: sessão admin por `signInWithPassword`;
+prospecção; deduplicação; qualificação; diagnóstico; auditoria social; preview;
+editor; comparador; proposta; renegociação **com teto de preço público**; capa;
+rascunho e edição de e-mail; `reviewed` → `approved` → `sent_simulated`;
+follow-up; timeline; pedido; checkout; pagamento; contrato HTML/DOCX; handoff;
+financeiro/comissão; reload/persistência.
+
+Limites a considerar antes de executar: o passo de envio usa `sent_simulated`,
+portanto **não prova entrega real pelo Resend**; o runner **não faz cleanup**
+(o lead `e2e-<runId>`, proposta, pedido, contrato e eventos permanecem no banco
+alvo); o alvo preferencial é **Preview isolado**, nunca Production sem
+autorização; e o usuário admin precisa existir no mesmo Supabase apontado por
+`NEXT_PUBLIC_SUPABASE_URL`.
+
+### 3. Resend — contrato de código conferido, prova ambiental pendente
+
+Auditoria de código (não repetição de trabalho anterior): `app/api/email-send/route.ts`
+exige sessão (401) e papel `admin` (403); recusa envio fora de `approved` com 409
+(portanto **aprovação humana é pré-condição**); exige assunto, corpo e destinatário
+válido; lê `RESEND_API_KEY` **somente no servidor** (503 se ausente); envia pelo
+SDK oficial; em erro do provider lança e não marca enviado; em sucesso grava
+`status: "sent"` e `provider_message_id`. `lib/email/provider.ts` falha fechado
+quando o provider é `resend` e a chave não existe (`provider_not_configured`).
+`test/email-provider.test.js` cobre esse contrato.
+
+O que só o ambiente alvo pode provar: `ds_settings.email_provider = resend`,
+remetente/domínio corretos, e um envio real disparado pelo fluxo do CRM (o passo
+E2E atual usa `sent_simulated`), com registro de `sent` + `provider_message_id` e
+erro do provider auditado.
+
+### 4. PR #14 — bateria completa no HEAD atual
+
+- `node --experimental-strip-types --test`: **78/78 aprovados**.
+- `tsc --noEmit`: exit 0. `git diff --check`: limpo.
+- Varredura de segredos: **0 ocorrências em 224 arquivos**.
+- `sync-dashboard` + `production-dashboard-patch`: executados, sem alteração de
+  conteúdo em `public/dashboard.html`.
+- `next build`: exit 0.
+- Comparação com `hardening/phase-a-containment-clean`: 30 arquivos, +2646/-7,
+  sem arquivo de preço comercial, canal ou catálogo novo; a única regra de preço
+  é o **teto do preço público persistido** com o desconto levado como cupom, o
+  que é exatamente o escopo autorizado do OPS-COUPON-001. Nenhuma decisão
+  comercial, de preço ou de canal foi inventada.
+
+### 5. Migrations
+
+Inventário do repositório: `db/migrations/001_commercial_core.sql`,
+`002_lead_identity.sql`, `003_recommendation_feedback.sql`,
+`supabase/migrations/20260914031102_dattaseller_web_schema.sql`,
+`20260915000000_phase_a_containment.sql`,
+`20260915212624_add_prospector_reconciliation.sql` e, **única adicionada pela
+#14**, `20260917000000_add_order_coupon.sql`. Essa última **já está aplicada** no
+Supabase de Production do CRM (D-015, verificada de forma independente em D-016:
+17 colunas, 5 constraints, 0 pedidos, 0 violações). Não há migration pendente
+exigida antes do E2E; rollback está documentado e não foi exercitado.
+
 ## Próximo item executável
 
-Executar o runbook do Final Gate n. 4 (`docs/RUNBOOK-FINAL-GATE-4-E2E-2026-09-17.md`)
-em tudo que não depende de credencial: validar o plano do harness E2E contra a
-documentação, conferir que cada passo tem pré-condição verificável e preparar o
-documento de evidência com os campos exatos que o operador humano precisa
-preencher quando `DS_E2E_*` e o acesso ao Preview existirem. As PRs #6, #10, #11,
-#12, #13 e #14 seguem abertas para revisão humana.
+Preparar o **documento de evidência do Final Gate n. 4** com os campos exatos que
+o operador humano precisa preencher assim que houver acesso (deployment/commit de
+Production, presença das variáveis por nome, resultado do E2E por passo, prova do
+envio real pelo CRM e o que ficou persistido), e manter a PR #14 sincronizada com
+a canônica enquanto a autorização não chega. Em paralelo, revisar se o runner E2E
+deve ganhar um modo de cleanup explícito para uso em ambiente isolado.

@@ -461,3 +461,36 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | Codex (execução); decisão de extrair artefatos do POC continua humana |
 | evidência | varredura padrão: 78/78 testes aprovados, `tsc --noEmit` exit 0, `next build` exit 0, `git diff --check` limpo; o scanner é coberto por 5 testes (detecção sem imprimir o valor, placeholders ignorados, CLI reprovando diretório com segredo e aprovando o repositório) e roda em ~0,4 s sobre 222 arquivos |
 | condição de revisão | nova instrução do responsável sobre a linha do POC local ou mudança no conjunto de fornecedores cujas chaves precisam ser detectadas |
+
+## D-029 — PR #14 é a candidata principal de integração
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-18 |
+| assunto | qual linha representa a integração e como tratar as PRs originais |
+| decisão | a PR #14 (`codex/supervisor-dattaseller` → `hardening/phase-a-containment-clean`) passa a ser a **candidata principal de integração**, consolidando seletivamente o conteúdo útil das PRs #6, #10, #11, #12 e #13. Não se pede autorização separada para integrar as originais; elas permanecem intactas enquanto a #14 não passar todos os gates e só depois poderão ser classificadas como incorporadas/superseded, mediante evidência. **Nenhum merge foi feito** e nenhum deploy de Production ocorreu |
+| motivo | instrução explícita do responsável, para reduzir o número de decisões humanas e manter uma única linha de integração auditável |
+| fonte | instrução do responsável de 2026-09-18 |
+| caminho | `docs/SUPERVISOR_DATTASELLER.md` |
+| componente | Git / release |
+| cards afetados | REC-GIT-001, OPS-COUPON-001, Final Gate n. 4 |
+| responsável | Codex (execução); merge da #14, supressão das originais e promoção seguem exigindo autorização humana |
+| evidência | PR #14 aberta, `mergeStateStatus: CLEAN`, head `51499fe`, check Vercel `SUCCESS` com o gate `npm test && secret-scan && sync && patch && next build` |
+| condição de revisão | qualquer mudança de escopo na #14 ou instrução do responsável alterando a candidata |
+
+## D-030 — Auditoria dos bloqueios externos do Final Gate n. 4
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-18 |
+| assunto | Vercel, E2E autenticado, Resend e migrations, sem depender de merge |
+| decisão | registrar o estado exato: (a) **Vercel sem sessão válida** — CLI ausente do PATH, `%USERPROFILE%\.vercel\auth.json` inexistente e `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` ausentes do ambiente; o link local `.vercel/project.json` (`v0-project`, `prj_3Ez3knpVYfSBOsbJLEm2jhNYiAWM`, `team_4LMpNJbFqbxdJk09FLoNpimg`) é arquivo, não credencial, e **não** prova qual deployment serve `crm.datta360.com.br`; (b) **E2E preparado e não executado**: variáveis exigidas são `DS_E2E_BASE_URL`, `DS_E2E_EMAIL`, `DS_E2E_PASSWORD`, `DS_E2E_EMAIL_TO`, `DS_E2E_CONFIRM=yes`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (somente nomes), com 27 passos validados, envio em `sent_simulated` (não prova Resend real) e **sem cleanup** — o alvo preferencial é Preview isolado; (c) **Resend**: contrato de código conferido (admin-only, exige `approved` com 409, chave só no servidor, `sent` + `provider_message_id`, falha fechada em `provider_not_configured`), restando prova ambiental de `ds_settings.email_provider = resend` e de um envio real pelo fluxo do CRM; (d) **migrations**: a #14 adiciona apenas `20260917000000_add_order_coupon.sql`, já aplicada e verificada em Production (D-015/D-016), sem pendência exigida antes do E2E |
+| motivo | resolver o máximo dos bloqueios externos sem merge, sem presumir estado de Production e sem repetir trabalho já concluído |
+| fonte | auditoria local (PATH, ambiente, arquivos), leitura de `lib/e2e/plan.js`, `scripts/e2e-authenticated.mjs`, `app/api/email-send/route.ts`, `lib/email/provider.ts`, inventário de `*.sql` e bateria completa na PR #14 |
+| commit | branch `codex/supervisor-dattaseller`, head `51499fe` (auditoria registrada em seguida) |
+| caminho | `docs/SUPERVISOR_DATTASELLER.md` |
+| componente | Vercel / E2E / Resend / migrations |
+| cards afetados | Final Gate n. 4, DS-WEB-RESEND-001, OPS-COUPON-001 |
+| responsável | operador humano para acesso Vercel, credenciais de E2E e configuração do provedor; Codex para a preparação |
+| evidência | bateria no head atual: 78/78 testes, `tsc --noEmit` exit 0, `git diff --check` limpo, 0 segredos em 224 arquivos, `sync-dashboard` + `production-dashboard-patch` sem alteração de conteúdo, `next build` exit 0; comparação com a canônica: 30 arquivos, +2646/-7, sem preço/canal/catálogo inventado |
+| condição de revisão | quando houver `vercel login`, `DS_E2E_*` e configuração de provedor, executar o E2E em Preview isolado e registrar a evidência passo a passo |
