@@ -274,3 +274,9 @@ outro lead, confirmação com caixa/espaço diferente não muta, falha de delete
 store propaga (fail-closed) e pedido/contrato de outro lead permanecem. Suíte
 total: **94/94**, `tsc --noEmit` exit 0, `git diff --check` limpo, varredura de
 segredos 0 ocorrências em 229 arquivos.
+
+### Ciclo 2026-09-18 (14h) — acesso Vercel obtido e lacuna da timeline corrigida
+
+- **Vercel deixou de ser bloqueio de credencial:** a CLI 59.17.0 está presente e autenticada (`vercel whoami` → `dralangtoliveira-7763`). `vercel project ls` no scope `datta-x` mostrou `v0-project` servindo `https://crm.datta360.com.br` (o mesmo projeto linkado neste repositório) e `datta360` servindo o site público — confirmando, por outra via, que o site é projeto separado.
+- **Lacuna real corrigida (`app/api/[...path]/route.ts`):** a trilha de auditoria era somente escrita; nada lia `ds_timeline` e o runner E2E exige `GET /api/timeline` nos passos `email_timeline` e `reload`. O endpoint passou a existir, com `?lead=` validado por `isSafeLeadSlug` (400 em slug inválido), ordem decrescente e limite de 500 linhas.
+- **Evidência:** 94/94 testes, `tsc --noEmit` exit 0, `git diff --check` limpo, varredura de segredos 0 ocorrências em 229 arquivos.

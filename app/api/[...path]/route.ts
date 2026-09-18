@@ -90,6 +90,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
   }
   if (root === "products") { const { data, error } = await db.from("ds_products").select("*").order("id"); return error ? storageUnavailable() : out(data); }
   if (root === "leads") { const { data, error } = await db.from("ds_leads").select("*").is("deleted_at", null).order("updated_at", { ascending: false }); return error ? storageUnavailable() : out((data ?? []).map(leadToUi)); }
+  // Leitura da trilha de auditoria exigida pela cadeia canônica (passo `email_timeline`
+  // e `reload` do runner E2E). Filtro opcional por lead, com slug validado.
+  if (root === "timeline") {
+    const lead = new URL(request.url).searchParams.get("lead");
+    if (lead && !isSafeLeadSlug(lead)) return out({ error: "invalid_lead_slug" }, 400);
+    const base = db.from("ds_timeline").select("*");
+    const { data, error } = await (lead ? base.eq("lead_slug", lead) : base).order("created_at", { ascending: false }).limit(500);
+    if (error) return storageUnavailable();
+    return out(((data ?? []) as Array<Record<string, unknown>>).map(row => ({ id: row.id, leadSlug: row.lead_slug, event: row.event, detail: row.detail, isDemo: row.is_demo ?? false, createdAt: row.created_at })));
+  }
   if (root === "config") return out({ contratante: await settings(db), dattavps: {} });
   if (root === "financial") {
     const [{ data: orders }, { data: payments }, { data: commissions }, { data: products }] = await Promise.all([db.from("ds_orders").select("*").eq("status", "paid"), db.from("ds_payments").select("amount,status"), db.from("ds_commissions").select("amount"), db.from("ds_products").select("id,billing")]);

@@ -101,9 +101,9 @@ ler o preço do CRM.
 
 ## Fase 5 — Vercel
 
-BLOCKED sem exceção: sem CLI, sem `auth.json`, sem `VERCEL_TOKEN`/`VERCEL_ORG_ID`/
-`VERCEL_PROJECT_ID`. O link local (`.vercel/project.json`) não prova qual
-deployment serve o domínio. Nada foi promovido.
+**Parcialmente resolvido em 2026-09-18.** A CLI existe (`vercel` 59.17.0) e **está autenticada**: `vercel whoami` responde `dralangtoliveira-7763`. Com sessão válida, `vercel project ls` no scope `datta-x` identificou, sem suposição: **`v0-project` serve `https://crm.datta360.com.br`** (o mesmo projeto linkado neste repositório, `.vercel/project.json` com `prj_3Ez3knpVYfSBOsbJLEm2jhNYiAWM`) e **`datta360` serve o site público** (`https://datta360.vercel.app`), confirmando por outra via que o site é projeto separado. Ainda pendente e agora alcançável: deployment de Production servido para o domínio com seu commit SHA (`vercel ls`/`inspect`), variáveis do alvo somente por nome/presença (`vercel env ls`) e a decisão sobre Vercel Authentication no Preview. Nada foi promovido.
+
+
 
 ## Fase 6 — Revisão funcional do CRM
 
@@ -178,7 +178,7 @@ só a execução autenticada pode provar.
 | Pedido/checkout/pagamento | `/api/orders`, `/api/orders/:id/checkout`, `/api/orders/:id/payment` | 401 sem sessão | cupom aplicado à URL de checkout; pagamento sem simulação de integração real | PASS (estático) |
 | Contrato HTML/DOCX | `/api/contracts/:id/html`, `/api/contracts/:id/docx` | 401 sem sessão | OOXML em Node puro, sem dependência nova (teste) | PASS (estático) |
 | Financeiro/comissão | `/api/financial` | 401 sem sessão | comissão calculada a partir do pedido | PASS (estático) |
-| Timeline/auditoria | `ds_timeline` | 401 sem sessão | eventos gravados por operação; preservada pelo cleanup | PASS (estático) |
+| Timeline/auditoria | `GET /api/timeline` | 401 sem sessão | **lacuna encontrada e corrigida neste ciclo:** a trilha era apenas escrita (nada lia `ds_timeline`) e o runner E2E exige `GET /api/timeline` nos passos `email_timeline` e `reload`; o endpoint passou a existir no catch-all, com `?lead=` validado por `isSafeLeadSlug` (400), ordem decrescente e limite de 500 linhas | PASS (estático) |
 | Logout | `/api/auth/logout` | sessão | encerra sessão | PASS (estático) |
 | Dados reais, erros JS, mobile, desktop, botões mortos | — | — | exigem navegação autenticada no Preview | BLOCKED (runtime) |
 
