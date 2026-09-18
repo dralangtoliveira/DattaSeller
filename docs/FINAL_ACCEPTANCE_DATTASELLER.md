@@ -199,3 +199,7 @@ Somente nomes, tipos e ambientes; nenhum valor foi copiado.
 - Variáveis do `v0-project` em Production (nomes/tipo/ambiente): `RESEND_API_KEY` (Secret, Production), `DATTA360_WEBHOOK_SECRET` (Secret, Production), `SUPABASE_SECRET_KEY` (Secret, Production), `NEXT_PUBLIC_SUPABASE_URL` (Config, Preview+Production), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Config, Production+Preview).
 - **Consequência para o gate de e-mail real:** a chave do Resend existe **apenas no ambiente Production**. Um E2E rodando em Preview não teria chave para provar `sent` + `provider_message_id` — a execução do passo de e-mail real precisa de um alvo autorizado em Production ou de a chave ser disponibilizada também no Preview (decisão humana, sem promoção).
 - Ainda não verificado no alvo: `ds_settings.email_provider = resend` (exige acesso ao banco) e o remetente/domínio configurado.
+
+### Cobertura do endpoint de timeline (2026-09-18)
+
+`test/timeline-endpoint.test.js` trava o contrato do novo `GET /api/timeline` em 6 testes: o plano E2E exige o endpoint, a raiz existe sob a barreira de sessão (401), o filtro `?lead=` é opcional e validado (400 `invalid_lead_slug`), a consulta é ordenada por `created_at` desc com limite 500 e falha fechada, a saída usa `leadSlug`/`createdAt`/`isDemo` e a trilha continua preservada pelo cleanup. Suíte total: 100/100.
