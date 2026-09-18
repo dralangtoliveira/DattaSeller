@@ -44,3 +44,9 @@ HML_APPLY=yes HML_ORG_ID=<org> node scripts/hml-bootstrap.mjs apply   # executa 
 `HUMAN_ACTION`: fornecer um `SUPABASE_ACCESS_TOKEN` com permissão de **criar
 projeto**, ou criar `dattaseller-hml` (`sa-east-1`) manualmente. Com o token
 adequado, `apply` faz os passos 1–4 e o restante segue automaticamente.
+
+## HML existente (2026-09-18, informado pelo responsavel)
+
+Projeto **dattaseller-hml** — ref `qfwvkarvueuezeqfljbl`, regiao `sa-east-1`, status `ACTIVE_HEALTHY`. Estado confirmado: tabelas `ds_*` presentes, `ds_settings` presente, `demo_mode = true`, `email_provider = mock`, remetente `demo@local.invalid`.
+
+Reconhecimento feito por mim agora: o `SUPABASE_ACCESS_TOKEN` disponivel continua **scoped ao projeto de Production** — `GET /v1/projects` lista apenas `vkvkzoulbljampcbxaim` e `GET /v1/projects/qfwvkarvueuezeqfljbl` responde **403**, assim como `api-keys` e `database/query`. Ou seja: o HML existe, mas a credencial atual nao o administra. Nada foi criado, alterado ou migrado; emails reais permanecem bloqueados ate o Preview apontar exclusivamente para o HML.
