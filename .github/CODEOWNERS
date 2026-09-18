@@ -1,0 +1,10 @@
+# Default owner
+* @dralangtoliveira
+
+# Security, CI and deployment-sensitive areas
+/.github/ @dralangtoliveira
+/supabase/ @dralangtoliveira
+/db/ @dralangtoliveira
+/scripts/ @dralangtoliveira
+/vercel.json @dralangtoliveira
+/.env.example @dralangtoliveira
