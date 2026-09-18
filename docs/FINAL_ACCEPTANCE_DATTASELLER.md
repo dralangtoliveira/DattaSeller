@@ -135,6 +135,33 @@ run, isso é um modo adicional a implementar, não um bloqueio do gate.
 | PR #14 × canônica | PASS — 30 arquivos; nenhum preço/canal/catálogo inventado (só dois documentos de classificação citam preço/canal) |
 | CI/Preview no mesmo SHA | PASS nos heads anteriores (`8de6bed`, `51499fe`); reconfirmar no head final |
 
+### Fase 6 — auditoria estática por área (2026-09-18, código do head 3eb3350)
+
+Cada rota foi lida no código. `AUTH` é verificado no servidor; `RESULTADO` é
+`PASS (estático)` quando a barreira existe no código e `BLOCKED (runtime)` quando
+só a execução autenticada pode provar.
+
+| Área | Rota/API | AUTH | Evidência estática | RESULTADO |
+| --- | --- | --- | --- | --- |
+| Login | `/login` | Supabase Auth | sessão via `db.auth.getUser()` no `context()` do catch-all | PASS (estático) |
+| Dashboard/Home | `/app` | 401 sem sessão | `public/dashboard.html` gerado por `sync-dashboard` + `production-dashboard-patch`; reset DEMO removido no patch (teste dedicado) | PASS (estático) |
+| Leads | `GET/POST /api/leads` | 401 sem sessão | listagem filtra `.is("deleted_at", null)` (soft delete); slug validado por `isSafeLeadSlug` | PASS (estático) |
+| Prospecção/enriquecimento | `POST /api/prospects` | 401 sem sessão | `saveProspect` com allowlist (`LEAD_INPUT_KEYS`, `firstDisallowedKey`); teste garante rejeição de fonte não pública | PASS (estático) |
+| Qualificação | `POST /api/qualifications` | 401 sem sessão | grava em `ds_qualifications` vinculada ao lead | PASS (estático) |
+| Diagnóstico | `POST /api/diagnoses` | 401 sem sessão | grava em `ds_site_diagnoses` | PASS (estático) |
+| Auditoria social | `POST /api/social-audits` | 401 sem sessão | grava em `ds_social_audits` | PASS (estático) |
+| Preview/editor/comparador | `/api/previews`, `/api/comparators/:slug` | 401 sem sessão | `isSafeLeadSlug` com 400 `invalid_lead_slug`; preview persistido reutilizado | PASS (estático) |
+| Proposta e capa | `/api/proposals`, `/api/proposals/:id/cover` | 401 sem sessão | rota dedicada vincula apenas artefatos do mesmo lead (teste) | PASS (estático) |
+| Negociação/teto/cupom | `PUT /api/proposals/:id` | 401 sem sessão | `negotiatedPriceError`: teto do preço público, base e `max_discount_pct`; cupom emitido no checkout | PASS (estático) |
+| Aprovação e envio | `POST /api/emails/:id/transition`, `/api/email-send` | admin-only (401/403) | envio real exige `status = approved` (senão 409), chave só no servidor, falha fechada | PASS (estático) |
+| Follow-up | `POST /api/emails/:id/follow-up` | 401 sem sessão | grava em `ds_followups` ligado ao envio, sem envio automático | PASS (estático) |
+| Pedido/checkout/pagamento | `/api/orders`, `/api/orders/:id/checkout`, `/api/orders/:id/payment` | 401 sem sessão | cupom aplicado à URL de checkout; pagamento sem simulação de integração real | PASS (estático) |
+| Contrato HTML/DOCX | `/api/contracts/:id/html`, `/api/contracts/:id/docx` | 401 sem sessão | OOXML em Node puro, sem dependência nova (teste) | PASS (estático) |
+| Financeiro/comissão | `/api/financial` | 401 sem sessão | comissão calculada a partir do pedido | PASS (estático) |
+| Timeline/auditoria | `ds_timeline` | 401 sem sessão | eventos gravados por operação; preservada pelo cleanup | PASS (estático) |
+| Logout | `/api/auth/logout` | sessão | encerra sessão | PASS (estático) |
+| Dados reais, erros JS, mobile, desktop, botões mortos | — | — | exigem navegação autenticada no Preview | BLOCKED (runtime) |
+
 ## Contagem do gate
 
 Requisitos classificados: **31** · PASS: **17** · FAIL: **4** · BLOCKED: **10**.

@@ -245,12 +245,20 @@ o site ao vivo não envia). Os FAILs de header, `og:image` e rate limit do
 formulário pertencem ao projeto do site e não podem ser corrigidos aqui sem
 violar o isolamento.
 
-Trabalho seguro dentro do escopo: (1) auditar estaticamente o CRM página por
-página a partir do código — rotas, autenticação obrigatória, botões sem handler,
-ações simuladas rotuladas, guarda de demo/reset, slug seguro e isolamento entre
-sellers — registrando PASS/FAIL/BLOCKED por área; (2) manter o documento de
-aceitação, o Registro Canônico e este checkpoint atualizados a cada evidência
-nova.
+Concluído em 2026-09-18 (ciclo seguinte): **auditoria estática do CRM por área**
+registrada em `docs/FINAL_ACCEPTANCE_DATTASELLER.md` — 17 áreas com AUTH
+verificada no código (todas retornam `unauthorized` 401 sem sessão via
+`db.auth.getUser()`), soft delete respeitado na listagem de leads, slug validado
+por `isSafeLeadSlug`, entrada de lead com allowlist, teto de preço público e
+`max_discount_pct` na negociação, envio real exigindo `approved` (409),
+reset DEMO removido do dashboard publicado por teste. Todas PASS (estático);
+runtime, dados reais, erros JS e UX por dispositivo seguem BLOCKED por falta de
+sessão no Preview.
+
+Trabalho seguro dentro do escopo: (1) comparar os headers de `next.config.ts` com
+o que o domínio público de Preview da PR #14 realmente responde (se alcançável
+sem SSO) e registrar por SHA; (2) manter o documento de aceitação, o Registro
+Canônico, o checkpoint e o DattaBrain atualizados a cada evidência nova.
 
 Concluído em 2026-09-18 (ciclo de 30 min): **cleanup do E2E endurecido contra
 escopo hostil** — 6 testes novos provam que slug parecido não é capturado,
