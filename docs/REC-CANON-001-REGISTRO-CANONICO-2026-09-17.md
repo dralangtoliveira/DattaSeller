@@ -411,3 +411,36 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | Codex (verificação) |
 | evidência | 10 execuções do workflow `CI` sobre os 5 SHAs do pacote, todas com `conclusion = success`; `git status -sb` do `dattax` mostra `codex/backend...origin/codex/backend` sem divergência |
 | condição de revisão | qualquer novo push para `codex/backend` reabre a conferência; permanece observado (não tocado) um arquivo não rastreado `"Novo(a) Documento de Texto.txt"` no worktree do `dattax`, sem relação com o pacote |
+
+## D-026 — Reset de escopo: este supervisor trata apenas o DattaSeller
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | escopo do supervisor, do checkpoint e das automações desta conversa |
+| decisão | a partir desta data, o supervisor e qualquer automação vinculada a esta conversa tratam **exclusivamente** o DattaSeller (`dralangtoliveira/DattaSeller`, remote `https://github.com/dralangtoliveira/DattaSeller`, branch canônica `hardening/phase-a-containment-clean`). Conteúdo de DattaX, `DXM-*`, `EV-*`, `investigator_notes`, projeto Supabase `zbwspbzvndkdhjqranwz`, DattaVPS, DattaSeg, DattaLex, `tributario-rag`, Cubo e outros repositórios Datta passa a ser `FOREIGN_CONTEXT_IGNORED`: não é executado, commitado nem usado como justificativa de alteração aqui |
+| motivo | instrução explícita do responsável, após a conversa acumular trabalho de outro repositório e risco de contaminação de escopo |
+| fonte | instrução do responsável de 2026-09-17 (reset total de escopo) |
+| caminho | `AGENTS.md` (novo, guarda persistente de isolamento) e `docs/SUPERVISOR_DATTASELLER.md` (checkpoint da automação) |
+| componente | governança de escopo |
+| cards afetados | REC-GIT-001, REC-CANON-001 |
+| responsável | Codex (execução) sob instrução do responsável |
+| evidência | `AGENTS.md` na raiz com identidade, fontes de verdade, isolamento, limites e formato de retorno; `docs/SUPERVISOR_DATTASELLER.md` com o quadro auditado; entradas D-024/D-025 permanecem apenas como história e não autorizam trabalho em outro repositório |
+| condição de revisão | nova instrução explícita do responsável alterando escopo |
+
+## D-027 — Consolidação das PRs #6, #10, #11, #12 e #13
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-17 |
+| assunto | reconciliação técnica das PRs abertas com base na canônica |
+| decisão | criar a branch exclusiva de consolidação `codex/supervisor-dattaseller` a partir de `a466cf3` e integrar, por risco crescente: #11 (docs, 9 commits) → #13 (`vercel.json`, 2) → #12 (harness E2E, 1) → #10 (cupom/teto de preço, 2) → **#6 parcial** (`d02bfe4`, `33f5d60`, `1d6fedc`). Os commits `a4260a8`/`1340746` do #6 foram **descartados** por já existirem no #13 como `ae16332`/`b01a7eb` (mesmo arquivo `vercel.json`, mesmo efeito), evitando duplicação. As PRs originais permanecem intactas, sem merge, para revisão humana |
+| motivo | as cinco PRs têm base na canônica e nenhuma delas sobrepõe arquivo de outra, exceto `vercel.json` entre #6 e #13; integrar sem análise duplicaria mudança de CI |
+| fonte | `git log`/`git diff` locais sobre `origin/hardening/phase-a-containment-clean` e as branches de cada PR; `gh pr list` |
+| commit | branch `codex/supervisor-dattaseller`, 17 cherry-picks limpos a partir de `a466cf3` |
+| caminho | `docs/SUPERVISOR_DATTASELLER.md` |
+| componente | Git / release |
+| cards afetados | REC-GIT-001, OPS-COUPON-001, Final Gate n. 4 |
+| responsável | Codex (execução); merge na canônica e promoção seguem exigindo autorização humana |
+| evidência | `node --experimental-strip-types --test` → 73/73 aprovados; `tsc --noEmit` exit 0; `next build` exit 0 com `/api/proposals/[id]/cover`; `git diff --check` limpo; varredura de segredos sem ocorrência; `sync-dashboard` + `production-dashboard-patch` sem alteração de conteúdo no dashboard versionado |
+| condição de revisão | qualquer novo commit nas PRs originais reabre a reconciliação; a branch #1 (`codex/mvp-local-ready`, base `main`) permanece fora e exige decisão humana |
