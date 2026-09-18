@@ -228,3 +228,15 @@ Três abordagens independentes foram tentadas, sem inventar resultado: (1) `verc
 - **Variáveis do runner (`lib/e2e/plan.js`):** as sete obrigatórias são `DS_E2E_BASE_URL`, `DS_E2E_EMAIL`, `DS_E2E_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DS_E2E_EMAIL_TO` e `DS_E2E_CONFIRM`. Nenhuma está definida no ambiente local; as duas `NEXT_PUBLIC_*` existem no Preview da Vercel (Config) e as cinco `DS_E2E_*` seguem ausentes.
 - **Ainda bloqueado:** project ref do Supabase do Preview (a leitura do bundle público não retornou o host), `ds_settings.email_provider` (exige sessão admin no banco alvo), usuário admin de teste e caixa controlada.
 - **Production:** não tocada; `crm.datta360.com.br` e `dpl_5xavK2MWFXcN14D3QRzcjjNbLTyR` não foram usados. Nenhum e-mail real foi enviado.
+
+### DS-WEB-RESEND-001 — isolamento de banco verificado (2026-09-18)
+
+- **PREVIEW_DB_NOT_ISOLATED.** Via API oficial da Vercel (somente as duas variáveis públicas, sem baixar secrets): `NEXT_PUBLIC_SUPABASE_URL` (id `APXGbcQV7ugKMvck`) tem **targets `preview,production`** e valor `https://vkvkzoulbljampcbxaim.supabase.co` → **preview e production usam o MESMO banco**. A própria documentação confirma: `docs/MIGRATION-PROSPECTOR-PRODUCTION-RUNBOOK.md` e o Registro Canônico D-015 identificam `vkvkzoulbljampcbxaim` como o Supabase de **Production**.
+- **Consequência (regra de segurança do próprio pedido):** com banco compartilhado, criar usuário admin de homologação ou qualquer registro de teste (lead/proposta/pedido) **gravaria na base de Production** — proibido. Portanto nenhum usuário, proposta ou dado foi criado, e nenhum e-mail foi enviado.
+- **Modelo de admin (levantado no schema):** `AUTH_PROVIDER = Supabase Auth`; `ADMIN_ROLE_STORAGE = public.ds_users.role`, com `check (role in ('admin'))` e RLS "admin reads own profile"; o enum legado `seller_role` vive em `db/migrations/001_commercial_core.sql` (schema anterior). `SUPPORTED_TEST_USER_CREATION_PATH = Supabase Auth Admin API + linha em ds_users` — caminho que exige a service key do banco alvo (`SUPABASE_SECRET_KEY`), hoje só existente em Production e não utilizável por causa do compartilhamento.
+- **Estratégia de isolamento já prevista no repositório:** existem migrations locais (`db/migrations/*`) e o registro `docs/EVIDENCIA-E2E-LOCAL-PROSPECTOR-2026-09-15.md`, que descreve um "runtime isolado do workspace". Não há, porém, nenhum projeto Supabase de homologação configurado nas variáveis do Preview.
+- **Nenhum admin de homologação existente foi descoberto** (a RLS só permite que um admin leia o próprio perfil; sem sessão não há como enumerar usuários).
+
+### Supabase do Preview (evidência pública)
+
+`NEXT_PUBLIC_SUPABASE_URL = https://vkvkzoulbljampcbxaim.supabase.co` (ref `vkvkzoulbljampcbxaim`); `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` presente (prefixo `sb_p`, valor não registrado).
