@@ -8,6 +8,26 @@ Candidato: **PR #14** (`codex/supervisor-dattaseller`) · base
 `hardening/phase-a-containment-clean @ a466cf3` · `MERGE_AUTHORIZED: NO` ·
 `PRODUCTION_AUTHORIZED: NO`.
 
+## Propriedade do site público — achado de escopo (2026-09-18)
+
+O site `https://www.datta360.com.br` **não é servido pelo código deste
+repositório**. Evidência objetiva: a copy do site (hero "Sua empresa está na
+internet. Mas tudo está conectado?", título "Datta360° — Presença Digital
+Integrada") **não existe** neste repositório; o `app/layout.tsx` desta candidata é
+o do CRM (`title: "DattaSeller"`, `robots: { index: false, follow: false }`),
+incompatível com landing indexável; e o `next.config.ts` desta candidata **já
+define** CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
+Permissions-Policy e HSTS, enquanto o site ao vivo envia apenas HSTS — ou seja,
+deployments diferentes.
+
+Consequência: os FAILs de header de segurança, `og:image` e rate limit do
+formulário **pertencem ao projeto do site**, não a esta candidata, e não podem ser
+corrigidos aqui sem violar o isolamento de escopo. Eles passam a ser ação do
+proprietário no projeto do site. O caminho `SITE_FORM_SUBMITTED →
+CRM_LEAD_CREATED` também não pode ser provado a partir daqui sem o código do site;
+o lado que nos pertence (raiz `leads` em `app/api/[...path]/route.ts` sobre
+`ds_leads`) está implementado.
+
 ## Fase 1 — Site público (auditado em 2026-09-18 via HTTPS)
 
 | Requisito | Status | Evidência |

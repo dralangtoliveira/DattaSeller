@@ -238,8 +238,17 @@ exigida antes do E2E; rollback está documentado e não foi exercitado.
 
 ## Próximo item executável
 
-Reduzir os FAILs que não dependem de credencial, sem criar funcionalidade nova:
-adicionar `og:image` e os headers de segurança ausentes na entrega do site,
-avaliar rate limit no caminho público do formulário e levar o conflito comercial
-para decisão registrada. Depois, manter a PR #14 sincronizada e o documento de
-aceitação atualizado a cada evidência nova.
+Achado de escopo em 2026-09-18: o site público **não** é servido por este
+repositório (a copy não existe aqui, o `app/layout.tsx` é o do CRM com `noindex`
+e o `next.config.ts` desta candidata já define todos os headers de segurança que
+o site ao vivo não envia). Os FAILs de header, `og:image` e rate limit do
+formulário pertencem ao projeto do site e não podem ser corrigidos aqui sem
+violar o isolamento.
+
+Trabalho seguro dentro do escopo: (1) auditar estaticamente o CRM página por
+página a partir do código — rotas, autenticação obrigatória, botões sem handler,
+ações simuladas rotuladas, guarda de demo/reset, slug seguro e isolamento entre
+sellers — registrando PASS/FAIL/BLOCKED por área; (2) reforçar o cleanup do E2E
+com testes de escopo hostil (run de outro seller, slug parecido, pedido pago,
+replay, confirmação ausente); (3) manter o documento de aceitação, o Registro
+Canônico e este checkpoint atualizados a cada evidência nova.
