@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm test && node scripts/sync-dashboard.mjs && node scripts/production-dashboard-patch.mjs && next build"
+  "buildCommand": "npm test && node scripts/secret-scan.mjs && node scripts/sync-dashboard.mjs && node scripts/production-dashboard-patch.mjs && next build"
 }

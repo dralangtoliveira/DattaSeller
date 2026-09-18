@@ -77,6 +77,43 @@ Todos os 17 cherry-picks aplicaram sem conflito.
   executados: `public/dashboard.html` não muda de conteúdo (o artefato versionado
   está em sincronia).
 
+## Classificação da linha `codex/mvp-local-ready` (PR #1)
+
+Auditoria de 2026-09-18, somente leitura:
+
+- **Sem ancestral comum com a canônica.** As raízes são diferentes — a linha #1
+  vem de `7653686 docs: registrar documentação base do DattaSeller` e a canônica
+  de `83bc2cd docs: define DattaSeller MVP contract`. `git merge-base` não existe
+  entre elas; `git diff` de três pontos falha com *no merge base*.
+- **Tamanhos divergentes:** 105 arquivos na linha #1 contra 199 na canônica.
+  Contra `main` a linha está 6 commits à frente e 3 atrás; contra a canônica,
+  13 à frente e **120 atrás**.
+- **Conteúdo:** o corpo do trabalho é o POC local (`poc/dattaseller-local/**`:
+  servidor de dashboard em Python, skills, templates, evidências PNG) e um
+  esqueleto de app v0 (`app/`, `components/ui`, `lib/utils`, `next.config.mjs`,
+  `pnpm-lock.yaml`). A canônica **já tem** `poc/` com 112 arquivos; o que existe
+  apenas na linha #1 são, na prática, `public/placeholder-*`, ícones e o
+  `tsconfig.json` do commit `d90844e`.
+- **Decisão técnica:** **não integrar**. Um merge exigiria
+  `--allow-unrelated-histories` e importaria 105 arquivos, incluindo binários de
+  evidência e um segundo esqueleto de aplicação, contra a regra de integrar
+  apenas o comprovadamente compatível. A linha permanece **preservada e intocada**.
+- **Caminho barato, se algum dia for desejado:** extrair arquivo a arquivo
+  (`git checkout <sha> -- <caminho>`) numa branch nova, com revisão humana, em
+  vez de mesclar históricos.
+
+## Varredura de segredos versionada
+
+Novo `scripts/secret-scan.mjs` (com `npm run secret-scan`) varre os arquivos
+versionados e reprova o processo quando encontra credencial de alta confiança:
+chave OpenAI/`sk-*`, chave Resend/`re_*`, token GitHub, JWT, chave privada
+PEM, URI Postgres com senha e `SUPABASE_SERVICE_ROLE_KEY`/`RESEND_API_KEY`
+preenchidas. Ele **nunca imprime o valor** encontrado — só arquivo, linha e o
+nome do padrão — e ignora placeholders de exemplo (`sk-your-...`, `re_test_...`,
+`user:password@`). Ligado ao gate de deploy em `vercel.json`
+(`npm test && node scripts/secret-scan.mjs && … && next build`), de modo que a
+Preview passa a falhar antes de publicar se uma credencial real aparecer.
+
 ## Bloqueios humanos (somente credencial, autorização ou decisão)
 
 1. **Vercel Production:** `vercel login` no scope `datta-x` (token só em memória)
@@ -91,8 +128,9 @@ Todos os 17 cherry-picks aplicaram sem conflito.
 
 ## Próximo item executável
 
-Validar e publicar `codex/supervisor-dattaseller` como PR de consolidação
-(`codex/supervisor-dattaseller` → `hardening/phase-a-containment-clean`), manter
-as PRs originais #6, #10, #11, #12 e #13 intactas para revisão humana e, na
-sequência, executar o runbook do Final Gate n. 4 na parte que não depende de
-credencial.
+Executar o runbook do Final Gate n. 4 (`docs/RUNBOOK-FINAL-GATE-4-E2E-2026-09-17.md`)
+em tudo que não depende de credencial: validar o plano do harness E2E contra a
+documentação, conferir que cada passo tem pré-condição verificável e preparar o
+documento de evidência com os campos exatos que o operador humano precisa
+preencher quando `DS_E2E_*` e o acesso ao Preview existirem. As PRs #6, #10, #11,
+#12, #13 e #14 seguem abertas para revisão humana.

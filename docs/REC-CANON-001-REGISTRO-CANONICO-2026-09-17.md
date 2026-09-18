@@ -444,3 +444,20 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | Codex (execução); merge na canônica e promoção seguem exigindo autorização humana |
 | evidência | `node --experimental-strip-types --test` → 73/73 aprovados; `tsc --noEmit` exit 0; `next build` exit 0 com `/api/proposals/[id]/cover`; `git diff --check` limpo; varredura de segredos sem ocorrência; `sync-dashboard` + `production-dashboard-patch` sem alteração de conteúdo no dashboard versionado |
 | condição de revisão | qualquer novo commit nas PRs originais reabre a reconciliação; a branch #1 (`codex/mvp-local-ready`, base `main`) permanece fora e exige decisão humana |
+
+## D-028 — PR #1 sem ancestral comum e varredura de segredos no gate de deploy
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-18 |
+| assunto | destino da linha `codex/mvp-local-ready` (PR #1) e proteção contra credencial no deploy |
+| decisão | (a) **não integrar** o PR #1: a linha não tem ancestral comum com a canônica (raízes `7653686` × `83bc2cd`), está 13 commits à frente e 120 atrás dela, tem 105 arquivos contra 199 e traz um segundo esqueleto de aplicação mais binários de evidência; ela permanece preservada e intocada, e uma eventual extração será feita arquivo a arquivo em branch nova, com revisão humana. (b) Versionar `scripts/secret-scan.mjs` (`npm run secret-scan`) e ligá-lo ao `buildCommand` do `vercel.json`, de modo que a Preview falhe antes de publicar quando houver credencial de alta confiança |
+| motivo | integração por merge violaria a regra de integrar somente o comprovadamente compatível; e a varredura de segredos era manual, sem barreira automática no deploy |
+| fonte | `git merge-base`/`git rev-list`/`git ls-tree` sobre `origin/codex/mvp-local-ready` e `origin/hardening/phase-a-containment-clean`; `test/secret-scan.test.js` |
+| commit | branch `codex/supervisor-dattaseller`; `scripts/secret-scan.mjs`, `test/secret-scan.test.js`, `package.json`, `vercel.json` |
+| caminho | `docs/SUPERVISOR_DATTASELLER.md` |
+| componente | Git / release / segurança |
+| cards afetados | REC-GIT-001, Final Gate n. 4 |
+| responsável | Codex (execução); decisão de extrair artefatos do POC continua humana |
+| evidência | varredura padrão: 78/78 testes aprovados, `tsc --noEmit` exit 0, `next build` exit 0, `git diff --check` limpo; o scanner é coberto por 5 testes (detecção sem imprimir o valor, placeholders ignorados, CLI reprovando diretório com segredo e aprovando o repositório) e roda em ~0,4 s sobre 222 arquivos |
+| condição de revisão | nova instrução do responsável sobre a linha do POC local ou mudança no conjunto de fornecedores cujas chaves precisam ser detectadas |
