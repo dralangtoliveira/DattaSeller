@@ -189,3 +189,13 @@ Requisitos classificados: **31** · PASS: **17** · FAIL: **4** · BLOCKED: **10
 `READY_FOR_MERGE: NO` — existem FAIL (headers de segurança do site, `og:image`,
 rate limit do formulário público, conflito comercial) e BLOCKED críticos
 (Vercel, E2E, e-mail real, revisão funcional).
+
+### Vercel — mapeamento de domínio, deployment e variáveis (2026-09-18, somente leitura)
+
+Somente nomes, tipos e ambientes; nenhum valor foi copiado.
+
+- `crm.datta360.com.br` → **`v0-project-6xwoozsra-datta-x.vercel.app`**, listado como deployment de **Production** (`● Ready`), criado em 2026-09-15 13:36 (-04). O `vercel inspect` não expôs o campo de commit/branch nesse filtro; o SHA servido fica para confirmação com `--json` no próximo ciclo.
+- `www.datta360.com.br` e `datta360.com.br` → **`datta360-r6c7uspwf-datta-x.vercel.app`** (projeto `datta360`) — confirma de novo que o site público é projeto separado deste repositório.
+- Variáveis do `v0-project` em Production (nomes/tipo/ambiente): `RESEND_API_KEY` (Secret, Production), `DATTA360_WEBHOOK_SECRET` (Secret, Production), `SUPABASE_SECRET_KEY` (Secret, Production), `NEXT_PUBLIC_SUPABASE_URL` (Config, Preview+Production), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Config, Production+Preview).
+- **Consequência para o gate de e-mail real:** a chave do Resend existe **apenas no ambiente Production**. Um E2E rodando em Preview não teria chave para provar `sent` + `provider_message_id` — a execução do passo de e-mail real precisa de um alvo autorizado em Production ou de a chave ser disponibilizada também no Preview (decisão humana, sem promoção).
+- Ainda não verificado no alvo: `ds_settings.email_provider = resend` (exige acesso ao banco) e o remetente/domínio configurado.
