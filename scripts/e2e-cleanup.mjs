@@ -9,6 +9,7 @@
 // de servidor o script não inventa estado: sai com `missing_credentials` e
 // informa apenas os NOMES das variáveis necessárias.
 import { executeCleanup, planCleanup, summarizeCleanup, validateRunId } from "../lib/e2e/cleanup.js";
+import { formatGuardReport, guardE2eTarget } from "../lib/e2e/target-guard.js";
 import { pathToFileURL } from "node:url";
 
 const REQUIRED_SERVER_ENV = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SECRET_KEY"];
@@ -64,6 +65,13 @@ async function main() {
   if (missing.length) {
     console.error(`cleanup indisponível: variáveis de servidor ausentes (somente nomes): ${missing.join(", ")}.`);
     process.exit(3);
+  }
+
+  const isolation = guardE2eTarget(process.env, { requireBaseUrl: false });
+  for (const line of formatGuardReport(isolation)) console.error(`  ${line}`);
+  if (!isolation.ok) {
+    console.error("cleanup abortado: alvo não isolado de Production. Nada foi executado.");
+    process.exit(4);
   }
 
   const store = createSupabaseStore({ url: process.env.NEXT_PUBLIC_SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY });

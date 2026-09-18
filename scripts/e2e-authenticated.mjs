@@ -1,12 +1,18 @@
 // Final Gate n. 4 — E2E autenticado do DattaSeller contra um ambiente real.
 // Uso: DS_E2E_CONFIRM=yes DS_E2E_BASE_URL=... DS_E2E_EMAIL=... DS_E2E_PASSWORD=... \
-//      NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=... \
-//      DS_E2E_EMAIL_TO=... node scripts/e2e-authenticated.mjs
+//      NEXT_PUBLIC_SUPABASE_URL=... DS_E2E_EXPECTED_SUPABASE_REF=... \
+//      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=... DS_E2E_EMAIL_TO=... \
+//      [DS_E2E_RUN_ID=<id>] node scripts/e2e-authenticated.mjs
 //
 // O script cria dados controlados de teste (um lead E2E, uma proposta, um pedido
 // e um e-mail). Ele nunca apaga nada: a linha web não expõe reset de dados.
+//
+// Guarda obrigatória: `lib/e2e/target-guard.js` recusa o run antes de qualquer
+// chamada de rede quando o banco é o de Production, quando o host é domínio de
+// Production ou quando o ref esperado do HML não foi declarado/confere.
 import { createServerClient } from "@supabase/ssr";
-import { E2E_STEPS, e2eLeadSlug, summarize, validateEnv } from "../lib/e2e/plan.js";
+import { E2E_STEPS, e2eLeadSlug, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
+import { formatGuardReport, guardE2eTarget } from "../lib/e2e/target-guard.js";
 
 const env = process.env;
 const check = validateEnv(env);
@@ -17,11 +23,20 @@ if (!check.ok) {
   process.exit(2);
 }
 
+const isolation = guardE2eTarget(env);
+for (const line of formatGuardReport(isolation)) console.error(`  ${line}`);
+if (!isolation.ok) {
+  console.error("E2E abortado: alvo não isolado de Production. Nada foi executado.");
+  process.exit(4);
+}
+
 const base = String(env.DS_E2E_BASE_URL).replace(/\/+$/, "");
-const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
+const runId = e2eRunId(env.DS_E2E_RUN_ID) ?? new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
 const slug = e2eLeadSlug(runId);
 const results = [];
 const state = {};
+console.log(`run_id=${runId}`);
+console.log(`lead_slug=${slug}`);
 
 const record = (id, status, detail = "") => {
   const step = E2E_STEPS.find((item) => item.id === id) ?? { id, label: id, endpoint: "" };
@@ -179,7 +194,7 @@ const reloadTimeline = await call("GET", "/api/timeline");
 const persisted = reloadLeads.status === 200 && Array.isArray(reloadLeads.json) && reloadLeads.json.some((lead) => lead.slug === slug) && reloadTimeline.status === 200;
 record("reload", persisted ? "pass" : "fail", persisted ? "lead e timeline sobreviveram ao reload" : "lead ou timeline não persistiram");
 
-const summary = summarize(results);
+const summary = { ...summarize(results), run_id: runId, lead_slug: slug };
 console.log("\n--- resumo ---");
 console.log(JSON.stringify(summary, null, 2));
 if (summary.failed) console.log("fechar o Final Gate n. 4 exige zero falhas");

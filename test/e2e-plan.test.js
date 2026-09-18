@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { E2E_STEPS, REQUIRED_ENV, e2eLeadSlug, summarize, validateEnv } from "../lib/e2e/plan.js";
 
-const valid = { DS_E2E_BASE_URL: "https://crm.example.com", DS_E2E_EMAIL: "operador@example.com", DS_E2E_PASSWORD: "segredo", NEXT_PUBLIC_SUPABASE_URL: "https://projeto.supabase.co", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "chave-publica", DS_E2E_EMAIL_TO: "controle@example.com", DS_E2E_CONFIRM: "yes" };
+const valid = { DS_E2E_BASE_URL: "https://crm.example.com", DS_E2E_EMAIL: "operador@example.com", DS_E2E_PASSWORD: "segredo", NEXT_PUBLIC_SUPABASE_URL: "https://projeto.supabase.co", DS_E2E_EXPECTED_SUPABASE_REF: "projeto", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "chave-publica", DS_E2E_EMAIL_TO: "controle@example.com", DS_E2E_CONFIRM: "yes" };
 
 test("o E2E falha fechado quando o ambiente está incompleto ou sem confirmação", () => {
   const empty = validateEnv({});
