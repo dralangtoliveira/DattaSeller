@@ -494,3 +494,20 @@ componente · cards afetados · responsável · evidência · condição de revi
 | responsável | operador humano para acesso Vercel, credenciais de E2E e configuração do provedor; Codex para a preparação |
 | evidência | bateria no head atual: 78/78 testes, `tsc --noEmit` exit 0, `git diff --check` limpo, 0 segredos em 224 arquivos, `sync-dashboard` + `production-dashboard-patch` sem alteração de conteúdo, `next build` exit 0; comparação com a canônica: 30 arquivos, +2646/-7, sem preço/canal/catálogo inventado |
 | condição de revisão | quando houver `vercel login`, `DS_E2E_*` e configuração de provedor, executar o E2E em Preview isolado e registrar a evidência passo a passo |
+
+## D-031 — Modo fechamento total e auditoria do site público
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-18 |
+| assunto | encerrar o DattaSeller + fluxo Datta360 sem criar escopo novo |
+| decisão | (a) entrar em modo fechamento: nenhuma feature, roadmap, evolução ou refactor cosmético; todo trabalho deve reduzir pendência de entrega. (b) Entregar o cleanup controlado do E2E (`lib/e2e/cleanup.js`, `scripts/e2e-cleanup.mjs`, 10 testes) e o documento `docs/FINAL-GATE-4-EVIDENCIA.md`. (c) Registrar a auditoria do site público em `docs/FINAL_ACCEPTANCE_DATTASELLER.md`, com `READY_FOR_MERGE: NO` enquanto houver FAIL ou BLOCKED crítico |
+| motivo | instrução explícita do responsável ("MODO FECHAMENTO TOTAL") |
+| fonte | instrução do responsável de 2026-09-18; auditoria HTTPS de `https://www.datta360.com.br`; leitura do bundle público, de `app/api/[...path]/route.ts`, do seed `ds_products` e do runner E2E |
+| commit | branch `codex/supervisor-dattaseller` |
+| caminho | `docs/FINAL_ACCEPTANCE_DATTASELLER.md`, `docs/FINAL-GATE-4-EVIDENCIA.md` |
+| componente | site público / CRM / E2E / governança |
+| cards afetados | Final Gate n. 4, DS-WEB-RESEND-001, OPS-COUPON-001 |
+| responsável | Codex (execução); decisões comerciais e de integração continuam humanas |
+| evidência | site 200 com HSTS mas **sem** CSP/X-Content-Type-Options/X-Frame-Options/Referrer-Policy/Permissions-Policy; `og:image` ausente; 7 imagens com alt; favicon presente; formulário com seis campos (`nome`, `empresa`, `telefone`, `site`, `instagram`, `email`, quatro obrigatórios) fazendo `POST /api/leads` no próprio domínio; intake implementado em `app/api/[...path]/route.ts` (`ds_leads`, listagem filtra `deleted_at is null`); claims de Google Business Profile/Instagram/TikTok sem integração no repositório e WhatsApp apenas como link `wa.me`; **COMERCIAL_CONFLICT** entre site (USD 80/108/120/150/474/490/790 e BRL 410/554/615/770/2427/2510/4045) e `ds_products` (datta360 1500 BRL one_time, dattavps 190, dattaseg 240, dattahost 45, `max_discount_pct 20`, `is_demo true`); regressão no head `d19f81c` com 88/88 testes, `tsc` exit 0, diff-check limpo, 0 segredos em 224 arquivos e build verde |
+| condição de revisão | quando o operador decidir o catálogo único de preços, corrigir a copy dos canais e liberar acesso Vercel/E2E |

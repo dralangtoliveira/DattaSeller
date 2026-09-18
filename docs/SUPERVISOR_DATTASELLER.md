@@ -216,11 +216,30 @@ Supabase de Production do CRM (D-015, verificada de forma independente em D-016:
 17 colunas, 5 constraints, 0 pedidos, 0 violações). Não há migration pendente
 exigida antes do E2E; rollback está documentado e não foi exercitado.
 
+## Modo fechamento total (2026-09-18)
+
+- **Cleanup do E2E entregue:** `lib/e2e/cleanup.js` + `scripts/e2e-cleanup.mjs`
+  (`npm run e2e-cleanup`), com escopo `e2e-<runId>`, dry-run por padrão,
+  `--cleanup --confirm=<runId>`, idempotência, falha fechada, preservação de
+  pedido pago e da trilha de auditoria, resumo sanitizado e 10 testes novos.
+- **Documento de evidência do Final Gate n. 4:** `docs/FINAL-GATE-4-EVIDENCIA.md`
+  (target, configuração por nome, passo a passo, e-mail real e persistência),
+  pronto para preenchimento humano.
+- **Auditoria do site público:** `docs/FINAL_ACCEPTANCE_DATTASELLER.md`.
+  Headers de segurança incompletos (FAIL), `og:image` ausente (FAIL), formulário
+  sem rate limit público (FAIL), claims de Google/Instagram/TikTok sem integração
+  e WhatsApp apenas como link `wa.me`, e **COMERCIAL_CONFLICT** entre o catálogo
+  do site (USD e BRL) e `ds_products` (BRL, `max_discount_pct 20`, itens
+  `is_demo = true`). O formulário posta em `POST /api/leads` no próprio domínio e
+  o intake existe no candidato, mas a prova `SITE_FORM_SUBMITTED →
+  CRM_LEAD_CREATED` não foi executada.
+- **Regressão no head `d19f81c`:** 88/88 testes, `tsc` exit 0, `git diff --check`
+  limpo, 0 segredos em 224 arquivos, sync+patch sem alteração, `next build` exit 0.
+
 ## Próximo item executável
 
-Preparar o **documento de evidência do Final Gate n. 4** com os campos exatos que
-o operador humano precisa preencher assim que houver acesso (deployment/commit de
-Production, presença das variáveis por nome, resultado do E2E por passo, prova do
-envio real pelo CRM e o que ficou persistido), e manter a PR #14 sincronizada com
-a canônica enquanto a autorização não chega. Em paralelo, revisar se o runner E2E
-deve ganhar um modo de cleanup explícito para uso em ambiente isolado.
+Reduzir os FAILs que não dependem de credencial, sem criar funcionalidade nova:
+adicionar `og:image` e os headers de segurança ausentes na entrega do site,
+avaliar rate limit no caminho público do formulário e levar o conflito comercial
+para decisão registrada. Depois, manter a PR #14 sincronizada e o documento de
+aceitação atualizado a cada evidência nova.
