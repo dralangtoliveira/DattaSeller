@@ -255,10 +255,17 @@ reset DEMO removido do dashboard publicado por teste. Todas PASS (estático);
 runtime, dados reais, erros JS e UX por dispositivo seguem BLOCKED por falta de
 sessão no Preview.
 
-Trabalho seguro dentro do escopo: (1) comparar os headers de `next.config.ts` com
-o que o domínio público de Preview da PR #14 realmente responde (se alcançável
-sem SSO) e registrar por SHA; (2) manter o documento de aceitação, o Registro
-Canônico, o checkpoint e o DattaBrain atualizados a cada evidência nova.
+Trabalho seguro dentro do escopo: manter o documento de aceitação, o Registro
+Canônico, o checkpoint e o DattaBrain em sincronia; revisar contratos locais
+(checkout, cupom, contrato DOCX, plano E2E) e o cleanup contra regressões; e
+reverificar o bloqueio de Preview a cada ciclo, sem tentar contorná-lo.
+
+Verificação de Preview em 2026-09-18 (head `6246c56`): a URL publicada pela
+Vercel para a PR #14 responde **302 para `vercel.com/sso-api`**, ou seja, o
+Preview está protegido por Vercel Authentication. A comparação de headers segue
+BLOCKED (o 302 é da borda, não da aplicação) e o E2E autenticado depende de
+*Protection Bypass for Automation*, de desligar a proteção do Preview ou de um
+alvo não protegido — decisão e credencial humanas.
 
 Concluído em 2026-09-18 (ciclo de 30 min): **cleanup do E2E endurecido contra
 escopo hostil** — 6 testes novos provam que slug parecido não é capturado,

@@ -137,6 +137,26 @@ run, isso é um modo adicional a implementar, não um bloqueio do gate.
 
 ### Fase 6 — auditoria estática por área (2026-09-18, código do head 3eb3350)
 
+#### Preview da PR #14 — verificação direta (2026-09-18, head `6246c56`)
+
+URL de Preview publicada no comentário da Vercel para a PR #14:
+`https://v0-project-git-codex-supervisor-dattaseller-datta-x.vercel.app`.
+
+Resposta observada: **302** com `Location: https://vercel.com/sso-api?...`,
+`Server: Vercel`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` e `x-robots-tag: noindex`.
+
+Conclusões registradas sem suposição:
+
+1. O Preview está **protegido por Vercel Authentication (SSO)** — o E2E não
+   alcança a aplicação sem *Protection Bypass for Automation*, sem desligar a
+   proteção do Preview ou sem rodar contra um alvo não protegido. Isso é o mesmo
+   achado de D-023, agora reverificado no SHA atual.
+2. A comparação de headers **continua BLOCKED**: os headers acima são da resposta
+   de redirecionamento da borda da Vercel, não da aplicação; `Content-Security-Policy`,
+   `X-Content-Type-Options`, `Referrer-Policy` e `Permissions-Policy` não aparecem
+   nesse 302 e isso **não** prova que o app não os envie. Só um acesso autenticado
+   (ou bypass) prova o conjunto real.
+
 Cada rota foi lida no código. `AUTH` é verificado no servidor; `RESULTADO` é
 `PASS (estático)` quando a barreira existe no código e `BLOCKED (runtime)` quando
 só a execução autenticada pode provar.
