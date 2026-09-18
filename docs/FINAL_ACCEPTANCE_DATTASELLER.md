@@ -240,3 +240,16 @@ Três abordagens independentes foram tentadas, sem inventar resultado: (1) `verc
 ### Supabase do Preview (evidência pública)
 
 `NEXT_PUBLIC_SUPABASE_URL = https://vkvkzoulbljampcbxaim.supabase.co` (ref `vkvkzoulbljampcbxaim`); `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` presente (prefixo `sb_p`, valor não registrado).
+
+### HML Supabase — criação bloqueada por escopo de token (2026-09-18)
+
+Tentativa real, não presumida: com o `SUPABASE_ACCESS_TOKEN` disponível localmente em `.env.local` (gerado pelo Vercel CLI), a Management API respondeu:
+
+- `GET /v1/organizations` → **0 organizações** visíveis;
+- `GET /v1/organizations/vercel_icfg_D06arwCZ1aVDFEX08W1VGslP` → **403 Forbidden**;
+- `POST /v1/projects` (`dattaseller-hml`, `sa-east-1`, plano free) → **403 Forbidden**.
+
+`GET /v1/projects` funciona e mostra **1 projeto**: `vkvkzoulbljampcbxaim` (`DattaSeller`, `sa-east-1`, `ACTIVE_HEALTHY`). Conclusão: o token tem leitura do projeto existente, mas **não** tem permissão de listar organização nem de criar projeto — logo não é possível verificar plano/custo nem criar o HML com a credencial disponível. Nenhuma senha ou segredo foi impresso; a senha de banco gerada ficou apenas em `.env.local` (não versionado) e não foi usada, pois a criação falhou.
+
+**BLOCKS:** HML isolado, admin de teste, `ds_settings` em HML, troca das variáveis de Preview e o E2E de e-mail real.
+**DOES_NOT_BLOCK:** testes locais, contratos de checkout/cupom/DOCX, cleanup do E2E, bypas oficial do Preview (PASS) e a chave Resend em Preview (já habilitada).
