@@ -22,8 +22,10 @@ test("detecta credencial de alta confiança sem imprimir o valor", () => {
 test("detecta JWT, chave privada, URI de banco e chaves de fornecedor", () => {
   const jwt = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", "eyJzdWIiOiIxMjM0NTY3ODkwIn0", "s1gn4tureP4rtAbCdEf"].join(".");
   assert.equal(scanContent("a.ts", `const t = "${jwt}"`)[0].pattern, "jwt");
-  assert.equal(scanContent("b.pem", "-----BEGIN PRIVATE KEY-----")[0].pattern, "private-key");
-  assert.equal(scanContent("c.json", "DATABASE_URL=postgres://admin:senhaSuperSecreta123@db.example.com:5432/postgres")[0].pattern, "postgres-uri");
+  // As fixtures são montadas por concatenação de propósito: o próprio arquivo de
+  // teste passa pela varredura, e uma linha literal viraria falso positivo.
+  assert.equal(scanContent("b.pem", "-----BEGIN " + "PRIVATE KEY-----")[0].pattern, "private-key");
+  assert.equal(scanContent("c.json", "DATABASE_URL=postgres://admin:" + "senhaSuperSecreta123" + "@db.example.com:5432/postgres")[0].pattern, "postgres-uri");
   const resendFindings = scanContent("d.env", "RESEND_API_KEY=re_" + "b".repeat(24)).map(finding => finding.pattern);
   assert.ok(resendFindings.includes("resend-key") || resendFindings.includes("resend-env"), `padrão de chave Resend não detectado: ${resendFindings}`);
 });
