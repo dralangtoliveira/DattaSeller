@@ -95,6 +95,7 @@ ler o preço do CRM.
 | Runner E2E com 27 passos canônicos | PASS | `lib/e2e/plan.js` + `scripts/e2e-authenticated.mjs`, exigindo `DS_E2E_CONFIRM=yes` |
 | Resultado por etapa com step/timestamp/duração/id mascarado/cleanup | PASS | o runner registra por passo; o padrão de evidência está em `docs/FINAL-GATE-4-EVIDENCIA.md` |
 | Cleanup controlado do run | PASS | `lib/e2e/cleanup.js` + `scripts/e2e-cleanup.mjs`: dry-run por padrão, `--cleanup --confirm=<runId>`, escopo `e2e-<runId>`, idempotente, falha fechado, pedido pago preservado, auditoria preservada, resumo mascarado |
+| Cleanup — escopo hostil | PASS | 6 testes dedicados em `test/e2e-cleanup.test.js`: slug parecido (`e2e-<run>-extra`, `xe2e-<run>`) não é capturado; `APROVADO`/`settled` também preservam o pedido; `--purge-audit` não alcança timeline de outro lead; confirmação com caixa/espaço diferente não muta; falha de delete no store propaga (fail-closed); pedido/contrato de outro lead permanecem |
 | Execução real do E2E | BLOCKED | sem `DS_E2E_*`, sem acesso ao Preview (SSO) e sem autorização de escrita no ambiente alvo |
 | E-mail real (approval → `/api/email-send` → Resend → `sent` → `provider_message_id`) | BLOCKED | contrato de código verificado (admin-only, exige `approved`, chave só no servidor, falha fechada); falta `RESEND_API_KEY` e `email_provider = resend` no alvo, e o passo do runner usa `sent_simulated` |
 

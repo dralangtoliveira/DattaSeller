@@ -158,3 +158,63 @@ test("CLI sem credencial de servidor informa só os nomes e não inventa estado"
   assert.match(result.stderr, /NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY/);
   assert.ok(!/"sk|re_|eyJ/.test(result.stderr), "nenhum valor de credencial na saída");
 });
+
+// --- escopo hostil: o cleanup nunca pode ampliar alcance nem falhar aberto ---
+
+test("slug parecido com o run não é capturado", async () => {
+  const memory = store();
+  memory.rows.ds_leads.push({ slug: `${SLUG}-extra`, status: "novo" }, { slug: `xe2e-${RUN}`, status: "novo" });
+  memory.rows.ds_qualifications.push({ id: "qz1", lead_slug: `${SLUG}-extra` }, { id: "qz2", lead_slug: `xe2e-${RUN}` });
+  const plan = await planCleanup({ runId: RUN, store: memory });
+  const removed = plan.deletions.map(item => item.id);
+  for (const intocado of ["qz1", "qz2", `${SLUG}-extra`, `xe2e-${RUN}`]) assert.ok(!removed.includes(intocado), `${intocado} não pertencia ao run`);
+  assert.equal(plan.slug, SLUG);
+});
+
+test("pagamento em estado pago com outra caixa/idioma também preserva o pedido", async () => {
+  const memory = store({ paidOrder: true });
+  memory.rows.ds_payments[0].status = "APROVADO";
+  const plan = await planCleanup({ runId: RUN, store: memory });
+  assert.equal(plan.blocked[0].reason, "paid_order_preserved");
+  assert.ok(!plan.deletions.some(item => item.table === "ds_orders" || item.table === "ds_payments"));
+
+  memory.rows.ds_payments[0].status = "settled";
+  const alsoPaid = await planCleanup({ runId: RUN, store: memory });
+  assert.equal(alsoPaid.blocked[0].reason, "paid_order_preserved");
+});
+
+test("purge de auditoria não alcança timeline de outro lead", async () => {
+  const memory = store();
+  memory.rows.ds_timeline.push({ id: "t2", lead_slug: "lead-real-cliente" });
+  const outcome = await executeCleanup({ runId: RUN, store: memory, confirmedRunId: RUN, purgeAudit: true });
+  assert.equal(outcome.ok, true);
+  assert.ok(memory.deleted.some(item => item.table === "ds_timeline" && item.id === "t1"));
+  assert.ok(!memory.deleted.some(item => item.id === "t2"), "timeline de outro lead não pode sair");
+  assert.equal(memory.rows.ds_timeline.length, 1);
+});
+
+test("confirmação com caixa/espaço diferente não autoriza mutação", async () => {
+  for (const confirm of [RUN.toUpperCase(), ` ${RUN} `, `${RUN}x`]) {
+    const memory = store();
+    const outcome = await executeCleanup({ runId: RUN, store: memory, confirmedRunId: confirm });
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.reason, "confirmation_required");
+    assert.equal(memory.deleted.length, 0);
+  }
+});
+
+test("falha de delete no store não é engolida (fail-closed)", async () => {
+  const memory = store();
+  memory.deleteRow = async () => { throw new Error("cleanup_delete_failed:ds_qualifications:500"); };
+  await assert.rejects(() => executeCleanup({ runId: RUN, store: memory, confirmedRunId: RUN }), /cleanup_delete_failed/);
+});
+
+test("cleanup não remove pedido de outro lead mesmo com payment pago ausente", async () => {
+  const memory = store();
+  memory.rows.ds_orders.push({ id: "o2", lead_slug: "lead-real-cliente", seller: "seller-real" });
+  memory.rows.ds_contracts.push({ id: "ct2", order_id: "o2" });
+  const outcome = await executeCleanup({ runId: RUN, store: memory, confirmedRunId: RUN });
+  assert.equal(outcome.ok, true);
+  assert.ok(!memory.deleted.some(item => item.id === "o2" || item.id === "ct2"), "pedido/contrato de outro lead permanecem");
+  assert.equal(memory.rows.ds_orders.length, 1);
+});

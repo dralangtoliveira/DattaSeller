@@ -248,7 +248,14 @@ violar o isolamento.
 Trabalho seguro dentro do escopo: (1) auditar estaticamente o CRM página por
 página a partir do código — rotas, autenticação obrigatória, botões sem handler,
 ações simuladas rotuladas, guarda de demo/reset, slug seguro e isolamento entre
-sellers — registrando PASS/FAIL/BLOCKED por área; (2) reforçar o cleanup do E2E
-com testes de escopo hostil (run de outro seller, slug parecido, pedido pago,
-replay, confirmação ausente); (3) manter o documento de aceitação, o Registro
-Canônico e este checkpoint atualizados a cada evidência nova.
+sellers — registrando PASS/FAIL/BLOCKED por área; (2) manter o documento de
+aceitação, o Registro Canônico e este checkpoint atualizados a cada evidência
+nova.
+
+Concluído em 2026-09-18 (ciclo de 30 min): **cleanup do E2E endurecido contra
+escopo hostil** — 6 testes novos provam que slug parecido não é capturado,
+`APROVADO`/`settled` preservam o pedido, `--purge-audit` não alcança timeline de
+outro lead, confirmação com caixa/espaço diferente não muta, falha de delete no
+store propaga (fail-closed) e pedido/contrato de outro lead permanecem. Suíte
+total: **94/94**, `tsc --noEmit` exit 0, `git diff --check` limpo, varredura de
+segredos 0 ocorrências em 229 arquivos.
