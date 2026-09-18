@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { evaluateScope } from "../scripts/hml-bootstrap.mjs";
 
 // O bootstrap HML mexe em credencial e em banco. Estes testes travam as
 // salvaguardas: nada de mutação sem flag explícita, nada de agir sem token, e
@@ -71,4 +72,46 @@ test("a criação só acontece com plano free e senha aleatória local", () => {
   assert.match(source, /randomBytes\(24\)/);
   assert.match(source, /SUPABASE_HML_DB_PASSWORD=/);
   assert.ok(!/console\.(log|error)\(.*password/i.test(source), "senha não pode ser impressa");
+});
+
+// Julgamento puro do escopo (etapa 1 do runbook) — coberto offline, sem rede.
+test("sem organização visível o token é tratado como project-scoped e a criação é proibida", () => {
+  const verdict = evaluateScope({ orgsOk: true, orgsVisible: 0, projectsOk: true, hmlExists: false });
+  assert.equal(verdict.scope, "project-scoped");
+  assert.equal(verdict.canCreateProject, false);
+  assert.equal(verdict.reason, "token_cannot_create_project");
+});
+
+test("com organização visível a criação é permitida e o HML existente é reutilizado", () => {
+  const criar = evaluateScope({ orgsOk: true, orgsVisible: 1, projectsOk: true, hmlExists: false });
+  assert.equal(criar.scope, "organization-wide");
+  assert.equal(criar.canCreateProject, true);
+  assert.equal(criar.reason, "create_allowed");
+  const reusar = evaluateScope({ orgsOk: true, orgsVisible: 1, projectsOk: true, hmlExists: true });
+  assert.equal(reusar.reason, "reuse_existing_hml");
+});
+
+test("erro de API nunca vira permissão: escopo unknown bloqueia a criação", () => {
+  for (const input of [
+    { orgsOk: false, orgsVisible: 0, projectsOk: true, hmlExists: false },
+    { orgsOk: true, orgsVisible: 3, projectsOk: false, hmlExists: false },
+  ]) {
+    const verdict = evaluateScope(input);
+    assert.equal(verdict.scope, "unknown");
+    assert.equal(verdict.canCreateProject, false);
+    assert.equal(verdict.reason, "api_unavailable");
+  }
+});
+
+test("apply consulta o escopo antes de criar e recusa quando não pode criar", () => {
+  const applySection = source.slice(source.indexOf("async function apply()"), source.indexOf("const isEntrypoint"));
+  assert.match(applySection, /const \{ existing, canCreateProject, reason \} = await check\(\)/);
+  assert.match(applySection, /if \(!existing && !canCreateProject\) \{ console\.error\(`apply recusado: credencial sem permissão de criação \(\$\{reason\}\)`\); process\.exit\(4\); \}/);
+  // A criação só pode existir depois da checagem de escopo.
+  assert.ok(applySection.indexOf("canCreateProject") < applySection.indexOf('api("/projects", { method: "POST"'));
+});
+
+test("importar o script não executa CLI nem chama a rede", () => {
+  assert.match(source, /const isEntrypoint = process\.argv\[1\] && import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
+  assert.match(source, /if \(isEntrypoint\) \{/);
 });

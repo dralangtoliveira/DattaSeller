@@ -12,6 +12,7 @@
 import { readFileSync, readdirSync, appendFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const ROOT = process.cwd();
 const HML_NAME = process.env.HML_PROJECT_NAME ?? "dattaseller-hml";
@@ -19,6 +20,16 @@ const HML_REGION = process.env.HML_REGION ?? "sa-east-1";
 const PRODUCTION_REF = "vkvkzoulbljampcbxaim";
 const API = "https://api.supabase.com/v1";
 const MIGRATIONS = ["db/migrations/001_commercial_core.sql", "db/migrations/002_lead_identity.sql", "db/migrations/003_recommendation_feedback.sql", "supabase/migrations/20260914031102_dattaseller_web_schema.sql"];
+
+/**
+ * Julgamento puro do escopo da credencial. É a etapa 1 do runbook: sem
+ * evidência de que o token pode criar projeto, nada é criado (fail-closed).
+ */
+export function evaluateScope({ orgsOk, orgsVisible, projectsOk, hmlExists }) {
+  if (!orgsOk || !projectsOk) return { scope: "unknown", canCreateProject: false, reason: "api_unavailable" };
+  if (orgsVisible > 0) return { scope: "organization-wide", canCreateProject: true, reason: hmlExists ? "reuse_existing_hml" : "create_allowed" };
+  return { scope: "project-scoped", canCreateProject: false, reason: "token_cannot_create_project" };
+}
 
 function token() {
   if (process.env.SUPABASE_ACCESS_TOKEN) return process.env.SUPABASE_ACCESS_TOKEN;
@@ -58,20 +69,24 @@ async function check() {
   if (!token()) { console.error("token ausente: defina SUPABASE_ACCESS_TOKEN ou use .env.local"); process.exit(3); }
   const orgs = await api("/organizations");
   const projects = await api("/projects");
-  console.log(`organizações visíveis: ${Array.isArray(orgs.data) ? orgs.data.length : "erro " + orgs.status}`);
+  const orgsVisible = Array.isArray(orgs.data) ? orgs.data.length : 0;
+  console.log(`organizações visíveis: ${Array.isArray(orgs.data) ? orgsVisible : "erro " + orgs.status}`);
   const list = Array.isArray(projects.data) ? projects.data : [];
   console.log(`projetos visíveis: ${list.length}`);
   for (const project of list) console.log(`- ref=${project.id} name=${project.name} region=${project.region} status=${project.status}`);
   const existing = list.find(project => project.name === HML_NAME);
   console.log(`HML existente: ${existing ? `SIM (${existing.id})` : "NÃO"}`);
-  console.log(`pode ler organização: ${orgs.ok ? "sim" : `não (${orgs.status})`}`);
+  const scope = evaluateScope({ orgsOk: orgs.ok, orgsVisible, projectsOk: projects.ok, hmlExists: Boolean(existing) });
+  console.log(`escopo da credencial: ${scope.scope}`);
+  console.log(`pode criar projeto: ${scope.canCreateProject ? "sim" : "não"} (${scope.reason})`);
   console.log(`aviso: Production=${PRODUCTION_REF} nunca é alvo deste script`);
-  return { existing, canCreate: orgs.ok && projects.ok };
+  return { existing, canCreateProject: scope.canCreateProject, reason: scope.reason };
 }
 
 async function apply() {
   if (process.env.HML_APPLY !== "yes") { console.error("apply exige HML_APPLY=yes (proteção contra execução acidental)"); process.exit(2); }
-  const { existing } = await check();
+  const { existing, canCreateProject, reason } = await check();
+  if (!existing && !canCreateProject) { console.error(`apply recusado: credencial sem permissão de criação (${reason})`); process.exit(4); }
   let ref = existing?.id;
   if (!ref) {
     const password = randomBytes(24).toString("base64url");
@@ -92,8 +107,11 @@ async function apply() {
   console.log("Próximos passos manuais/automatizados:", plannedSteps(ref).join(" | "));
 }
 
-const command = process.argv[2] ?? "check";
-if (command === "check") await check();
-else if (command === "plan") { const { existing } = await check(); console.log(plannedSteps(existing?.id)); }
-else if (command === "apply") await apply();
-else { console.error("uso: node scripts/hml-bootstrap.mjs [check|plan|apply]"); process.exit(2); }
+const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isEntrypoint) {
+  const command = process.argv[2] ?? "check";
+  if (command === "check") await check();
+  else if (command === "plan") { const { existing } = await check(); console.log(plannedSteps(existing?.id)); }
+  else if (command === "apply") await apply();
+  else { console.error("uso: node scripts/hml-bootstrap.mjs [check|plan|apply]"); process.exit(2); }
+}
