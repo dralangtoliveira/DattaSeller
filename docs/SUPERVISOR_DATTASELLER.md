@@ -286,3 +286,46 @@ Verificação de Vercel (2026-09-18, somente leitura): `crm.datta360.com.br` apo
 Ciclo 2026-09-18 (15h37): pré-voo confirmado (HEAD `0ae16d8` = head da PR #14, `CLEAN`, 0 atrás da canônica). A tentativa de ler o commit servido em Production com `vercel inspect --json` **não expôs** os campos `sha`/`ref`/`branch` nesse filtro — registrar como pendência técnica (próxima tentativa: imprimir as chaves do JSON e procurar `meta`/`githubCommitSha`). Verificado também que já existe harness de teste do catch-all em `test/` (`contract-docx.test.js`, `coupon.test.js`, `email-follow-up.test.js` referenciam `app/api/[...path]/route.ts`), o que permite cobrir o novo `GET /api/timeline` sem criar infraestrutura nova.
 
 Homologação por Preview (opção A autorizada, 2026-09-18): bypass oficial da Vercel **PASS** (`vercel curl` gerou token de bypass do projeto `prj_3Ez3knpVYfSBOsbJLEm2jhNYiAWM` e alcançou o Preview sem desligar proteção). Bloqueio de ambiente identificado com precisão: `RESEND_API_KEY` existe **somente em Production** no projeto `v0-project`; o teste de e-mail real em Preview depende de a chave ser criada também no ambiente Preview (valor oculto ao agente). O fluxo de código confirma que o restante está pronto: `email-send` usa o client server-side com as duas variáveis públicas já presentes em Preview e exige sessão admin; `SUPABASE_SECRET_KEY` não é necessário para essa rota.
+
+### Ciclo 2026-09-18 (18h35Z) — item 2 do NEXT fechado: headers do Preview por SHA
+
+- **Pré-voo real:** branch `codex/supervisor-dattaseller` sincronizada com o
+  origin; HEAD passou de `354a89c` para `a19672e` **durante** este ciclo (outro
+  worker commitou `scripts/hml-bootstrap.mjs` + `docs/HML_SUPABASE_BOOTSTRAP.md`
+  no mesmo diretório). Todo trabalho deste ciclo foi refeito sobre `a19672e`.
+- **Reparo de árvore:** `AGENTS.md` estava corrompido por reencoding
+  (UTF-8 duplo) e fazia `git diff --check` **falhar** (`new blank line at EOF`);
+  foi restaurado byte a byte ao conteúdo do commit (hash `bf87f6d`, idêntico ao
+  blob do HEAD). `public/dashboard.html` (ruído CRLF, sem diff de conteúdo) foi
+  normalizado para LF. Árvore limpa ao final, exceto o backup
+  `AGENTS.md.bak-20260918-141314` (idêntico ao blob do HEAD, não versionado).
+- **CLI da Vercel:** `pnpm dlx vercel@latest` (59.20.0) está quebrada
+  (`Cannot find package '@vercel/cli-auth'`); a 59.17.0, usada nos ciclos
+  anteriores, funciona e continua autenticada (`dralangtoliveira-7763`).
+- **Item 2 do NEXT — PASS por SHA.** Deployment ancorado ao commit:
+  `v0-project-o9j2vii6b-datta-x.vercel.app` (`meta.githubCommitSha`
+  `a19672e1ecaa48b28bc733b493408638850f784a`, branch
+  `codex/supervisor-dattaseller`, `Ready`). Com o bypass oficial, os seis headers
+  de `next.config.ts` são realmente servidos — `Content-Security-Policy:
+  frame-ancestors 'none'`, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy:
+  strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(),
+  geolocation=()`, `Strict-Transport-Security: max-age=31536000;
+  includeSubDomains` — em `/` e em `/api/leads`, no alias de branch e no URL do
+  deployment. `X-Powered-By` ausente. A classificação anterior (BLOCKED) vinha
+  do 302 da borda e fica superada no candidato; o FAIL de headers continua
+  pertencendo ao site público.
+- **Runtime do gate de sessão:** `proxy.ts` intercepta antes dos handlers — sem
+  sessão, `GET /` e `GET /api/leads` respondem **307 → `/login`** (JSON
+  `{"redirect":"/login","status":"307"}` com `Accept: application/json`), e não
+  401. Rotas fora da barreira confirmadas: `GET /login` → 200 HTML pt-BR;
+  `POST /api/inbound/datta360` sem segredo → 401 `unauthorized` (falha fechada);
+  `GET /api/inbound/datta360` → 405; sem bypass → 302 para `vercel.com/sso-api`.
+- **Pendência de segurança deste ciclo:** o segredo de *Protection Bypass for
+  Automation* apareceu no log local ao ser lido da API. A API pública rejeita
+  `protectionBypass` em `PATCH /v9|v10|v11/projects/:id`, então a rotação exige o
+  dashboard (HUMAN_ACTION registrada em BLOCKERS). Nenhum valor de segredo é
+  reproduzido em nenhum documento.
+- **Evidência de código no HEAD `a19672e`:** `node --experimental-strip-types
+  --test` **100/100**, `tsc --noEmit` exit 0, `git diff --check` limpo e
+  varredura de segredos 0 ocorrências em 230 arquivos.

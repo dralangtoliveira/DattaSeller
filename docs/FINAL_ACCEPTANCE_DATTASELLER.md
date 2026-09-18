@@ -157,6 +157,64 @@ Conclusões registradas sem suposição:
    nesse 302 e isso **não** prova que o app não os envie. Só um acesso autenticado
    (ou bypass) prova o conjunto real.
 
+#### Headers do Preview — comparação por SHA (2026-09-18, head `a19672e`)
+
+O item 2 do NEXT estava BLOCKED porque só a borda da Vercel respondia. Com o
+*Protection Bypass for Automation* oficial (o mesmo mecanismo já validado em
+D-023/opção A), a aplicação passou a responder diretamente e a comparação foi
+concluída no deployment ancorado ao commit:
+
+| Campo | Valor |
+| --- | --- |
+| SHA do deployment | `a19672e1ecaa48b28bc733b493408638850f784a` (branch `codex/supervisor-dattaseller`) |
+| Deployment | `v0-project-o9j2vii6b-datta-x.vercel.app` (`Ready`) |
+| Alias de branch | `v0-project-git-codex-supervisor-dattaseller-datta-x.vercel.app` |
+| Método | `fetch` com `x-vercel-protection-bypass`, `redirect: manual`, sem sessão |
+
+Headers definidos em `next.config.ts` × headers realmente servidos — idênticos em
+`/` e em `/api/leads`, e idênticos também no alias de branch:
+
+| Header esperado | Valor observado | Resultado |
+| --- | --- | --- |
+| `Content-Security-Policy` | `frame-ancestors 'none'` | PASS |
+| `X-Frame-Options` | `DENY` | PASS |
+| `X-Content-Type-Options` | `nosniff` | PASS |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | PASS |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | PASS |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | PASS |
+
+Achados desta captura, sem suposição:
+
+1. `X-Powered-By` **está ausente** (respeita `poweredByHeader: false`) e
+   `x-robots-tag: noindex` acompanha as respostas.
+2. A classificação anterior ("comparação BLOCKED") fica **superada para o
+   candidato**: os seis headers existem na aplicação, não apenas no código. O
+   FAIL de headers permanece válido somente para o site público, que é outro
+   projeto.
+3. **CONFLITO_DE_EVIDÊNCIA resolvido pelo runtime:** a auditoria estática
+   registrava "401 sem sessão" por área, mas `proxy.ts` intercepta antes — sem
+   sessão, `GET /` e `GET /api/leads` respondem **307 → `/login`**
+   (`{"redirect":"/login","status":"307"}` quando o cliente pede
+   `Accept: application/json`). O 401 dos handlers continua existindo, porém não
+   é o que o cliente recebe sem sessão. Nenhuma alteração de código foi feita
+   por causa disso.
+4. As rotas fora da barreira — por desenho, em `proxy.ts`: `/login`,
+   `/api/auth/logout` e `/api/inbound/*` — foram confirmadas no runtime:
+   `GET /login` → **200** HTML pt-BR; `POST /api/inbound/datta360` sem segredo →
+   **401** JSON `{"error":"unauthorized"}` (falha fechada); `GET
+   /api/inbound/datta360` → **405**. Fica provado que a porta pública site→CRM
+   existe e responde no Preview.
+5. Sem bypass, `/login` responde **302** para `vercel.com/sso-api`: a proteção do
+   Preview continua ativa.
+
+Pendência de segurança gerada nesta sessão: o segredo de *Protection Bypass for
+Automation* do projeto apareceu no log local ao ser lido da API. Ele é gerenciado
+pela Vercel (`isEnvVar: true`) e a API pública rejeita `protectionBypass` em
+`PATCH /v9|v10|v11/projects/:id` (`should NOT have additional property`), então a
+rotação não pôde ser feita por API; fica registrada como **HUMAN_ACTION**
+(dashboard → Settings → Deployment Protection → Protection Bypass for
+Automation → regenerar).
+
 Cada rota foi lida no código. `AUTH` é verificado no servidor; `RESULTADO` é
 `PASS (estático)` quando a barreira existe no código e `BLOCKED (runtime)` quando
 só a execução autenticada pode provar.
