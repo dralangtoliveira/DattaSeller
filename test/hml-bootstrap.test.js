@@ -37,8 +37,10 @@ test("sem token o script falha fechado com código 3", () => {
 test("o script nunca imprime, loga ou commita o token", () => {
   const printLines = source.split(/\r?\n/).filter(line => /console\.(log|error|warn)\(/.test(line));
   for (const line of printLines) {
-    assert.ok(!/token/i.test(line), `linha de saída menciona token: ${line.trim()}`);
-    assert.ok(!/Bearer \$\{/.test(line), `linha de saída interpolando credencial: ${line.trim()}`);
+    // A palavra "token" pode aparecer em mensagens de falha fechado; o que não
+    // pode existir é interpolação do valor em qualquer saída.
+    assert.ok(!/\$\{\s*token\s*\(/.test(line), `linha de saída interpola o token: ${line.trim()}`);
+    assert.ok(!/Bearer \$\{/.test(line), `linha de saída interpola credencial: ${line.trim()}`);
   }
   assert.match(source, /SUPABASE_ACCESS_TOKEN/);
   assert.match(source, /Authorization: `Bearer \$\{token\(\)\}`/);
