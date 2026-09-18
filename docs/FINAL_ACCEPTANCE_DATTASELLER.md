@@ -203,3 +203,7 @@ Somente nomes, tipos e ambientes; nenhum valor foi copiado.
 ### Cobertura do endpoint de timeline (2026-09-18)
 
 `test/timeline-endpoint.test.js` trava o contrato do novo `GET /api/timeline` em 6 testes: o plano E2E exige o endpoint, a raiz existe sob a barreira de sessão (401), o filtro `?lead=` é opcional e validado (400 `invalid_lead_slug`), a consulta é ordenada por `created_at` desc com limite 500 e falha fechada, a saída usa `leadSlug`/`createdAt`/`isDemo` e a trilha continua preservada pelo cleanup. Suíte total: 100/100.
+
+### Production do CRM — identificação do deployment (2026-09-18)
+
+`vercel inspect --json` de `v0-project-6xwoozsra-datta-x.vercel.app` retorna: `id = dpl_5xavK2MWFXcN14D3QRzcjjNbLTyR`, `target = production`, `readyState = READY`, `createdAt = 1789493809255` (≈ 2026-09-15T17:36Z) e alias para `crm.datta360.com.br`. As chaves retornadas são `id, name, url, target, readyState, createdAt, aliases, builds, contextName` — **não há campo de git/commit/meta nesse deployment**, portanto o SHA servido permanece desconhecido por essa via. Próxima tentativa: `vercel ls v0-project --prod --json` (procurar `meta.githubCommitSha`/`meta.githubCommitRef`) antes de qualquer conclusão sobre qual código está em Production.
