@@ -113,7 +113,9 @@ if (state.previewId) {
   record("editor", editor.status === 200 && editor.text.includes("PROSPECTOR-EDITOR") ? "pass" : "fail", `HTTP ${editor.status}`);
   const comparator = await call("GET", `/api/comparators/${slug}`);
   record("comparator", comparator.status === 200 ? "pass" : "fail", `HTTP ${comparator.status}`);
-  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", artifacts: { preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.id].filter(Boolean), social_audit_ids: [social.json?.id].filter(Boolean) } });
+  // A rota da proposta lê os artefatos no topo do corpo (mesmo contrato da UI);
+  // aninhá-los em `artifacts` deixava a proposta sem capa (409 no passo cover).
+  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.id].filter(Boolean), social_audit_ids: [social.json?.id].filter(Boolean), comparator: Boolean(state.previewId) });
   state.proposalId = proposal.json?.id ?? null;
   state.publicPrice = proposal.json?.base_price ?? null;
   record("proposal", proposal.status === 200 && state.proposalId ? "pass" : "fail", `proposta=${state.proposalId ?? "-"}`);
@@ -155,7 +157,8 @@ if (state.emailId) {
   const followUpOk = followUp.status === 201 || followUp.json?.duplicate === true;
   record("email_followup", followUpOk ? "pass" : followUp.status === 409 ? "blocked" : "fail", `HTTP ${followUp.status}`);
   const timeline = await call("GET", "/api/timeline");
-  const events = Array.isArray(timeline.json) ? timeline.json.filter((item) => item.lead_slug === slug) : [];
+  // O endpoint de timeline responde em camelCase (`leadSlug`), contrato já coberto por teste.
+  const events = Array.isArray(timeline.json) ? timeline.json.filter((item) => (item.leadSlug ?? item.lead_slug) === slug) : [];
   record("email_timeline", timeline.status === 200 && events.length > 0 ? "pass" : "fail", `${events.length} eventos do lead E2E`);
 } else {
   for (const id of ["email_edit", "email_approve", "email_send", "email_followup", "email_timeline"]) record(id, "skip", "sem e-mail");
