@@ -531,6 +531,37 @@ function vDiscPainel(){
 function vProspeccao(){
 // DS-VALUE-02 — enriquecimento real: consulta fontes públicas e completa apenas
 // DS-VALUE-03 — diagnóstico factual do site real: somente fatos observados.
+// DS-VALUE-04 — redesign real: enfileira o job no worker, acompanha o status e
+// abre preview/editor/comparador quando o artefato fica pronto no CRM.
+function dsRedesign(slug){
+ if(!confirm('Gerar a nova versão da página deste lead a partir do site real?'))return;
+ fetch('/api/redesign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_slug:slug})})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+  .then(function(x){
+   if(!x.ok||x.d.error||x.d.erro){alert('Redesign não iniciado: '+String(x.d.message||x.d.error||x.d.erro||'erro')+'. Nada foi alterado.');return}
+   var tentativas=0;
+   var timer=setInterval(function(){
+    tentativas++;
+    fetch('/api/redesign?job='+encodeURIComponent(x.d.job_id),{cache:'no-store'})
+     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+     .then(function(y){
+      if(!y.ok||y.d.error||y.d.status==='failed'){
+       clearInterval(timer);
+       var motivo=y.d.error&&(y.d.error.message||y.d.error.code)?(y.d.error.message||y.d.error.code):(y.d.error||y.d.erro||'erro');
+       alert('Redesign falhou: '+String(motivo)+'. O lead não foi alterado.');
+       return;
+      }
+      if(y.d.status!=='completed'){if(tentativas>60){clearInterval(timer);alert('O redesign continua em execução no worker. Consulte a Timeline em instantes.')}return}
+      clearInterval(timer);
+      alert('Nova versão pronta para '+slug+'\nPreview: '+y.d.preview.url+'\nEditor: '+y.d.preview.editor_url+'\nComparador: '+y.d.preview.comparator_url);
+      dsLoad().then(render);
+     })
+     .catch(function(){});
+   },4000);
+  })
+  .catch(function(){alert('Falha de conexão ao iniciar o redesign. Nada foi alterado.')});
+}
+// DS-VALUE-03 — diagnóstico factual do site real: somente fatos observados.
 function dsDiagnostico(slug){
  fetch('/api/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_slug:slug})})
   .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
@@ -807,6 +838,7 @@ nav();document.getElementById("view").innerHTML="<div class=\"painel\"><h2>Sincr
     a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
     a.push('<a href="#" onclick="dsEnriquecer(decodeURIComponent(\''+slug+'\'));return false">enriquecer</a>');
     a.push('<a href="#" onclick="dsDiagnostico(decodeURIComponent(\''+slug+'\'));return false">diagnóstico</a>');
+    a.push('<a href="#" onclick="dsRedesign(decodeURIComponent(\''+slug+'\'));return false">redesign</a>');
     a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };

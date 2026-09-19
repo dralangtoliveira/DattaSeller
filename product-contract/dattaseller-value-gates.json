@@ -51,9 +51,18 @@
     {
       "id": "DS-VALUE-04",
       "name": "Redesign individualizado com ativos reais",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "renderProspectorRedesign atual usa nome/nicho/URL e template genérico; não prova extração de ativos/conteúdo reais."
+        "Arquitetura separada: o CRM orquestra (POST /api/redesign responde 202 com job_id) e o DattaSeller Worker Agent executa a ação BUILD_REDESIGN (POST /jobs/redesign, GET /jobs/:id) fora da Vercel, com contrato próprio e contexto do CRM por referência (GET /api/worker/context, token do worker ou sessão admin).",
+        "Coleta real de ativos públicos (lib/redesign/collector.js) com proveniência por ativo (kind, url, source_url, evidencia, collected_at): logo, fotos, textos, listas com o título publicado pelo cliente, telefone, WhatsApp, e-mail, endereço, redes e paleta.",
+        "Prova real 2026-09-19 com empresa descoberta pelo DS-VALUE-01 (Fat Rosie's Taco & Tequila Bar, Orlando): logo e foto reais do cliente (images.getbento.com), paleta real #ffc400/#3a7f20, headline real do H1, endereço/telefone/e-mail confirmados; 0 avisos; redesign gerado em 3s pelo worker.",
+        "Individualização e regras bloqueantes: sem logo real a marca é tipográfica; sem fotos não há galeria; lista sem título publicado não é renderizada com rótulo nosso; findForbiddenClaims bloqueia afirmação sem fonte (experiência, melhor da cidade, estrelas/avaliações, garantias, depoimentos inventados).",
+        "Persistência na infraestrutura existente: ds_previews (kind redesign, status ready, content HTML, url /api/previews/<id>) vinculado ao lead, com trilha redesign.queued/generated/persisted e ingestão idempotente por job_id.",
+        "Editor e comparador existentes reutilizados (lib/prospector-preview-editor.js e lib/prospector-comparator.js): editor abre com barra Modo edição e Exportar, e o clique no H1 o torna contenteditable; comparador mostra site atual e nova versão em dois iframes.",
+        "Responsividade medida em navegador real (Playwright) nas 6 larguras 360/375/768/1024/1280/1440: scrollWidth <= innerWidth e zero elementos fora da viewport em todas.",
+        "MIGRACAO POR PARIDADE FUNCIONAL: Sites historico -> infraestrutura web DattaSeller atual (artefato + editor + comparador; sem dependencia nova de fornecedor).",
+        "Endurecimento apos revisao tecnica: context_url so aceita caminho relativo e o destino e fixado na origem de DATTASELLER_API_URL (URL absoluta, //host, file:, ftp:, javascript:, data: e host privado/metadata recusados); worker em bind externo recusa iniciar sem DATTASELLER_WORKER_SECRET e exige o segredo nas rotas de job; DATTASELLER_API_URL exige DATTASELLER_WORKER_TOKEN e o contexto do CRM passa a ser obrigatorio no modo worker (sem ele o job falha, nao gera redesign comercial); WhatsApp/telefone nao inventam DDI (usa o numero internacional publicado ou com '+' explicito, DDI 55 apenas quando o pais Brasil e comprovado) - validado com lead dos EUA.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-04-REDESIGN-2026-09-19.md"
       ]
     },
     {

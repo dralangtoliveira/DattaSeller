@@ -7,3 +7,4 @@ tsconfig.tsbuildinfo
 __pycache__/
 *.pyc
 .vercel
+.redesign-e2e/
