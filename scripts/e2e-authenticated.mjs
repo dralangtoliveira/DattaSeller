@@ -11,7 +11,7 @@
 // chamada de rede quando o banco é o de Production, quando o host é domínio de
 // Production ou quando o ref esperado do HML não foi declarado/confere.
 import { createServerClient } from "@supabase/ssr";
-import { E2E_STEPS, e2eLeadSlug, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
+import { E2E_STEPS, e2eLeadSlug, e2eProspectCandidate, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
 import { formatGuardReport, guardE2eTarget } from "../lib/e2e/target-guard.js";
 
 const env = process.env;
@@ -80,7 +80,7 @@ if (auth.status !== 200) {
 }
 record("auth", "pass", `${Array.isArray(auth.json) ? auth.json.length : 0} leads visíveis`);
 
-const candidate = { slug, nome: `E2E ${runId}`, cidade: "Novo Hamburgo", telefone: "51999990000", email: env.DS_E2E_EMAIL_TO, site_antigo: `https://e2e-${runId}.example/`, instagram_url: `instagram.com/e2e${runId}` };
+const candidate = e2eProspectCandidate({ slug, runId, emailTo: env.DS_E2E_EMAIL_TO });
 
 const prospect = await call("POST", "/api/prospects", { query: { niche: "e2e", city: "Novo Hamburgo", product: "datta360", search_radius_km: 10, target_quantity: 1, search_limit: 1 }, candidates: [candidate] });
 if (prospect.status !== 200) record("prospect", "fail", `HTTP ${prospect.status} ${prospect.text.slice(0, 160)}`);
