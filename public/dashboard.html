@@ -521,6 +521,19 @@ function vDiscPainel(){
 }
 function vProspeccao(){
 // DS-VALUE-02 — enriquecimento real: consulta fontes públicas e completa apenas
+// DS-VALUE-03 — diagnóstico factual do site real: somente fatos observados.
+function dsDiagnostico(slug){
+ fetch('/api/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_slug:slug})})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+  .then(function(x){
+   if(!x.ok||x.d.error||x.d.erro){alert('Diagnóstico não registrado: '+String(x.d.message||x.d.error||x.d.erro||'erro')+'. O lead não foi alterado.');return}
+   var f=x.d.fatos||{},c=f.contatos||{};
+   alert('Diagnóstico factual de '+f.url_final+'\nHTTP '+f.http_status+' · '+f.tamanho_bytes+' bytes\nTítulo: '+(f.titulo||'(sem título)'||'')+'\nH1: '+(f.titulos_h1||[]).length+' · H2: '+(f.subtitulos_h2||[]).length+' · CTA reconhecido: '+(f.chamadas_para_acao||[]).length+'\nViewport (mobile): '+(f.viewport_declarado?'declarado':'não declarado')+'\nContatos publicados: mailto '+(c.email||[]).length+' · tel '+(c.telefone||[]).length+' · formulário '+(c.formulario?'sim':'não')+' · WhatsApp '+(c.whatsapp?'sim':'não')+'\nImagens: '+(f.imagens||{}).total+' ('+(f.imagens||{}).sem_alt+' sem alt)\nVerificado em '+x.d.checked_at);
+   dsLoad().then(render);
+  })
+  .catch(function(){alert('Falha de conexão ao diagnosticar. O lead não foi alterado.')});
+}
+// DS-VALUE-02 — enriquecimento real: consulta fontes públicas e completa apenas
 // campo vazio, sempre com fonte, data, confiança e classificação. O que já
 // existe não é sobrescrito e falha de fonte não altera o lead.
 function dsEnriquecer(slug){
@@ -776,6 +789,7 @@ nav();document.getElementById("view").innerHTML="<div class=\"painel\"><h2>Sincr
     if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\''+slug+'\'));return false">e-mail</a>');
     a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
     a.push('<a href="#" onclick="dsEnriquecer(decodeURIComponent(\''+slug+'\'));return false">enriquecer</a>');
+    a.push('<a href="#" onclick="dsDiagnostico(decodeURIComponent(\''+slug+'\'));return false">diagnóstico</a>');
     a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };

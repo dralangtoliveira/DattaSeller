@@ -140,6 +140,7 @@ const patch = String.raw`
     if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\''+slug+'\'));return false">e-mail</a>');
     a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
     a.push('<a href="#" onclick="dsEnriquecer(decodeURIComponent(\''+slug+'\'));return false">enriquecer</a>');
+    a.push('<a href="#" onclick="dsDiagnostico(decodeURIComponent(\''+slug+'\'));return false">diagnóstico</a>');
     a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };

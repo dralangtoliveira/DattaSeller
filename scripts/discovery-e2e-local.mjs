@@ -273,6 +273,31 @@ try {
     throw new Error("o lead enriquecido não registrou evidência de proveniência");
   }
   resumo.lead_final = { slug: leadFinal.slug, fonte: leadFinal.source, evidencia: leadFinal.contact_evidence.length, campos: { telefone: leadFinal.telefone || null, email: leadFinal.email || null, site_antigo: leadFinal.site_antigo || null, end_cliente: leadFinal.end_cliente || null } };
+
+  // DS-VALUE-03 — diagnóstico factual do site real do lead (sem afirmar risco
+  // técnico): fatos observados na resposta HTTP e no HTML público.
+  resumo.etapa = "diagnóstico factual do site";
+  const siteDoLead = leadFinal.site_antigo;
+  if (!siteDoLead) throw new Error("o lead enriquecido não tem site para diagnosticar");
+  const diagnostico = await call("/api/diagnosis", { method: "POST", body: JSON.stringify({ lead_slug: leadFinal.slug }) });
+  if (diagnostico.status !== 201 || !diagnostico.json?.ok) {
+    throw new Error(`o diagnóstico falhou (status ${diagnostico.status}: ${diagnostico.json?.error ?? diagnostico.text.slice(0, 200)})`);
+  }
+  const fatos = diagnostico.json.fatos ?? {};
+  if (fatos.http_status !== 200 || !fatos.titulo) throw new Error("o diagnóstico não trouxe fatos verificáveis do site real");
+  if (!(diagnostico.json.evidencias ?? []).length) throw new Error("o diagnóstico não registrou evidência por critério");
+  resumo.diagnostico = {
+    url: diagnostico.json.url,
+    http_status: fatos.http_status,
+    titulo: fatos.titulo,
+    h1: fatos.titulos_h1?.length ?? 0,
+    cta: fatos.chamadas_para_acao?.length ?? 0,
+    viewport: fatos.viewport_declarado,
+    contatos: fatos.contatos,
+    imagens: fatos.imagens,
+    evidencias: diagnostico.json.evidencias.length,
+    verificado_em: diagnostico.json.checked_at,
+  };
   resumo.etapa = "ok";
   console.log(JSON.stringify(resumo, null, 2));
   console.error("RESULTADO: fluxo nicho+cidade → empresas reais → CRM → enriquecimento executado com dados reais de fontes públicas.");
