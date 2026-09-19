@@ -90,10 +90,17 @@ Quando a base não está disponível no clone (checkout raso), o teste de compar
 Para inspecionar a interface do produto, abra o artefato **servido**:
 
 - Produção: `https://crm.datta360.com.br/dashboard.html`
-- Preview do PR: URL de deployment do PR + `/dashboard.html` (o Preview está atrás
-  da proteção Vercel Authentication — ver `BLOCKERS.md`)
+- Preview do PR (branch, head `a0a3a17`):
+  `https://v0-project-git-codex-ds-value-01-discovery-datta-x.vercel.app/dashboard.html`
+  e o deployment imutável do head:
+  `https://v0-project-nzioxrri1-datta-x.vercel.app/dashboard.html`
+  (o Preview está atrás da proteção Vercel Authentication — ver `BLOCKERS.md`)
 - Local: `npm run dev` → `http://localhost:3000/` (redireciona para
   `/dashboard.html` com sessão admin)
+
+O `dashboard.html` servido é o artefato com os 13 módulos, agora incluindo
+Descoberta real, candidato manual e a importação herdada "Pesquisa pública
+assistida" — nunca o `file://` da POC.
 
 Abrir `poc/dattaseller-local/app/dashboard.html` como `file://` mostra a POC
 histórica em modo arquivo (sem servidor, sem dados reais) e **não** representa a
