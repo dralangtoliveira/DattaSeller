@@ -92,6 +92,8 @@ test("D — o boot não exibe dado local/fixture nem menu divergente", () => {
   assert.ok(gerado.includes("MODO DEMONSTRAÇÃO/g,''"), "o render precisa limpar o marcador MODO DEMONSTRAÇÃO");
   assert.ok(gerado.includes("/MODO (DEMO|LOCAL)/g,''"), "o render precisa limpar os marcadores MODO DEMO/LOCAL");
   assert.match(gerado, /<span>CRM comercial<\/span>/, "o logo não pode dizer 'operação comercial local'");
+  assert.doesNotMatch(gerado, /modo arquivo|Baseado no Prospector|operação comercial local/, "nenhum resíduo textual da POC pode sobrar no artefato servido");
+  assert.match(patchFonte, /indicador de modo arquivo da POC/, "o patch precisa remover o indicador da POC e falhar se ele desaparecer do alvo");
 });
 
 test("o artefato publicado é exatamente o gerado pela sincronização + patch", () => {

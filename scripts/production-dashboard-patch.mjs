@@ -19,6 +19,13 @@ function requireTarget(source, expected, description) {
   return source;
 }
 
+function replaceRegexRequired(source, pattern, replacement, description) {
+  if (!pattern.test(source)) {
+    throw new Error(`dashboard.html sem alvo esperado: ${description}; patch de produção não aplicado`);
+  }
+  return source.replace(pattern, replacement);
+}
+
 html = replaceRequired(
   html,
   "<title>DattaSeller — Painel comercial local</title>",
@@ -30,6 +37,15 @@ html = replaceRequired(
   "<span>operação comercial local</span>",
   "<span>CRM comercial</span>",
   "rótulo de operação local no logo"
+);
+// O indicador "modo arquivo" era escondido só por CSS: o texto (e o title da POC)
+// ficavam no HTML servido e podiam aparecer antes do CSS do patch. O elemento é
+// preservado para o script base, mas sem nenhum resíduo de POC.
+html = replaceRegexRequired(
+  html,
+  /<span class="modo file" id="modo"[^>]*>[^<]*<\/span>/,
+  '<span class="modo" id="modo">conectando</span>',
+  "indicador de modo arquivo da POC"
 );
 html = replaceRequired(
   html,
