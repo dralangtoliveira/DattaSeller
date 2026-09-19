@@ -1,0 +1,102 @@
+{
+  "version": "2026-09-19",
+  "product": "DattaSeller",
+  "product_ready": false,
+  "allowed_status": [
+    "MISSING",
+    "PARTIAL",
+    "BLOCKED",
+    "PROVEN_DEMO",
+    "PROVEN_REAL"
+  ],
+  "gates": [
+    {
+      "id": "DS-VALUE-01",
+      "name": "Descoberta de leads reais",
+      "status": "MISSING",
+      "evidence": [
+        "Pacote Prospector/Drive define busca; web atual recebe candidates já encontrados."
+      ]
+    },
+    {
+      "id": "DS-VALUE-02",
+      "name": "Enriquecimento com proveniência",
+      "status": "MISSING",
+      "evidence": [
+        "Histórico b23a3aa define enriquecimento obrigatório; motor operacional não está na linha web atual."
+      ]
+    },
+    {
+      "id": "DS-VALUE-03",
+      "name": "Diagnóstico factual de site real",
+      "status": "PARTIAL",
+      "evidence": [
+        "API/persistência existem; análise autônoma do site real não está comprovada ponta a ponta."
+      ]
+    },
+    {
+      "id": "DS-VALUE-04",
+      "name": "Redesign individualizado com ativos reais",
+      "status": "MISSING",
+      "evidence": [
+        "renderProspectorRedesign atual usa nome/nicho/URL e template genérico; não prova extração de ativos/conteúdo reais."
+      ]
+    },
+    {
+      "id": "DS-VALUE-05",
+      "name": "Diagnóstico social real",
+      "status": "PARTIAL",
+      "evidence": [
+        "Persistência social existe; coleta/análise operacional do perfil real não está comprovada."
+      ]
+    },
+    {
+      "id": "DS-VALUE-06",
+      "name": "Demonstração social visual",
+      "status": "MISSING",
+      "evidence": [
+        "Não há evidência web atual de peças demonstrativas equivalentes ao escopo definido."
+      ]
+    },
+    {
+      "id": "DS-VALUE-07",
+      "name": "Proposta pública sem login",
+      "status": "MISSING",
+      "evidence": [
+        "Capa atual exige contexto admin autenticado."
+      ]
+    },
+    {
+      "id": "DS-VALUE-08",
+      "name": "Gerador de e-mail Prospector",
+      "status": "MISSING",
+      "evidence": [
+        "Resend existe, mas o backend aceita assunto/corpo genéricos sem checklist anti-spam obrigatório."
+      ]
+    },
+    {
+      "id": "DS-VALUE-09",
+      "name": "Envio real controlado",
+      "status": "PARTIAL",
+      "evidence": [
+        "Fluxo Resend foi provado em ambiente controlado; Production ainda permanece em DEMO."
+      ]
+    },
+    {
+      "id": "DS-VALUE-10",
+      "name": "Follow-up Prospector",
+      "status": "PARTIAL",
+      "evidence": [
+        "Agendamento e rascunho existem; procedimento original completo e mesmo link público não estão garantidos."
+      ]
+    },
+    {
+      "id": "DS-VALUE-11",
+      "name": "E2E comercial real",
+      "status": "MISSING",
+      "evidence": [
+        "E2E atual prova CRM/integrações com candidato preparado, não a cadeia completa iniciando em nicho/cidade."
+      ]
+    }
+  ]
+}
