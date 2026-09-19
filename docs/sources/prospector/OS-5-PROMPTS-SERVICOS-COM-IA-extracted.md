@@ -1,109 +1,169 @@
-# Fonte histórica — Os-5-Prompts-Servicos-com-IA.pdf
+# Transcrição textual — Os-5-Prompts-Servicos-com-IA.pdf
 
 **Origem:** Google Drive — pasta `AllPAss` dentro do material Prospector  
 **Arquivo original:** `Os-5-Prompts-Servicos-com-IA.pdf`  
-**Drive ID:** `1TLn1foQVo2x0KOltPhkTfPmRwvlgP8fc`  
-**Uso no DattaSeller:** o plano canônico recuperado determinou reutilizar o prompt de conteúdo mensal como base do pacote social Datta360. Os demais prompts são material de referência e não viram requisito automático do produto.
+**Drive ID:** `1TLn1foQVo2x0KOltPhkTfPmRwvlgP8fc`
 
-## 1 · Conteúdo para empresas — base relevante ao social Datta360
+> Transcrição textual preservada para leitura por agentes sem dependência de PDF/OCR. O PDF original permanece a fonte histórica primária.
 
-Papel: redator sênior de social media especializado no segmento do cliente.
+# Os 5 prompts — um pra cada serviço do vídeo
 
-### Contexto da marca
+Copia, cola, troca só o que está em amarelo e manda. Funciona em qualquer IA de texto (ChatGPT, Claude, Gemini, ou tudo junto no AllPass).
 
-- Nome.
-- O que vende: produto/serviço.
-- Público: quem compra, idade, dor, desejo.
-- Tom de voz.
-- O que nunca dizer: promessas proibidas, concorrentes etc.
+Como usar: as partes [EM COLCHETES AMARELOS] são as únicas coisas que você troca em cada cliente. O resto é a estrutura que faz a IA entregar em nível de profissional, não em nível de "resuminho". Se a primeira resposta vier rasa, responde só aprofunda, tá superficial — quase sempre dobra de qualidade.
 
-### Tarefa
+## 1 Conteúdo para empresas R$800–3.000/mês
 
-Criar uma quantidade definida de posts para um canal definido sobre o tema do mês.
+Post, roteiro, e-mail, descrição de produto — em volume e com consistência de marca.
 
-Para **cada post**, entregar:
+```text
+Você é um redator sênior de social media especializado em
+[SEGMENTO DO CLIENTE — ex.: clínica de estética].
 
-1. gancho — primeira linha que segura a rolagem;
-2. legenda completa;
-3. 5 hashtags relevantes;
-4. sugestão de imagem/vídeo em 1 frase.
+CONTEXTO DA MARCA:
+- Nome: [NOME]
+- O que vende: [PRODUTO/SERVIÇO]
+- Público: [QUEM COMPRA — idade, dor, desejo]
+- Tom de voz: [ex.: próximo, confiante, sem gíria]
+- O que NUNCA dizer: [promessas proibidas, concorrentes, etc.]
 
-Variar formatos:
-- dica;
-- bastidor;
-- prova social;
-- oferta;
-- pergunta.
+TAREFA:
+Crie [QUANTIDADE — ex.: 8] posts para [CANAL — ex.: Instagram feed] sobre [TEMA DO
+MÊS].
 
-Não repetir a abertura entre os posts. Português do Brasil.
+Para CADA post entregue:
+1. O gancho (primeira linha que segura a rolagem)
+2. A legenda completa
+3. 5 hashtags relevantes
+4. Uma sugestão de imagem/vídeo em 1 frase
 
-A orientação do material é preservar o bloco **CONTEXTO DA MARCA** por cliente e, em ciclos futuros, trocar o tema do mês.
+Varie os formatos: dica, bastidor, prova social, oferta, pergunta.
+Não repita abertura entre os posts. Escreva em português do Brasil.
+```
 
-## 2 · Pesquisa e síntese
+Vira recorrência: salve o bloco "CONTEXTO DA MARCA" de cada cliente. No mês seguinte você só troca o TEMA DO MÊS e reusa o resto.
 
-Transforma pedido cru e material solto em relatório de inteligência competitiva.
+## 2 Pesquisa e síntese
 
-Estrutura:
-1. sumário executivo;
-2. metodologia e limites;
-3. perfil de cada concorrente;
-4. comparativo lado a lado;
-5. mapa de posicionamento;
-6. lacunas de mercado;
-7. recomendações;
-8. fontes.
+É o prompt que gerou o relatório da cafeteria R$500–2.000.
 
-Regras relevantes:
-- marcar como "verificar" dados incertos;
-- nunca inventar número;
-- dizer quando falta dado;
-- tom de consultoria.
+Relatório de concorrência, tendência de mercado, material pra proposta — bruto vira entregável.
 
-**Uso no DattaSeller:** não é requisito automático do fluxo social MVP; pode ser referência futura para diagnóstico/consultoria quando explicitamente incorporado.
+```text
+Você é um analista de inteligência competitiva. Vou te dar um pedido cru e material
+solto; sua função é transformar isso num relatório que a pessoa possa mostrar para um
+sócio ou investidor.
 
-## 3 · Apresentação profissional
+PEDIDO DO CLIENTE:
+[COLE O QUE O CLIENTE PEDIU, do jeito que ele falou]
 
-Estrutura uma apresentação executiva slide a slide, com:
-- título;
-- 3–5 bullets;
-- fala;
-- ideia visual.
+MATERIAL BRUTO (não organizado):
+[COLE tudo que você juntou: links, nomes, preços, notas soltas]
 
-Fluxo recomendado:
-problema → por que importa → solução → prova → pedido claro.
+ENTREGUE um relatório com esta estrutura:
+1. Sumário executivo (a leitura em 1 frase + 3 números-chave)
+2. Metodologia e limites (de onde vêm os dados, o que NÃO dá pra afirmar)
+3. Perfil de cada concorrente (posicionamento, ativo principal, ponto cego)
+4. Comparativo lado a lado em tabela
+5. Mapa de posicionamento (descreva os eixos e onde cada um cai)
+6. As lacunas de mercado (onde ninguém está)
+7. Recomendação em passos numerados
+8. Fontes
 
-**Uso no DattaSeller:** referência, não requisito automático do MVP.
+REGRAS:
+- Todo dado que você não tem certeza, marque como "verificar".
+- Nunca invente número. Se faltar, diga que falta.
+- Seja específico e decidido nas recomendações. Nada de "depende".
+- Português do Brasil, tom de consultoria.
+```
 
-## 4 · Resumo de documento recorrente
+Já testado no vídeo: foi esse prompt, com o material da Vila Madalena colado, que gerou o PDF de 5 páginas.
 
-Produz resumo executivo com:
-1. resumo em 5 linhas;
-2. pontos de atenção/decisão;
-3. riscos;
-4. prazos/datas;
-5. recomendação.
+## 3 Apresentação profissional — consultoria disfarçada de slide
 
-Regra central: se algo estiver ambíguo, declarar ambiguidade; não preencher lacuna com suposição.
+Pitch deck, apresentação de resultado, material de treinamento — estrutura + texto de cada slide.
 
-**Uso no DattaSeller:** referência geral de qualidade/factualidade, não requisito direto do fluxo comercial.
+```text
+Você é um consultor que monta apresentações executivas de alto nível.
 
-## 5 · Análise de dados simples
+OBJETIVO DA APRESENTAÇÃO:
+[ex.: convencer investidor a colocar R$X / treinar equipe em Y]
 
-Produz:
-1. três descobertas principais;
-2. número que sustenta cada descoberta + provável causa;
-3. o que está indo bem;
-4. três ações práticas;
-5. uma pergunta que os dados não respondem.
+PARA QUEM VAI APRESENTAR:
+[quem está na sala, o que já sabe, o que precisa decidir]
 
-**Uso no DattaSeller:** referência de análise, não requisito direto do pacote social.
+INFORMAÇÃO QUE TENHO:
+[COLE os dados, números, contexto do negócio]
 
-## Regra de ouro do material
+ENTREGUE, slide a slide (sugira [10-12] slides):
+- Título do slide
+- Os 3 a 5 bullets do slide (frases curtas, não parágrafos)
+- A "fala" — o que a pessoa diz em voz alta enquanto o slide está na tela
+- A ideia visual em 1 frase (gráfico, imagem, ícone)
 
-A IA entrega o rascunho; o operador entrega julgamento/revisão antes de mandar ao cliente.
+O raciocínio tem que fluir: problema → por que importa → solução → prova → pedido
+claro.
+Comece pela tensão, não pela empresa. Português do Brasil.
+```
 
-## Implicação funcional para o social Datta360
+Ganha valor: depois que a IA montar, peça "agora revise a coerência do argumento: onde um cético fura essa apresentação?" — isso é o que separa R$300 de R$1.500.
 
-O material sustenta diretamente que a geração social deve usar **contexto real da marca** e, para cada peça, produzir ao menos gancho, legenda, hashtags e direção de imagem/vídeo. O contrato atual do DattaSeller complementa isso com o pacote demonstrativo recuperado: direção visual, calendário inicial de 7 dias, 3 peças de feed e 3 sugestões de stories.
+## 4 Resumo de documento recorrente, todo mês
 
-Não inferir deste PDF publicação automática, OAuth ou gestão recorrente: essas capacidades não são estabelecidas por esta fonte.
+Contrato, relatório, material de RH — documento longo vira resumo executivo de 1 página.
+
+```text
+Você é um assistente executivo que resume documentos longos para quem não tem tempo
+de lê-los.
+
+QUEM VAI LER O RESUMO:
+[ex.: o dono, que decide em 2 minutos / o jurídico]
+
+O QUE ELE PRECISA SABER PRA AGIR:
+[ex.: se pode assinar / os riscos / os prazos]
+
+DOCUMENTO:
+[COLE o texto, ou anexe o arquivo]
+
+ENTREGUE:
+1. Resumo em 5 linhas (o essencial, sem juridiquês)
+2. Os pontos que exigem ATENÇÃO ou decisão (lista, com a página onde está)
+3. Riscos ou pegadinhas escondidas (se houver)
+4. Prazos e datas importantes
+5. Uma recomendação: "o que eu faria no seu lugar"
+
+Se algo estiver ambíguo no documento, diga que está ambíguo — não preencha a lacuna
+com suposição. Português do Brasil.
+```
+
+Privacidade: documento de cliente (contrato, dado de RH) não deve ir pra qualquer ferramenta. É aqui que o plano com recursos de privacidade do AllPass importa — ver Bloco 6 do vídeo.
+
+## 5 Análise de dados simples — valor percebido alto
+
+Planilha de vendas, métrica, feedback em texto — dado cru vira insight legível.
+
+```text
+Você é um analista de dados que explica números para quem não é de dados.
+
+O QUE A PESSOA QUER DESCOBRIR:
+[ex.: por que as vendas caíram / o que os clientes mais reclamam]
+
+OS DADOS:
+[COLE a planilha, os números, ou os textos de feedback]
+
+ENTREGUE:
+1. As 3 descobertas mais importantes, em ordem de impacto (frase simples cada)
+2. Para cada descoberta: o número que a sustenta + o que provavelmente causou
+3. O que está indo BEM (não só o problema)
+4. 3 ações práticas que a pessoa pode tomar essa semana
+5. Uma pergunta que os dados NÃO respondem e valeria investigar
+
+Nada de jargão estatístico sem explicar. Se citar uma métrica, diga o que ela
+significa na mesma frase. Português do Brasil.
+```
+
+Impressiona: peça no fim "me dê 1 gráfico que eu deveria fazer com esses dados e descreva ele" — aí você entrega análise + direção visual.
+
+## Regra de ouro dos 5
+
+A IA entrega o rascunho — você entrega o julgamento. Leia antes de mandar pro cliente, corrija o que soa genérico, e cobre pela responsabilidade, não pelo tempo. É por isso que paga bem mesmo sendo rápido.
