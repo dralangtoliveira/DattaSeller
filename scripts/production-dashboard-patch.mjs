@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const target = resolve("public/dashboard.html");
-let html = readFileSync(target, "utf8");
+export function applyProductionDashboardPatch(input) {
+let html = input;
 
 function replaceRequired(source, expected, replacement, description) {
   if (!source.includes(expected)) {
@@ -18,6 +19,13 @@ function requireTarget(source, expected, description) {
   return source;
 }
 
+function replaceRegexRequired(source, pattern, replacement, description) {
+  if (!pattern.test(source)) {
+    throw new Error(`dashboard.html sem alvo esperado: ${description}; patch de produção não aplicado`);
+  }
+  return source.replace(pattern, replacement);
+}
+
 html = replaceRequired(
   html,
   "<title>DattaSeller — Painel comercial local</title>",
@@ -26,17 +34,32 @@ html = replaceRequired(
 );
 html = replaceRequired(
   html,
+  "<span>operação comercial local</span>",
+  "<span>CRM comercial</span>",
+  "rótulo de operação local no logo"
+);
+// O indicador "modo arquivo" era escondido só por CSS: o texto (e o title da POC)
+// ficavam no HTML servido e podiam aparecer antes do CSS do patch. O elemento é
+// preservado para o script base, mas sem nenhum resíduo de POC.
+html = replaceRegexRequired(
+  html,
+  /<span class="modo file" id="modo"[^>]*>[^<]*<\/span>/,
+  '<span class="modo" id="modo">conectando</span>',
+  "indicador de modo arquivo da POC"
+);
+html = replaceRequired(
+  html,
   "Baseado no Prospector. Contatos, envio de propostas, publicação e checkout exigem confirmação humana.",
   "CRM comercial Datta. Operação autenticada e persistida no servidor.",
   "aviso operacional da POC"
 );
-// The base POC starts an asynchronous dsLoad() before this production patch is
-// evaluated. Its later render would overwrite the patched navigation and views.
-// Production boot is intentionally deferred to the guarded loader below.
+// O boot da POC renderizava o estado local e disparava dsLoad() antes deste patch
+// existir. O artefato de CRM entra em estado de sincronização usando o MESMO menu
+// canônico (NAV_CANONICO), sem exibir dado local/fixture como se fosse real.
 html = replaceRequired(
   html,
   "render();dsLoad();",
-  "render();",
+  String.raw`nav();document.getElementById("view").innerHTML="<div class=\"painel\"><h2>Sincronizando com o servidor</h2><p>Carregando leads e recursos persistidos no CRM. Nenhum dado local é exibido neste artefato.</p></div>";`,
   "boot assíncrono da POC"
 );
 
@@ -91,14 +114,13 @@ const patch = String.raw`
 
   NOMES={novo:'Novo lead',redesenhado:'Qualificado',publicado:'Em preparação',proposta:'Proposta enviada',respondeu:'Em negociação',fechado:'Fechado',descartado:'Perdido'};
 
-  nav=function(){
-    var fu=fil().filter(function(l){return l.status==='proposta'&&dias(l.dataProposta)>=Number((DS.settings||{}).followup_days||4)});
-    var previewCount=((window.DS&&DS.previews)||[]).filter(function(p){return p.lead_slug}).length;
-    var itens=[['geral','Visão geral',null],['prospeccao','Prospecção',null],['pipeline','Pipeline',ativos().length],['clientes','Clientes',fil().length],['intelligence','Inteligência',null],['sites','Sites / Preview',previewCount],['comparador','Comparador',previewCount],['workspace','Central comercial',null],['timeline','Timeline',null],['followup','Follow-ups',fu.length],['financeiro','Financeiro',null],['config','Configurações',null]];
-    if(!itens.some(function(i){return i[0]===view})) view='geral';
-    document.getElementById('nav').innerHTML=itens.map(function(i){return '<button class="'+(view===i[0]?'on':'')+'" onclick="setView(\''+i[0]+'\')">'+i[1]+(i[2]!==null?'<span class="qt">'+i[2]+'</span>':'')+'</button>'}).join('');
-    document.getElementById('titulo').textContent=itens.filter(function(i){return i[0]===view})[0][1];
-  };
+  // Navegação: fonte única (NAV_CANONICO, definida no HTML base). Este patch NÃO
+  // declara uma segunda lista — ele só falha fechado se a lista canônica perder
+  // uma área já entregue, e a limpeza de estado local da POC.
+  ['geral','prospeccao','pipeline','clientes','intelligence','workspace','timeline','sites','comparador','followup','contratos','financeiro','config'].forEach(function(id){
+    if(!NAV_CANONICO.some(function(i){return i[0]===id})) throw new Error('navegação canônica perdeu a área: '+id);
+  });
+  try{ localStorage.removeItem('prospector_ov') }catch(_){}
 
   var normalSetView=setView;
   window.dsProspect=function(){var raw=document.getElementById('prospect-candidates').value, candidates;try{candidates=JSON.parse(raw)}catch(_){alert('Informe uma lista JSON de candidatos públicos.');return}apiJson('/api/prospects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:{niche:document.getElementById('prospect-niche').value,city:document.getElementById('prospect-city').value,region:document.getElementById('prospect-region').value,product:document.getElementById('prospect-product').value,search_radius_km:Number(document.getElementById('prospect-radius').value||0),target_quantity:Number(document.getElementById('prospect-target').value||0),search_limit:Number(document.getElementById('prospect-limit').value||0)},candidates:candidates})}).then(function(result){document.getElementById('prospect-result').textContent='Avaliados: '+result.evaluated+'; reconciliados: '+result.results.filter(function(x){return x.deduplicated}).length;return recarrega()}).then(dsLoad).catch(function(e){document.getElementById('prospect-result').textContent=e.message})};
@@ -202,6 +224,16 @@ const patch = String.raw`
       .replace(/<button[^>]*>Resetar dados DEMO<\/button>/g,'');
   };
 
+  // Texto residual da POC/DEMO não pode aparecer no CRM servidor. A limpeza roda
+  // dentro do próprio render(), então nenhum estado intermediário chega à tela.
+  var oldRender=render;
+  render=function(){
+    oldRender();
+    var el=document.getElementById('view');
+    if(!el) return;
+    el.innerHTML=el.innerHTML.replace(/<small style="color:var\(--accent\)">MODO DEMONSTRAÇÃO<\/small>/g,'').replace(/MODO DEMONSTRAÇÃO/g,'').replace(/MODO (DEMO|LOCAL)/g,'');
+  };
+
   var oldPost=dsPost;
   dsPost=function(path,body){
     return oldPost(path,body);
@@ -217,6 +249,17 @@ const patch = String.raw`
 if (!html.includes("</body>")) throw new Error("dashboard.html sem </body>; patch de produção não aplicado");
 // O controle de reset da POC é removido em runtime; o alvo precisa existir no build para o patch não falhar em silêncio.
 html = requireTarget(html, "/api/demo/reset", "botão de reset DEMO da POC");
-html = html.replace("</body>", `${patch}\n</body>`);
-writeFileSync(target, html, "utf8");
-console.log(`Dashboard ajustado para CRM de produção: ${target}`);
+// Contrato de navegação: o patch não cria lista própria; ele exige a canônica.
+html = requireTarget(html, "var NAV_CANONICO=[", "fonte única de navegação (NAV_CANONICO)");
+html = requireTarget(html, "['prospeccao','Prospecção']", "área Prospecção na navegação canônica");
+html = requireTarget(html, "['contratos','Contratos']", "área Contratos na navegação canônica");
+html = requireTarget(html, "['intelligence','Inteligência']", "área Inteligência na navegação canônica");
+return html.replace("</body>", `${patch}\n</body>`);
+}
+
+const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isEntrypoint) {
+  const target = resolve("public/dashboard.html");
+  writeFileSync(target, applyProductionDashboardPatch(readFileSync(target, "utf8")), "utf8");
+  console.log(`Dashboard ajustado para CRM de produção: ${target}`);
+}

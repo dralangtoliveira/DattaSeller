@@ -7,7 +7,10 @@
     "prebuild": "node scripts/sync-dashboard.mjs && node scripts/production-dashboard-patch.mjs",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test"
+    "e2e:authenticated": "node scripts/e2e-authenticated.mjs",
+    "test": "node --experimental-strip-types --test",
+    "secret-scan": "node scripts/secret-scan.mjs",
+    "e2e-cleanup": "node scripts/e2e-cleanup.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

@@ -1,13 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const source = resolve("poc/dattaseller-local/app/dashboard.html");
-const target = resolve("public/dashboard.html");
-mkdirSync(dirname(target), { recursive: true });
-
-let html = readFileSync(source, "utf8");
-
-const emailPatch = String.raw`
+export const EMAIL_PATCH = String.raw`
 <script>
 (function(){
   var originalTransitionEmail = dsTransitionEmail;
@@ -132,7 +127,16 @@ const emailPatch = String.raw`
 })();
 </script>`;
 
-if (!html.includes("</body>")) throw new Error("dashboard.html sem </body>; patch de e-mail não aplicado");
-html = html.replace("</body>", `${emailPatch}\n</body>`);
-writeFileSync(target, html, "utf8");
-console.log(`Dashboard sincronizado com fluxo de e-mail interno: ${target}`);
+export function syncDashboardHtml(html) {
+  if (!html.includes("</body>")) throw new Error("dashboard.html sem </body>; patch de e-mail não aplicado");
+  return html.replace("</body>", `${EMAIL_PATCH}\n</body>`);
+}
+
+const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isEntrypoint) {
+  const source = resolve("poc/dattaseller-local/app/dashboard.html");
+  const target = resolve("public/dashboard.html");
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, syncDashboardHtml(readFileSync(source, "utf8")), "utf8");
+  console.log(`Dashboard sincronizado com fluxo de e-mail interno: ${target}`);
+}
