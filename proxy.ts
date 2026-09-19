@@ -21,7 +21,9 @@ export async function proxy(request: NextRequest) {
   const { data: profile } = user ? await supabase.from("ds_users").select("role").eq("id", user.id).maybeSingle() : { data: null };
   const isAdmin = profile?.role === "admin";
   const path = request.nextUrl.pathname;
-  const isPublic = path === "/login" || path === "/api/auth/logout" || path.startsWith("/api/inbound/");
+  // O contexto do Worker Agent (DS-VALUE-04) passa pela borda porque a própria
+  // rota exige token do worker OU sessão admin; sem isso ela responde 401.
+  const isPublic = path === "/login" || path === "/api/auth/logout" || path.startsWith("/api/inbound/") || path === "/api/worker/context";
   if (!isAdmin && !isPublic) {
     if (user) await supabase.auth.signOut();
     const url = request.nextUrl.clone();

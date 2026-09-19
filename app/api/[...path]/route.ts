@@ -1,5 +1,7 @@
 import { Resend } from "resend";
+import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resendConfigurationError, resolveEmailRecipient } from "@/lib/email/provider";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { buildFollowUpDraft, canScheduleFollowUp } from "@/lib/email/follow-up.js";
@@ -18,6 +20,10 @@ import { disambiguateSlug, resultsToCandidates } from "@/lib/discovery/candidate
 import { EnrichmentError, enrichLead, planEnrichmentUpdate } from "@/lib/enrichment/provider.js";
 // @ts-expect-error diagnóstico factual do site real (DS-VALUE-03) exercitado por node:test sem build.
 import { DiagnosisError, diagnoseSite } from "@/lib/diagnosis/site.js";
+// @ts-expect-error contrato e executor do redesign (DS-VALUE-04) exercitados por node:test sem build.
+import { REDESIGN_ACTION, RedesignError, parseRedesignJob, validateRedesignArtifact } from "@/lib/redesign/contract.js";
+// @ts-expect-error executor do redesign (DS-VALUE-04) exercitado por node:test sem build.
+import { createRedesignWorker } from "@/lib/redesign/worker.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { withProspectorEditor } from "@/lib/prospector-preview-editor.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -38,6 +44,36 @@ type SavedQualification = Qualification & { id: string; lead_slug: string };
 const tables: Record<string, string> = { proposals: "ds_proposals", emails: "ds_emails", orders: "ds_orders", checkouts: "ds_checkouts", payments: "ds_payments", contracts: "ds_contracts", handoffs: "ds_handoffs", commissions: "ds_commissions", qualifications: "ds_qualifications", diagnoses: "ds_site_diagnoses", "social-audits": "ds_social_audits", previews: "ds_previews", timeline: "ds_timeline" };
 const id = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 const now = () => new Date().toISOString();
+
+// Executor de redesign em modo inline (dev/local). Em produção o CRM delega para
+// o DattaSeller Worker Agent (DATTASELLER_WORKER_URL) e não mantém requisição longa.
+const inlineRedesignWorker = () => (globalThis as unknown as { __dsRedesignWorker?: ReturnType<typeof createRedesignWorker> }).__dsRedesignWorker ??= createRedesignWorker();
+const redesignWorkerUrl = () => String(process.env.DATTASELLER_WORKER_URL ?? "").replace(/\/$/, "");
+const redesignWorkerHeaders = () => ({ "Content-Type": "application/json", ...(process.env.DATTASELLER_WORKER_SECRET ? { "x-worker-secret": String(process.env.DATTASELLER_WORKER_SECRET) } : {}) });
+
+/**
+ * DS-VALUE-04 — ingere o artefato do worker na infraestrutura existente de
+ * preview (`ds_previews`) de forma idempotente: o mesmo job nunca cria dois
+ * previews. Também registra a trilha e vincula o lead à nova versão.
+ */
+async function ingestRedesign(db: Db, jobId: string, artifact: Record<string, unknown>) {
+  const leadSlug = String(artifact.lead_slug ?? "");
+  const { data: existente, error: leituraError } = await db.from("ds_timeline").select("detail").eq("event", "redesign.persisted").like("detail", `${jobId}|%`).limit(1).maybeSingle();
+  if (leituraError) return { error: "storage_unavailable" };
+  if (existente?.detail) return { preview_id: String(existente.detail).split("|")[1] ?? null, reused: true };
+  const preview_id = id("preview");
+  const { error: insertError } = await db.from("ds_previews").insert({ id: preview_id, lead_slug: leadSlug, kind: "redesign", url: `/api/previews/${preview_id}`, content: String(artifact.generated_html ?? ""), status: "ready" });
+  if (insertError) return { error: "storage_unavailable" };
+  const brand = (artifact.brand_context ?? {}) as Record<string, unknown>;
+  const warnings = Array.isArray(artifact.warnings) ? (artifact.warnings as Array<Record<string, unknown>>).map((item) => String(item?.code ?? "")).filter(Boolean) : [];
+  await event(db, leadSlug, "redesign.generated", `${jobId} · layout ${String(brand.layout ?? "n/d")} · ${Array.isArray(artifact.assets) ? artifact.assets.length : 0} ativo(s)${warnings.length ? ` · avisos: ${warnings.join(", ")}` : ""}`);
+  await event(db, leadSlug, "redesign.persisted", `${jobId}|${preview_id}`);
+  const { data: leadRow } = await db.from("ds_leads").select("status").eq("slug", leadSlug).maybeSingle();
+  const patch: Record<string, unknown> = { url_nova: `/api/previews/${preview_id}`, updated_at: now() };
+  if (String(leadRow?.status ?? "novo") === "novo") patch.status = "redesenhado";
+  await db.from("ds_leads").update(patch).eq("slug", leadSlug);
+  return { preview_id, reused: false };
+}
 
 /**
  * O rascunho do CRM não guarda destinatário (o e-mail do lead é a fonte), então o
@@ -98,9 +134,71 @@ const uiToLead = (l: Record<string, unknown>) => {
 };
 
 export async function GET(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  const parts = (await params).path; const root = parts[0];
+  // DS-VALUE-04 — contexto compacto do CRM para o Worker Agent (referência, não
+  // duplicação de dados): autorizado por token do worker ou por sessão admin.
+  if (root === "worker" && parts[1] === "context") {
+    const esperado = String(process.env.DATTASELLER_WORKER_TOKEN ?? "");
+    const token = String(request.headers.get("x-dattaseller-worker-token") ?? "");
+    let leitura = null;
+    if (esperado && token && token === esperado) {
+      try { leitura = createSupabaseAdminClient(); } catch { return out({ error: "storage_unavailable" }, 503); }
+    } else {
+      const sessao = await context(); if (!sessao) return out({ error: "unauthorized" }, 401); leitura = sessao.db;
+    }
+    const leadSlug = new URL(request.url).searchParams.get("lead_slug") ?? "";
+    if (!isSafeLeadSlug(leadSlug)) return out({ error: "invalid_lead_slug" }, 400);
+    const [{ data: lead, error: leadError }, { data: diagnosis, error: diagnosisError }] = await Promise.all([
+      leitura.from("ds_leads").select("slug,nome,empresa,cidade,nicho,telefone,whatsapp,email,site_antigo,instagram_url,tiktok_url,end_cliente,source,source_url,source_checked_at,public_contact_type,contact_evidence,status,obs").eq("slug", leadSlug).is("deleted_at", null).maybeSingle(),
+      leitura.from("ds_site_diagnoses").select("id,criteria,created_at").eq("lead_slug", leadSlug).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (leadError || diagnosisError) return out({ error: "storage_unavailable" }, 503);
+    if (!lead) return out({ error: "lead_not_found" }, 404);
+    const criteria = (diagnosis?.criteria ?? null) as Record<string, unknown> | null;
+    return out({
+      lead,
+      diagnosis: diagnosis ? { id: diagnosis.id, created_at: diagnosis.created_at, url: criteria?.url ?? null, checked_at: criteria?.checked_at ?? null, fatos: criteria?.fatos ?? null, evidencias: Array.isArray(criteria?.evidencias) ? criteria.evidencias : [] } : null,
+      contacts: Array.isArray(lead.contact_evidence) ? lead.contact_evidence : [],
+    });
+  }
   const auth = await context(); if (!auth) return out({ error: "unauthorized" }, 401);
-  const { db } = auth; const parts = (await params).path; const root = parts[0];
+  const { db } = auth;
   if (root === "settings") return out(await settings(db));
+  // DS-VALUE-04 — acompanha o job de redesign e persiste o artefato no preview existente.
+  if (root === "redesign") {
+    const jobId = new URL(request.url).searchParams.get("job") ?? "";
+    if (!/^[A-Za-z0-9_-]{3,64}$/.test(jobId)) return out({ error: "invalid_job_id" }, 400);
+    const worker = redesignWorkerUrl();
+    let estado: Record<string, unknown> | null = null;
+    if (worker) {
+      try {
+        const resposta = await fetch(`${worker}/jobs/${jobId}`, { headers: redesignWorkerHeaders(), signal: AbortSignal.timeout(15000), cache: "no-store" });
+        if (resposta.status === 404) return out({ error: "job_not_found" }, 404);
+        if (!resposta.ok) return out({ error: "worker_unavailable" }, 503);
+        estado = (await resposta.json()) as Record<string, unknown>;
+      } catch {
+        return out({ error: "worker_unavailable" }, 503);
+      }
+    } else {
+      estado = inlineRedesignWorker().status(jobId) as Record<string, unknown> | null;
+      if (!estado) return out({ error: "job_not_found", mode: "inline-dev" }, 404);
+    }
+    const status = String(estado.status ?? "unknown");
+    if (status !== "completed") return out({ job_id: jobId, status, action: REDESIGN_ACTION, error: estado.error ?? null, mode: worker ? "worker" : "inline-dev" });
+    const artifact = validateRedesignArtifact(estado.artifact) as Record<string, unknown>;
+    const ingerido = await ingestRedesign(db, jobId, artifact);
+    if (ingerido.error) return storageUnavailable();
+    const preview_id = String(ingerido.preview_id ?? "");
+    const brand = (artifact.brand_context ?? {}) as Record<string, unknown>;
+    return out({
+      job_id: jobId,
+      status,
+      action: REDESIGN_ACTION,
+      mode: worker ? "worker" : "inline-dev",
+      preview: { id: preview_id, url: `/api/previews/${preview_id}`, editor_url: `/api/previews/${preview_id}/editor`, comparator_url: `/api/comparators/${String(artifact.lead_slug)}`, reused: Boolean(ingerido.reused) },
+      artifact: { lead_slug: artifact.lead_slug, source_url: artifact.source_url, assets: (artifact.assets as unknown[]).length, layout: brand.layout ?? null, warnings: (artifact.warnings as Array<Record<string, unknown>>).map((item) => item?.code).filter(Boolean), created_at: artifact.created_at },
+    });
+  }
   if (root === "contracts" && parts[2] === "docx") {
     const { data: contract, error: contractError } = await db.from("ds_contracts").select("*").eq("id", parts[1]).maybeSingle();
     if (contractError) return storageUnavailable();
@@ -145,7 +243,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
 
 export async function POST(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const auth = await context(); if (!auth) return out({ error: "unauthorized" }, 401);
-  const { db } = auth; const parts = (await params).path; const root = parts[0]; const body = await request.json().catch(() => ({}));
+  const { db, user } = auth; const parts = (await params).path; const root = parts[0]; const body = await request.json().catch(() => ({}));
   if (root === "leads") {
     const disallowed = firstDisallowedKey(body, LEAD_INPUT_KEYS);
     if (disallowed) return out({ error: "lead_field_not_allowed" }, 400);
@@ -223,6 +321,47 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     if (updateError) return storageUnavailable();
     await event(db, String(lead.slug), "enrichment.applied", campos.map((field) => `${field}:${updates[field].source}/${updates[field].classification}`).join(" · "));
     return out({ ok: true, updated: campos.map((field) => ({ field, ...updates[field] })), ignored, sources: enrichment.sources, warnings: enrichment.warnings, checked_at: enrichment.checked_at });
+  }
+  // DS-VALUE-04 — enfileira BUILD_REDESIGN no Worker Agent (ou executa inline no
+  // dev). O CRM responde na hora com job_id + status; o artefato é buscado depois
+  // em GET /api/redesign?job= e persistido no preview existente.
+  if (root === "redesign") {
+    if (!isSafeLeadSlug(body.lead_slug)) return out({ error: "invalid_lead_slug" }, 400);
+    const { data: lead, error: leadError } = await db.from("ds_leads").select("slug,nome,cidade,site_antigo,telefone,whatsapp,email,end_cliente,source,source_url,status").eq("slug", body.lead_slug).is("deleted_at", null).maybeSingle();
+    if (leadError) return storageUnavailable();
+    if (!lead) return out({ error: "lead_not_found" }, 404);
+    if (!lead.site_antigo || !isPublicHttpUrl(lead.site_antigo)) return out({ error: "redesign_site_required", message: "O lead precisa de site público HTTP(S) para o redesign." }, 409);
+    const diagnosisId = String(body.diagnosis_id ?? "").trim();
+    const { data: diagnostico, error: diagnosisError } = await db.from("ds_site_diagnoses").select("id").eq("lead_slug", lead.slug).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (diagnosisError) return storageUnavailable();
+    if (!diagnosisId && !diagnostico) return out({ error: "diagnosis_required", message: "Execute o diagnóstico factual (DS-VALUE-03) antes do redesign." }, 409);
+    let payload;
+    try {
+      payload = parseRedesignJob({ lead_slug: lead.slug, site_url: lead.site_antigo, diagnosis_id: diagnosisId || diagnostico?.id, requested_by: user?.email ?? "crm", context_url: `/api/worker/context?lead_slug=${lead.slug}` });
+    } catch (error) {
+      if (error instanceof RedesignError) {
+        const falha = error as { code: string; message: string };
+        return out({ error: falha.code, message: falha.message }, 400);
+      }
+      throw error;
+    }
+    const worker = redesignWorkerUrl();
+    if (worker) {
+      try {
+        const resposta = await fetch(`${worker}/jobs/redesign`, { method: "POST", headers: redesignWorkerHeaders(), body: JSON.stringify(payload), signal: AbortSignal.timeout(15000) });
+        const dados = (await resposta.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!resposta.ok) return out({ error: String(dados.error ?? "worker_unavailable"), message: dados.message ?? null, mode: "worker" }, resposta.status === 400 ? 400 : 503);
+        await event(db, String(lead.slug), "redesign.queued", `${String(dados.job_id)} · worker`);
+        return out({ ...dados, mode: "worker" }, 202);
+      } catch {
+        return out({ error: "worker_unavailable", mode: "worker" }, 503);
+      }
+    }
+    const instancia = inlineRedesignWorker();
+    const submetido = instancia.submit(payload);
+    after(() => instancia.wait(submetido.job_id));
+    await event(db, String(lead.slug), "redesign.queued", `${submetido.job_id} · inline-dev`);
+    return out({ ...submetido, mode: "inline-dev" }, 202);
   }
   // DS-VALUE-03 — diagnóstico factual do site real: registra somente o que foi
   // observado na resposta HTTP e no HTML público, com evidência por critério.

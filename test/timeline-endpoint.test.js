@@ -18,10 +18,15 @@ test("o plano do E2E exige a leitura da timeline", () => {
 
 test("a rota implementa a raiz timeline sem furar a autenticação", () => {
   assert.match(route, /if \(root === "timeline"\) \{/, "a raiz timeline precisa existir no GET");
-  // A barreira de sessão fica no topo do handler e vale para todas as raízes.
+  // A barreira de sessão vale para todas as raízes comuns. A única exceção é o
+  // contexto do Worker Agent (DS-VALUE-04), que exige token do worker OU sessão.
   const getStart = route.indexOf("export async function GET");
-  const head = route.slice(getStart, getStart + 400);
-  assert.match(head, /const auth = await context\(\); if \(!auth\) return out\(\{ error: "unauthorized" \}, 401\);/);
+  const bloco = route.slice(getStart, route.indexOf("export async function POST"));
+  assert.match(bloco, /const auth = await context\(\); if \(!auth\) return out\(\{ error: "unauthorized" \}, 401\);/);
+  assert.match(bloco, /if \(root === "worker" && parts\[1\] === "context"\) \{/);
+  const workerBranch = bloco.slice(bloco.indexOf('if (root === "worker"'), bloco.indexOf("const auth = await context()"));
+  assert.match(workerBranch, /token === esperado/, "o contexto do worker exige token configurado no servidor");
+  assert.match(workerBranch, /return out\(\{ error: "unauthorized" \}, 401\);/, "sem token válido nem sessão admin, o contexto responde 401");
 });
 
 test("o filtro por lead é opcional e validado", () => {
