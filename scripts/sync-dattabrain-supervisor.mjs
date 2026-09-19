@@ -6,7 +6,7 @@ import os from "node:os";
 const repoRoot = resolve(process.cwd());
 const defaultBrain = join(os.homedir(), "OneDrive", "Documentos", "ChatGPT", "DattaBrain");
 const brainRoot = process.env.DATTABRAIN_ROOT ? resolve(process.env.DATTABRAIN_ROOT) : defaultBrain;
-const projectDir = join(brainRoot, "01-PROJECTS", "DattaSeller");
+const projectDir = join(brainRoot, "DattaSeller");
 
 if (!existsSync(brainRoot)) {
   console.error(`BRAIN_SYNC_MISSING: DattaBrain não encontrado em ${brainRoot}`);
