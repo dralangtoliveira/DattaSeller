@@ -9,27 +9,12 @@
       "ideal_customer": "Empresas e profissionais que precisam de ambiente dedicado disponível 24 horas.",
       "recurrence": "monthly",
       "sales_script": "Validar necessidade de servidor, aplicação, região e disponibilidade antes de ofertar.",
-      "objections": [
-        "Preço",
-        "região",
-        "disponibilidade",
-        "suporte"
-      ],
-      "pricing": {
-        "status": "pending_product_approval",
-        "amount": null,
-        "currency": "USD"
-      },
+      "objections": ["Preço", "região", "disponibilidade", "suporte"],
+      "pricing": { "status": "pending_product_approval", "amount": null, "currency": "USD" },
       "checkout_url": null,
       "delivery": "Handoff idempotente ao DattaVPS após pagamento.",
       "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "DVPS-005",
-        "DVPS-034",
-        "DVPS-035",
-        "DVPS-067",
-        "API Seller → DattaVPS"
-      ]
+      "blocking_dependencies": ["DVPS-005", "DVPS-034", "DVPS-035", "DVPS-067", "API Seller → DattaVPS"]
     },
     {
       "key": "dattaseg",
@@ -38,456 +23,130 @@
       "ideal_customer": "Equipes que usam agentes, n8n, Make, Zapier ou credenciais com acesso a sistemas.",
       "recurrence": "pending_product_approval",
       "sales_script": "Validar exposição, credenciais e necessidade de controle antes de ofertar.",
-      "objections": [
-        "Escopo",
-        "integrações",
-        "onboarding",
-        "preço"
-      ],
-      "pricing": {
-        "status": "pending_product_approval",
-        "amount": null,
-        "currency": null
-      },
+      "objections": ["Escopo", "integrações", "onboarding", "preço"],
+      "pricing": { "status": "pending_product_approval", "amount": null, "currency": null },
       "checkout_url": null,
       "delivery": "Handoff rastreável ao DattaSeg após pagamento.",
       "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "DS-024",
-        "DS-026",
-        "API Seller → DattaSeg"
-      ]
+      "blocking_dependencies": ["DS-024", "DS-026", "API Seller → DattaSeg"]
     },
     {
-      "key": "dattax",
-      "name": "DattaX",
-      "description": "Linha Datta ainda sem contrato comercial publicado.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": null,
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "definição de produto"
-      ]
+      "key": "dattax", "name": "DattaX", "description": "Linha Datta ainda sem contrato comercial publicado.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
     },
     {
-      "key": "dattalex",
-      "name": "DattaLEX",
-      "description": "Produto jurídico Datta; oferta não faz parte deste MVP.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": null,
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "definição de produto"
-      ]
+      "key": "dattalex", "name": "DattaLEX", "description": "Produto jurídico Datta; oferta não faz parte deste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
     },
     {
-      "key": "dattago",
-      "name": "DattaGo",
-      "description": "Produto Datta sem oferta comercial publicada neste MVP.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": null,
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "definição de produto"
-      ]
+      "key": "dattago", "name": "DattaGo", "description": "Produto Datta sem oferta comercial publicada neste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
     },
     {
-      "key": "dattalead",
-      "name": "DattaLead",
-      "description": "Leads por nicho.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": "Entrega de base conforme contrato.",
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "oferta aprovada"
-      ]
+      "key": "dattalead", "name": "DattaLead", "description": "Leads por nicho.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Entrega de base conforme contrato.", "commercial_status": "unavailable", "blocking_dependencies": ["oferta aprovada"]
     },
     {
-      "key": "dattadig",
-      "name": "DattaDig",
-      "description": "Produtos digitais.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": "Entrega digital conforme produto.",
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "oferta aprovada"
-      ]
+      "key": "dattadig", "name": "DattaDig", "description": "Produtos digitais.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Entrega digital conforme produto.", "commercial_status": "unavailable", "blocking_dependencies": ["oferta aprovada"]
     },
     {
-      "key": "dattascore",
-      "name": "DattaScore",
-      "description": "Produto Datta sem oferta comercial publicada neste MVP.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": null,
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "definição de produto"
-      ]
+      "key": "dattascore", "name": "DattaScore", "description": "Produto Datta sem oferta comercial publicada neste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
     },
     {
-      "key": "dattaurb",
-      "name": "DattaUrb",
-      "description": "Produto Datta sem oferta comercial publicada neste MVP.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": null,
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "definição de produto"
-      ]
+      "key": "dattaurb", "name": "DattaUrb", "description": "Produto Datta sem oferta comercial publicada neste MVP.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": null, "commercial_status": "unavailable", "blocking_dependencies": ["definição de produto"]
     },
     {
-      "key": "affiliates",
-      "name": "Afiliados",
-      "description": "Produtos de terceiros em categoria separada.",
-      "ideal_customer": null,
-      "recurrence": null,
-      "sales_script": null,
-      "objections": [],
-      "pricing": {
-        "status": "undefined",
-        "amount": null,
-        "currency": null
-      },
-      "checkout_url": null,
-      "delivery": "Definida pelo fornecedor.",
-      "commercial_status": "unavailable",
-      "blocking_dependencies": [
-        "fornecedor e oferta aprovados"
-      ]
+      "key": "datta360_diagnostico", "name": "Datta360° — Diagnóstico digital", "description": "Ponto de partida para identificar o estágio digital e definir o escopo.",
+      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.", "recurrence": "one_time",
+      "sales_script": "Partir do diagnóstico factual, confirmar o escopo com revisão humana e apresentar somente canais necessários.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "not_publicly_priced", "amount": null, "currency": "BRL" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "scope_component_not_separately_priced", "blocking_dependencies": ["preço independente não publicado; não inventar"]
     },
     {
-      "key": "datta360_diagnostico",
-      "name": "Datta360° — Diagnóstico digital",
-      "description": "Ponto de partida para identificar o estágio digital e definir o escopo.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "not_publicly_priced",
-        "amount": null,
-        "currency": "BRL"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "scope_component_not_separately_priced",
-      "blocking_dependencies": [
-        "preço independente não publicado; não inventar"
-      ]
+      "key": "datta360_site", "name": "Datta360° — Site profissional", "description": "Novo site profissional ou modernização do site atual.",
+      "ideal_customer": "Empresas que precisam modernizar ou criar presença web profissional.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 2510, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_site",
-      "name": "Datta360° — Site profissional",
-      "description": "Novo site profissional ou modernização do site atual.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 2510,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360_instagram", "name": "Datta360° — Instagram", "description": "Diagnóstico e transformação visual do perfil.",
+      "ideal_customer": "Empresas com Instagram desalinhado à presença digital.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 615, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_instagram",
-      "name": "Datta360° — Instagram",
-      "description": "Diagnóstico e transformação visual do perfil.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 615,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360_tiktok", "name": "Datta360° — TikTok", "description": "Perfil, identidade visual e conteúdo alinhados à presença da empresa.",
+      "ideal_customer": "Empresas que precisam estruturar sua presença no TikTok.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 554, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_tiktok",
-      "name": "Datta360° — TikTok",
-      "description": "Perfil, identidade visual e conteúdo alinhados à presença da empresa.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 554,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360_google_business", "name": "Datta360° — Google Business Profile", "description": "Estruturação para busca local e Google Maps.",
+      "ideal_customer": "Empresas locais que precisam organizar sua presença pública no Google.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 615, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_google_business",
-      "name": "Datta360° — Google Business Profile",
-      "description": "Estruturação para busca local e Google Maps.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 615,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360_facebook", "name": "Datta360° — Facebook Business", "description": "Estruturação ou correção da página e integração com a presença digital.",
+      "ideal_customer": "Empresas que precisam corrigir ou estruturar sua página comercial.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 410, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_facebook",
-      "name": "Datta360° — Facebook Business",
-      "description": "Estruturação ou correção da página e integração com a presença digital.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 410,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360_whatsapp", "name": "Datta360° — WhatsApp Business", "description": "Configuração do canal comercial de WhatsApp Business.",
+      "ideal_customer": "Empresas que precisam organizar o WhatsApp como canal comercial.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 410, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_whatsapp",
-      "name": "Datta360° — WhatsApp Business",
-      "description": "Configuração do canal comercial de WhatsApp Business.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 410,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360_crm", "name": "Datta360° — CRM", "description": "Organização de contatos e oportunidades.",
+      "ideal_customer": "Empresas que precisam organizar contatos e oportunidades.", "recurrence": "one_time",
+      "sales_script": "Não precificar separadamente sem decisão comercial explícita.", "objections": ["Escopo", "implantação"],
+      "pricing": { "status": "not_publicly_priced", "amount": null, "currency": "BRL" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "scope_component_not_separately_priced", "blocking_dependencies": ["preço independente não publicado; não inventar"]
     },
     {
-      "key": "datta360_crm",
-      "name": "Datta360° — CRM",
-      "description": "Organização de contatos e oportunidades.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "not_publicly_priced",
-        "amount": null,
-        "currency": "BRL"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "scope_component_not_separately_priced",
-      "blocking_dependencies": [
-        "preço independente não publicado; não inventar"
-      ]
+      "key": "datta360_integracoes", "name": "Datta360° — Integrações", "description": "Integração dos canais digitais dentro da jornada comercial.",
+      "ideal_customer": "Empresas com canais digitais isolados.", "recurrence": "one_time",
+      "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
+      "pricing": { "status": "published_on_public_site", "amount": 770, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360_integracoes",
-      "name": "Datta360° — Integrações",
-      "description": "Integração dos canais digitais dentro da jornada comercial.",
-      "ideal_customer": "Pequenas e médias empresas que precisam estruturar ou modernizar a presença digital.",
-      "recurrence": "one_time",
-      "sales_script": "Partir do diagnóstico factual do negócio, confirmar o escopo com revisão humana e apresentar somente canais necessários.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "necessidade do canal"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 770,
-        "currency": "BRL",
-        "pricing_basis": "starting_from"
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding e execução conforme escopo aprovado na proposta.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "datta360", "name": "Datta360° — Pacote completo", "description": "Pacote integrado completo de presença digital.",
+      "ideal_customer": "Empresas que precisam estruturar a presença digital em vários canais.", "recurrence": "one_time",
+      "sales_script": "Usar R$ 4.045 como teto público e submeter qualquer desconto à regra do CRM e à revisão humana.", "objections": ["Preço", "escopo", "prazo", "canais já existentes"],
+      "pricing": { "status": "published_on_public_site", "amount": 4045, "promotional_amount": 2427, "currency": "BRL", "pricing_basis": "fixed_public_ceiling", "promotion": { "label": "lançamento", "discount_pct": 40 } }, "checkout_url": null,
+      "delivery": "Onboarding de implantação conforme pacote e escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
-      "key": "datta360",
-      "name": "Datta360° — Pacote completo",
-      "description": "Pacote integrado completo de presença digital.",
-      "ideal_customer": "Empresas que precisam estruturar a presença digital de forma integrada em vários canais.",
-      "recurrence": "one_time",
-      "sales_script": "Apresentar o preço público como teto, validar o diagnóstico e submeter qualquer desconto à regra do CRM e à revisão humana.",
-      "objections": [
-        "Preço",
-        "escopo",
-        "prazo",
-        "canais já existentes"
-      ],
-      "pricing": {
-        "status": "published_on_public_site",
-        "amount": 4045,
-        "promotional_amount": 2427,
-        "currency": "BRL",
-        "pricing_basis": "fixed_public_ceiling",
-        "promotion": {
-          "label": "lançamento",
-          "discount_pct": 40
-        }
-      },
-      "checkout_url": null,
-      "delivery": "Onboarding de implantação conforme pacote e escopo aprovado.",
-      "commercial_status": "awaiting_checkout",
-      "blocking_dependencies": [
-        "checkout Asaas real/homologado",
-        "custo e comissão aprovados no CRM"
-      ]
+      "key": "affiliates", "name": "Afiliados", "description": "Produtos de terceiros em categoria separada.",
+      "ideal_customer": null, "recurrence": null, "sales_script": null, "objections": [],
+      "pricing": { "status": "undefined", "amount": null, "currency": null }, "checkout_url": null,
+      "delivery": "Definida pelo fornecedor.", "commercial_status": "unavailable", "blocking_dependencies": ["fornecedor e oferta aprovados"]
     }
   ]
 }
