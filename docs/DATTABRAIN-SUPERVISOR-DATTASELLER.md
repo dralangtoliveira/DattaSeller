@@ -12,7 +12,7 @@
 Antes de planejar, alterar código, criar card, declarar bloqueio ou declarar entrega do DattaSeller, o supervisor deve reconciliar, nesta ordem:
 
 1. governança global em `~/.codex/AGENTS.md` e `DattaBrain/00-GOVERNANCE`;
-2. cérebro operacional em `DattaBrain/01-PROJECTS/DattaSeller`;
+2. cérebro operacional em `DattaBrain/DattaSeller`;
 3. `AGENTS.md` do repositório DattaSeller;
 4. contrato funcional `docs/CONTRATO-FUNCIONAL-CANONICO-DATTASELLER.md`;
 5. gates machine-readable `product-contract/dattaseller-value-gates.json`;
