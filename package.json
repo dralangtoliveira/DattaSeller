@@ -9,6 +9,10 @@
     "start": "next start",
     "brain:sync": "node scripts/sync-dattabrain-supervisor.mjs",
     "e2e:authenticated": "node scripts/e2e-authenticated.mjs",
+    "discovery:real": "node scripts/discovery-smoke.mjs",
+    "discovery:e2e": "node scripts/discovery-e2e-local.mjs",
+    "enrichment:real": "node scripts/enrichment-smoke.mjs",
+    "diagnosis:real": "node scripts/diagnosis-smoke.mjs",
     "test": "node --experimental-strip-types --test",
     "secret-scan": "node scripts/secret-scan.mjs",
     "e2e-cleanup": "node scripts/e2e-cleanup.mjs"

@@ -13,25 +13,39 @@
     {
       "id": "DS-VALUE-01",
       "name": "Descoberta de leads reais",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Pacote Prospector/Drive define busca; web atual recebe candidates já encontrados."
+        "POST /api/discovery (nicho + cidade + quantidade) executa busca real em fonte pública (OpenStreetMap via Nominatim + Overpass) e devolve empresas reais com source, source_url, source_checked_at e categoria; campos ausentes na fonte ficam vazios e marcados.",
+        "Teste funcional real 2026-09-19: restaurante em Orlando, FL devolveu empresas reais (Jam'Eng Restaurant, Fat Rosie's Taco & Tequila Bar, Fratelli's Italian Restaurant, Empire Szechuan, Grand Roopram Roti Restaurant) com telefone/website/endereço quando a fonte informa.",
+        "Fluxo HTTP da linha web (scripts/discovery-e2e-local.mjs): descoberta → seleção → POST /api/prospects → lead persistido com proveniência; segunda passada reconcilia por telefone (deduplicated=true), sem duplicar; provedor indisponível falha fechado com 503 e zero resultados.",
+        "Interface publicada: área Prospecção com formulário de descoberta, tabela de empresas reais e botão de adição ao CRM — sem copiar e colar e sem mock/fixture/seed.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-01-DESCOBERTA-REAL-2026-09-19.md",
+        "Regra explícita de retorno: o limite de candidatos (padrão 25, máximo 50) é o teto e a quantidade alvo (padrão 10) é referência de trabalho; quantidade alvo 5 com limite 25 pode devolver até 25 empresas — a resposta traz query.quantidade_alvo, query.limite_candidatos e regra.",
+        "Busca e provedores passam pela proteção SSRF fail-closed (localhost, RFC1918, link-local/metadata, host que resolve para IP privado e redirect público para destino privado são recusados antes da requisição) — ver docs/EVIDENCIA-SSRF-E-REGRA-DE-QUANTIDADE-2026-09-19.md."
       ]
     },
     {
       "id": "DS-VALUE-02",
       "name": "Enriquecimento com proveniência",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Histórico b23a3aa define enriquecimento obrigatório; motor operacional não está na linha web atual."
+        "POST /api/enrichment completa somente campo vazio do lead com valor + fonte + data + confiança + classificação (confirmado/provável), usando o site público do próprio lead e o registro público do OpenStreetMap (Nominatim com extratags).",
+        "Teste funcional real 2026-09-19: Empire Szechuan (Orlando, FL) recebeu telefone 4078391236 do site público e endereço/site do OpenStreetMap node/940735101, com checked_at e classificação; telefone e site já existentes foram preservados em vez de sobrescritos.",
+        "Fluxo HTTP da linha web: leads descobertos de verdade foram enriquecidos (fat-rosie-s-taco-tequila-bar ganhou e-mail e Instagram do próprio site) e a segunda passada não sobrescreveu nenhum campo preenchido (sobrescritos: 0); falha de fonte responde 503 sem alterar o lead (lead_preservado).",
+        "Defeito real corrigido no caminho: normalizeUrl tratava ausência de site como domínio literal 'undefined' e deduplicava leads sem site; corrigido com teste de regressão.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-02-ENRIQUECIMENTO-REAL-2026-09-19.md"
       ]
     },
     {
       "id": "DS-VALUE-03",
       "name": "Diagnóstico factual de site real",
-      "status": "PARTIAL",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "API/persistência existem; análise autônoma do site real não está comprovada ponta a ponta."
+        "POST /api/diagnosis abre o site público real do lead e grava em ds_site_diagnoses + ds_leads.site_audit_json fatos observados com evidência por critério (resposta HTTP, título, meta description, CTA, viewport, H1/H2, contatos publicados, redes sociais, imagens sem alt).",
+        "Teste funcional real 2026-09-19 em https://empireszechuanfltogo.com/: HTTP 200, título 'Home | Empire Szechuan', meta description real, viewport declarado, H1 1 / H2 5, tel: presente, 12 imagens (0 sem alt), 9 evidências registradas.",
+        "O diagnóstico não afirma lentidão, insegurança, SEO ruim ou perda de cliente sem teste — garantido por teste automatizado que proíbe essas afirmações no resultado.",
+        "Falha de site (HTTP de erro, conteúdo não HTML, timeout, DNS) responde 503 sem gravar nada e sem alterar o lead.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-03-DIAGNOSTICO-SITE-2026-09-19.md"
       ]
     },
     {
