@@ -465,14 +465,69 @@ function dsSalvarCands(){
   })
   .catch(function(){DS_CAND_MSG='<div class="prod-error">Falha de conexão ao salvar. Nada foi persistido.</div>';render()});
 }
+// DS-VALUE-01 — descoberta real: nicho + cidade → empresas reais da fonte
+// pública, executada pelo servidor. O operador revisa, seleciona e manda para
+// o CRM pela mesma rota de prospecção já existente (sem copiar e colar).
+var DS_DISC=null,DS_DISC_MSG='',DS_DISC_LOADING=false,DS_DISC_SEL={};
+function dsDiscSelCount(){var n=0;for(var k in DS_DISC_SEL){if(DS_DISC_SEL[k])n++}return n}
+function dsToggleDisc(i,el){DS_DISC_SEL[i]=!!(el&&el.checked);var b=document.getElementById('disc-add');if(b)b.textContent='Adicionar ao CRM ('+dsDiscSelCount()+')'}
+function dsDescobrir(){
+ var nicho=dsF('disc-nicho'),cidade=dsF('disc-cidade');
+ if(!nicho||!cidade){DS_DISC_MSG='<div class="prod-error">Informe o nicho e a cidade/região para consultar a fonte pública.</div>';render();return}
+ DS_DISC_LOADING=true;DS_DISC=null;DS_DISC_SEL={};DS_DISC_MSG='';render();
+ fetch('/api/discovery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nicho:nicho,cidade:cidade,quantidade:Number(dsF('disc-quantidade')||10),product:dsF('disc-produto')})})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+  .then(function(x){
+   DS_DISC_LOADING=false;
+   if(!x.ok||x.d.error||x.d.erro){DS_DISC=null;DS_DISC_MSG='<div class="prod-error"><b>A busca real não devolveu empresas.</b> '+esc(x.d.message||x.d.error||x.d.erro||'erro')+' Nada foi inventado e nada foi salvo.</div>';render();return}
+   DS_DISC=x.d;
+   (x.d.results||[]).forEach(function(r,i){DS_DISC_SEL[i]=!r.deduplicated});
+   DS_DISC_MSG='<div class="prod-ok"><b>'+esc(String(x.d.returned||0))+'</b> empresa(s) real(is) · '+esc((x.d.place||{}).nome||cidade)+'<br>fonte '+esc(x.d.provider_label||x.d.provider||'')+' · '+esc(x.d.licence||'')+' · verificado em '+esc(x.d.searched_at||'')+(x.d.warning?'<br><small>'+esc(x.d.warning)+'</small>':'')+'</div>';
+   render();
+  })
+  .catch(function(){DS_DISC_LOADING=false;DS_DISC=null;DS_DISC_MSG='<div class="prod-error">Falha de conexão com a fonte pública. Nada foi salvo e nenhum dado foi inventado.</div>';render()});
+}
+function dsAdicionarDescobertos(){
+ var cands=(DS_DISC&&DS_DISC.results?DS_DISC.results:[]).filter(function(r,i){return DS_DISC_SEL[i]});
+ if(!cands.length){DS_DISC_MSG='<div class="prod-error">Selecione ao menos uma empresa real da busca.</div>';render();return}
+ var quantidade=Number(dsF('disc-quantidade')||10);
+ var query={niche:dsF('disc-nicho'),city:dsF('disc-cidade'),region:'',product:dsF('disc-produto'),target_quantity:quantidade,search_limit:quantidade};
+ fetch('/api/prospects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:query,candidates:cands})})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+  .then(function(x){
+   if(!x.ok||x.d.error||x.d.erro){DS_DISC_MSG='<div class="prod-error">Não foi possível salvar: '+esc(x.d.error||x.d.erro||'erro')+'</div>';render();return}
+   var nomes=(x.d.results||[]).map(function(r){return r.lead+(r.deduplicated?' (já existia)':'')});
+   DS_DISC=null;DS_DISC_SEL={};DS_DISC_MSG='<div class="prod-ok"><b>'+esc(String(x.d.evaluated||0))+'</b> empresa(s) real(is) no CRM: '+esc(nomes.join(', '))+' · <span class="readonly-state">nada é enviado ou contatado automaticamente</span></div>';
+   dsLoad().then(render);
+  })
+  .catch(function(){DS_DISC_MSG='<div class="prod-error">Falha de conexão ao salvar. Nada foi persistido.</div>';render()});
+}
+function vDiscPainel(){
+ var resultado='';
+ if(DS_DISC_LOADING) resultado='<div class="vazio">Consultando a fonte pública real…</div>';
+ else if(DS_DISC){
+  var rs=DS_DISC.results||[];
+  resultado=rs.length
+   ?'<div class="twrap"><table><thead><tr><th></th><th>Empresa</th><th>Categoria</th><th>Endereço</th><th>Telefone</th><th>Website</th><th>Fonte</th><th>Situação</th></tr></thead><tbody>'+rs.map(function(r,i){var p=r.proveniencia||{};return '<tr><td><input type="checkbox" '+(DS_DISC_SEL[i]?'checked':'')+' onchange="dsToggleDisc('+i+',this)"></td><td><b>'+esc(r.nome)+'</b><br><small style="color:var(--muted)">'+esc(r.slug)+'</small>'+((p.campos_indisponiveis||[]).length?'<br><small style="color:var(--muted)">fonte sem: '+esc(p.campos_indisponiveis.join(', '))+'</small>':'')+'</td><td>'+esc(p.categoria||'—')+'</td><td>'+esc(p.endereco||'—')+'</td><td>'+esc(r.telefone||'—')+'</td><td>'+(r.site_antigo?'<a href="'+esc(r.site_antigo)+'" target="_blank" rel="noopener">site</a>':'—')+'</td><td><a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">'+esc(p.provider_id||'fonte')+'</a></td><td>'+(r.deduplicated?'<span class="readonly-state">já existe</span>':'<span class="readonly-state">novo</span>')+'</td></tr>'}).join('')+'</tbody></table></div><button style="margin-top:12px" id="disc-add" onclick="dsAdicionarDescobertos()">Adicionar ao CRM ('+dsDiscSelCount()+')</button>'
+   :'<div class="vazio">Nenhuma empresa real encontrada para esse nicho e cidade. Ajuste a consulta e busque de novo.</div>';
+ }
+ return '<div class="painel"><h2>Descoberta real <small style="color:var(--muted)">nicho + cidade → empresas reais</small></h2>'
+ +'<p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">A busca consulta uma fonte pública real. Cada empresa volta com origem, categoria e data de verificação; campo que a fonte não informa fica vazio. A seleção entra no CRM sem copiar e colar, e nada é contatado automaticamente.</p>'
+ +'<div class="mrow"><div><label>Nicho *</label><input id="disc-nicho" placeholder="ex.: restaurante, clínica de estética"></div><div><label>Cidade / região *</label><input id="disc-cidade" placeholder="ex.: Orlando, FL"></div><div><label>Quantidade</label><input id="disc-quantidade" type="number" min="1" max="50" value="10"></div><div><label>Produto preferencial</label><select id="disc-produto"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div></div>'
+ +'<button style="margin-top:10px" onclick="dsDescobrir()">Buscar empresas reais</button>'
+ +(DS_DISC_MSG||'')
+ +resultado
+ +'</div>';
+}
 function vProspeccao(){
  var fila=DS_CANDS.map(function(c,i){return '<div class="fup-item"><b>'+esc(c.nome)+'</b><span style="color:var(--muted);font-size:12px">'+esc(c.cidade)+' · '+esc(c.slug)+'</span><span class="sp" style="flex:1"></span><a href="#" style="font-size:11px;color:var(--accent)" onclick="dsRemoveCand('+i+');return false">remover</a></div>'}).join('');
- return '<div class="painel"><h2>Prospecção assistida <small style="color:var(--muted)">fontes públicas, com rastreabilidade</small></h2>'
- +'<p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">Registre candidatos obtidos em fontes públicas. A deduplicação é feita no servidor e nenhum contato é automático.</p>'
+ return vDiscPainel()
+ +'<div class="painel"><h2>Prospecção assistida <small style="color:var(--muted)">entrada alternativa, com rastreabilidade</small></h2>'
+ +'<p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">Cadastro manual é entrada alternativa: registre candidatos já obtidos em fontes públicas. A deduplicação é feita no servidor e nenhum contato é automático.</p>'
  +'<div class="mrow"><div><label>Nicho</label><input id="busca-nicho" placeholder="ex.: clínica de estética"></div><div><label>Cidade</label><input id="busca-cidade" placeholder="ex.: Novo Hamburgo"></div><div><label>Região</label><input id="busca-regiao" placeholder="ex.: Vale dos Sinos"></div></div>'
  +'<div class="mrow"><div><label>Raio (km)</label><input id="busca-raio" type="number" min="0" max="500" placeholder="10"></div><div><label>Produto preferencial</label><select id="busca-produto"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div><div><label>Quantidade alvo</label><input id="busca-alvo" type="number" min="0" max="100" placeholder="10"></div><div><label>Limite de candidatos</label><input id="busca-limite" type="number" min="0" max="25" placeholder="25"></div></div>'
  +'</div>'
- +'<div class="painel"><h2>Adicionar candidato</h2>'
+ +'<div class="painel"><h2>Adicionar candidato manual</h2>'
  +'<div class="mrow"><div><label>Nome / empresa *</label><input id="cand-nome" placeholder="Empresa Exemplo"></div><div><label>Cidade *</label><input id="cand-cidade" placeholder="Novo Hamburgo"></div></div>'
  +'<div class="mrow"><div><label>Telefone</label><input id="cand-telefone" placeholder="(51) 99999-0000"></div><div><label>E-mail (opcional)</label><input id="cand-email" placeholder="contato@empresa.com.br"></div></div>'
  +'<div class="mrow"><div><label>Site atual</label><input id="cand-site" placeholder="https://empresa.com.br"></div><div><label>Instagram</label><input id="cand-instagram" placeholder="@empresa"></div></div>'

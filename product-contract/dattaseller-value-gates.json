@@ -13,9 +13,13 @@
     {
       "id": "DS-VALUE-01",
       "name": "Descoberta de leads reais",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Pacote Prospector/Drive define busca; web atual recebe candidates já encontrados."
+        "POST /api/discovery (nicho + cidade + quantidade) executa busca real em fonte pública (OpenStreetMap via Nominatim + Overpass) e devolve empresas reais com source, source_url, source_checked_at e categoria; campos ausentes na fonte ficam vazios e marcados.",
+        "Teste funcional real 2026-09-19: restaurante em Orlando, FL devolveu empresas reais (Jam'Eng Restaurant, Fat Rosie's Taco & Tequila Bar, Fratelli's Italian Restaurant, Empire Szechuan, Grand Roopram Roti Restaurant) com telefone/website/endereço quando a fonte informa.",
+        "Fluxo HTTP da linha web (scripts/discovery-e2e-local.mjs): descoberta → seleção → POST /api/prospects → lead persistido com proveniência; segunda passada reconcilia por telefone (deduplicated=true), sem duplicar; provedor indisponível falha fechado com 503 e zero resultados.",
+        "Interface publicada: área Prospecção com formulário de descoberta, tabela de empresas reais e botão de adição ao CRM — sem copiar e colar e sem mock/fixture/seed.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-01-DESCOBERTA-REAL-2026-09-19.md"
       ]
     },
     {
