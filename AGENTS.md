@@ -7,7 +7,7 @@
 - **Remote esperado:** `https://github.com/dralangtoliveira/DattaSeller`
 - **Branch canônica operacional:** `hardening/phase-a-containment-clean`
 - **Checkpoint da automação:** `docs/SUPERVISOR_DATTASELLER.md`
-- **Cérebro supervisor local:** `C:\Users\dr_al\OneDrive\Documentos\ChatGPT\DattaBrain\01-PROJECTS\DattaSeller`
+- **Cérebro supervisor local:** `C:\Users\dr_al\OneDrive\Documentos\ChatGPT\DattaBrain\DattaSeller`
 - **Grafo técnico do projeto:** `graphify-out\graph.json` + `graphify-out\GRAPH_REPORT.md`
 - **Contrato funcional obrigatório:** `docs/CONTRATO-FUNCIONAL-CANONICO-DATTASELLER.md`
 - **Instrução de sincronização do cérebro:** `docs/DATTABRAIN-SUPERVISOR-DATTASELLER.md`
@@ -23,7 +23,7 @@ Antes de planejar ou executar qualquer mudança relevante, leia e reconcilie:
 
 1. `~/.codex/AGENTS.md`;
 2. `C:\Users\dr_al\OneDrive\Documentos\ChatGPT\DattaBrain\00-GOVERNANCE`;
-3. `C:\Users\dr_al\OneDrive\Documentos\ChatGPT\DattaBrain\01-PROJECTS\DattaSeller`;
+3. `C:\Users\dr_al\OneDrive\Documentos\ChatGPT\DattaBrain\DattaSeller`;
 4. este `AGENTS.md`;
 5. `docs/CONTRATO-FUNCIONAL-CANONICO-DATTASELLER.md`;
 6. `product-contract/dattaseller-value-gates.json`;
