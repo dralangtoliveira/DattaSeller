@@ -18,7 +18,7 @@
 import { createServer } from "node:http";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { REDESIGN_ACTION, RedesignError, parseRedesignJob } from "../lib/redesign/contract.js";
+import { REDESIGN_ACTION, RedesignError, parseRedesignJob, resolveContextUrl } from "../lib/redesign/contract.js";
 import { createRedesignWorker, runRedesignOnce } from "../lib/redesign/worker.js";
 
 const args = process.argv.slice(2);
@@ -34,9 +34,28 @@ const SECRET = process.env.DATTASELLER_WORKER_SECRET ?? "";
 const API_URL = (process.env.DATTASELLER_API_URL ?? "").replace(/\/$/, "");
 const API_TOKEN = process.env.DATTASELLER_WORKER_TOKEN ?? "";
 
-async function contextProvider(contextUrl) {
-  const url = contextUrl.startsWith("http") ? contextUrl : `${API_URL}${contextUrl}`;
-  const response = await fetch(url, { headers: API_TOKEN ? { "x-dattaseller-worker-token": API_TOKEN } : {} });
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost", "127.0.0.2"]);
+const isLoopback = (host) => LOOPBACK_HOSTS.has(String(host ?? "").toLowerCase().trim());
+
+// VPS/exposto: sem segredo o worker não inicia (não subimos servidor inseguro).
+if (!isLoopback(HOST) && !SECRET) {
+  console.error("WORKER_CONFIG_INVALID: bind externo exige DATTASELLER_WORKER_SECRET.");
+  process.exit(2);
+}
+// Operação com o CRM configurada exige token: sem ele o contexto obrigatório não
+// pode ser autenticado e o redesign comercial seria inválido.
+if (API_URL && !API_TOKEN) {
+  console.error("WORKER_CONFIG_INVALID: DATTASELLER_API_URL exige DATTASELLER_WORKER_TOKEN.");
+  process.exit(2);
+}
+
+/**
+ * Contexto do CRM: o destino é montado apenas como caminho relativo sobre a
+ * origem confiável configurada — nunca um endereço arbitrário do job.
+ */
+async function contextProvider(contextPath) {
+  const url = resolveContextUrl(contextPath, API_URL);
+  const response = await fetch(url, { headers: { "x-dattaseller-worker-token": API_TOKEN } });
   if (!response.ok) throw new RedesignError("redesign_context_unavailable", `CRM respondeu ${response.status} ao pedir o contexto.`);
   return response.json();
 }
@@ -47,7 +66,7 @@ if (has("once")) {
   const diagnosis_id = flag("diagnosis-id");
   try {
     const job = parseRedesignJob({ lead_slug, site_url, diagnosis_id, requested_by: "cli" });
-    const artifact = await runRedesignOnce(job, { contextProvider: API_URL ? contextProvider : null });
+    const artifact = await runRedesignOnce(job, { contextProvider: API_URL ? contextProvider : null, requireContext: Boolean(API_URL) });
     const destino = flag("out");
     if (destino) {
       const caminho = resolve(destino);
@@ -62,7 +81,7 @@ if (has("once")) {
     process.exitCode = 1;
   }
 } else {
-  const worker = createRedesignWorker({ contextProvider: API_URL ? contextProvider : null });
+  const worker = createRedesignWorker({ contextProvider: API_URL ? contextProvider : null, requireContext: Boolean(API_URL) });
 
   const json = (response, payload, status = 200) => {
     response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -74,6 +93,8 @@ if (has("once")) {
     if (request.method === "GET" && url.pathname === "/health") {
       return json(response, { status: "ok", action: REDESIGN_ACTION, worker: "dattaseller-worker-agent" });
     }
+    // Em modo exposto (ou com segredo configurado) o segredo é obrigatório nas
+    // rotas de job; sem ele, 401.
     if (SECRET && request.headers["x-worker-secret"] !== SECRET) {
       return json(response, { error: "unauthorized_worker" }, 401);
     }
@@ -99,6 +120,7 @@ if (has("once")) {
   });
 
   server.listen(PORT, HOST, () => {
-    console.log(`DATTASELLER_WORKER_OK: http://${HOST}:${PORT} (ação ${REDESIGN_ACTION})`);
+    const porta = server.address()?.port ?? PORT;
+    console.log(`DATTASELLER_WORKER_OK: http://${HOST}:${porta} (ação ${REDESIGN_ACTION})`);
   });
 }

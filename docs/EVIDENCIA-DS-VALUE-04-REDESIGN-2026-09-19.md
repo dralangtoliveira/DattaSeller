@@ -105,6 +105,20 @@ Prints: `redesign-360.png`, `redesign-768.png`, `redesign-1440.png`,
 
 ## 7. Comandos
 
+## 8. Endurecimento após revisão técnica (antes do merge)
+
+| Achado da revisão | Correção | Prova |
+| --- | --- | --- |
+| `context_url` aceitava URL absoluta e o worker fazia `fetch` direto | `parseContextPath` só aceita caminho relativo (`/api/...`); `resolveContextUrl` monta o destino com `new URL(path, DATTASELLER_API_URL)` e confirma que a origem é a configurada; recusa `http(s)://`, `//host`, `file:`, `ftp:`, `javascript:`, `data:` e barra invertida | `test/redesign.test.js` — "o context_url do job só aceita caminho relativo…" |
+| Worker podia subir exposto sem segredo | bind externo (`0.0.0.0`, IP da VPS) sem `DATTASELLER_WORKER_SECRET` → **não inicia** (`WORKER_CONFIG_INVALID`, exit 2); loopback continua em modo dev; com segredo, `POST /jobs/redesign` e `GET /jobs/:id` respondem 401 sem ele | testes de spawn do worker (início recusado) + teste das rotas com/sem segredo |
+| Contexto do CRM podia cair em silêncio para "sem contexto" | `DATTASELLER_API_URL` sem `DATTASELLER_WORKER_TOKEN` → config inválida (exit 2); no modo worker o contexto é obrigatório (`requireContext`) e o job **falha** sem ele; o artefato registra `commercial_context` e `required_context` | teste de configuração + artefato real com `commercial_context: true`, `context_source: crm` |
+| WhatsApp prefixava 55 em qualquer número | nenhum DDI é inventado: usa o número publicado em `wa.me`/`api.whatsapp.com`, o número com `+` explícito ou com DDI já presente (12+ dígitos); o 55 só entra quando o Brasil é comprovado pelos dados do lead. Sem DDI comprovado, o CTA vira o telefone real e a página registra o aviso `redesign_whatsapp_country_unknown` | testes com `+55 11…`, `+1 407…`, `wa.me/1407…`, número sem DDI em país desconhecido |
+| `tel:` recebia `+` mesmo sem DDI | `tel:` reproduz o que a fonte publicou (com `+` só quando o número veio internacional) | teste com `tel:6892660444` (lead dos EUA) |
+
+A prova real foi reexecutada depois das correções com o mesmo caso (Fat Rosie's,
+EUA): `wa.me` ausente (sem DDI inventado), CTA `tel:6892660444`, contexto do CRM
+obrigatório e obtido, 0 avisos, persistência/editor/comparador íntegros.
+
 ```text
 node --experimental-strip-types --test
 node node_modules/typescript/bin/tsc --noEmit

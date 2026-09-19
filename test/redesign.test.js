@@ -2,9 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { REDESIGN_ACTION, REDESIGN_ARTIFACT_FIELDS, RedesignError, findForbiddenClaims, parseRedesignJob, validateRedesignArtifact } from "../lib/redesign/contract.js";
+import { parseContextPath, resolveContextUrl } from "../lib/redesign/contract.js";
 import { collectSiteAssets, extractSiteAssets, publicAssetUrl } from "../lib/redesign/collector.js";
-import { buildBrandContext, generateRedesign } from "../lib/redesign/generator.js";
+import { buildBrandContext, generateRedesign, whatsappLink } from "../lib/redesign/generator.js";
 import { createRedesignWorker } from "../lib/redesign/worker.js";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { withProspectorEditor } from "../lib/prospector-preview-editor.js";
 import { renderProspectorComparator } from "../lib/prospector-comparator.js";
 
@@ -128,8 +131,12 @@ test("contato confirmado no CRM entra quando o site não publica canal", () => {
   assert.equal(coleta.contacts.whatsapp[0].value, "11988887777");
   assert.equal(coleta.contacts.whatsapp[0].source, "crm:openstreetmap");
   assert.equal(coleta.contacts.whatsapp[0].source_url, "https://www.openstreetmap.org/node/1");
-  const gerado = generateRedesign({ lead: { slug: "padaria-exemplo", nome: "Padaria Exemplo" }, site: coleta.site, texts: coleta.texts, assets: coleta.assets, palette: coleta.palette, contacts: coleta.contacts });
-  assert.match(gerado.html, /wa\.me\/5511988887777/, "o CTA usa o contato confirmado, com DDI");
+  // País comprovado (Brasil) → o DDI 55 é correto e é aplicado. Sem país
+  // comprovado, nenhum DDI é inventado (ver teste dedicado de WhatsApp).
+  const gerado = generateRedesign({ lead: { slug: "padaria-exemplo", nome: "Padaria Exemplo", cidade: "São Paulo, Brasil" }, site: coleta.site, texts: coleta.texts, assets: coleta.assets, palette: coleta.palette, contacts: coleta.contacts });
+  assert.match(gerado.html, /wa\.me\/5511988887777/, "o CTA usa o contato confirmado, com DDI do país comprovado");
+  const semPais = generateRedesign({ lead: { slug: "padaria-exemplo", nome: "Padaria Exemplo", cidade: "Orlando, FL" }, site: coleta.site, texts: coleta.texts, assets: coleta.assets, palette: coleta.palette, contacts: coleta.contacts });
+  assert.doesNotMatch(semPais.html, /wa\.me\/5511988887777/, "país não comprovado não recebe 55");
 });
 
 test("asset em host privado é descartado e site privado é recusado pela proteção SSRF", async () => {
@@ -261,6 +268,82 @@ test("o worker HTTP expõe o contrato de job sem depender da Vercel", () => {
   assert.match(workerScript, /DATTASELLER_WORKER_HOST \?\? "127\.0\.0\.1"/, "bind local por padrão (VPS configura o host)");
   assert.match(workerScript, /--once/);
   assert.match(workerScript, /DATTASELLER_API_URL/, "o contexto do CRM vem por referência, não duplicado no payload");
+});
+
+test("o context_url do job só aceita caminho relativo e nunca troca a origem do CRM", () => {
+  assert.equal(parseContextPath("/api/worker/context?lead_slug=padaria-exemplo"), "/api/worker/context?lead_slug=padaria-exemplo");
+  assert.equal(resolveContextUrl("/api/worker/context?lead_slug=x", "https://crm.datta360.com.br"), "https://crm.datta360.com.br/api/worker/context?lead_slug=x");
+  for (const hostil of ["http://127.0.0.1:3997/api/worker/context", "https://evil.example/api/worker/context", "//evil.example/api/worker/context", "file:///etc/passwd", "ftp://crm.datta360.com.br/x", "javascript:alert(1)", "data:text/plain,x", "/\\evil"]) {
+    assert.throws(() => parseContextPath(hostil), (error) => error instanceof RedesignError && error.code === "redesign_invalid_context_url", `${hostil} precisa ser recusado`);
+  }
+  assert.equal(parseContextPath(""), null, "context_url ausente é simplesmente nulo");
+  assert.throws(() => parseRedesignJob({ lead_slug: "ok", site_url: "https://x.example/", context_url: "http://169.254.169.254/latest/meta-data/" }), (error) => error.code === "redesign_invalid_context_url");
+  assert.throws(() => resolveContextUrl("/api/worker/context", ""), (error) => error.code === "redesign_context_unavailable");
+  assert.throws(() => resolveContextUrl("/api/worker/context", "nao-e-url"), (error) => error.code === "redesign_context_unavailable");
+  assert.equal(new URL(resolveContextUrl("/api/worker/context?lead_slug=x", "https://crm.datta360.com.br/base")).origin, "https://crm.datta360.com.br", "o destino nunca sai da origem configurada");
+});
+
+test("worker exposto recusa iniciar sem segredo e sem token do CRM", async () => {
+  const rodar = (env, args) => new Promise((resolve) => {
+    const processo = spawn(process.execPath, ["scripts/redesign-worker.mjs", ...args], { cwd: process.cwd(), env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+    let saida = "";
+    processo.stdout.on("data", (chunk) => { saida += chunk.toString(); });
+    processo.stderr.on("data", (chunk) => { saida += chunk.toString(); });
+    processo.on("close", (code) => resolve({ code, saida }));
+  });
+  const semSegredo = await rodar({ DATTASELLER_WORKER_SECRET: "", DATTASELLER_API_URL: "", DATTASELLER_WORKER_TOKEN: "" }, ["--host", "0.0.0.0", "--port", "0"]);
+  assert.equal(semSegredo.code, 2, "bind externo sem segredo não pode iniciar servidor inseguro");
+  assert.match(semSegredo.saida, /WORKER_CONFIG_INVALID/);
+  const semToken = await rodar({ DATTASELLER_WORKER_SECRET: "s3gredo", DATTASELLER_API_URL: "https://crm.datta360.com.br", DATTASELLER_WORKER_TOKEN: "" }, ["--host", "127.0.0.1", "--port", "0"]);
+  assert.equal(semToken.code, 2, "API_URL configurada exige token do CRM");
+  assert.match(semToken.saida, /DATTASELLER_WORKER_TOKEN/);
+}, { timeout: 30000 });
+
+test("worker exposto exige o segredo nas rotas de job", async () => {
+  const processo = spawn(process.execPath, ["scripts/redesign-worker.mjs", "--host", "127.0.0.1", "--port", "0"], {
+    cwd: process.cwd(),
+    env: { ...process.env, DATTASELLER_WORKER_SECRET: "s3gredo-teste", DATTASELLER_API_URL: "", DATTASELLER_WORKER_TOKEN: "" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let saida = "";
+  processo.stdout.on("data", (chunk) => { saida += chunk.toString(); });
+  let porta = 0;
+  for (let tentativa = 0; tentativa < 40 && !porta; tentativa += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    porta = Number(/DATTASELLER_WORKER_OK: http:\/\/[^:]+:(\d+)/.exec(saida)?.[1] ?? 0);
+  }
+  assert.ok(porta, `o worker precisava subir em loopback: ${saida.slice(0, 200)}`);
+  try {
+    const semSegredo = await fetch(`http://127.0.0.1:${porta}/jobs/redesign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lead_slug: "x", site_url: "https://x.example/" }) });
+    assert.equal(semSegredo.status, 401, "sem segredo o worker precisa responder 401");
+    const statusSemSegredo = await fetch(`http://127.0.0.1:${porta}/jobs/red_inexistente`);
+    assert.equal(statusSemSegredo.status, 401, "GET /jobs/:id também exige o segredo");
+    const health = await fetch(`http://127.0.0.1:${porta}/health`);
+    assert.equal(health.status, 200);
+  } finally {
+    processo.kill();
+  }
+}, { timeout: 30000 });
+
+test("WhatsApp não inventa DDI: só usa número internacional comprovado", () => {
+  assert.match(whatsappLink("+55 11 98888-7777", { country: "Brasil" }), /wa\.me\/5511988887777/);
+  assert.match(whatsappLink("+1 407 555 0100", { country: "Orlando, FL" }), /wa\.me\/14075550100/);
+  assert.match(whatsappLink("14075550100", { international: true }), /wa\.me\/14075550100/, "número publicado em wa.me é preservado");
+  assert.match(whatsappLink("5511988887777", { country: "" }), /wa\.me\/5511988887777/, "12+ dígitos já contêm DDI");
+  assert.equal(whatsappLink("4075550100", { country: "Orlando, FL" }), "", "sem DDI comprovado não fabricamos código de país");
+  assert.equal(whatsappLink("11988887777", { country: "Lisboa, Portugal" }), "", "país não comprovado não recebe 55");
+  assert.equal(whatsappLink("123", {}), "");
+  // tel: também não inventa DDI: "+" só quando a fonte publicou internacional.
+  const coletaComTelLocal = extractSiteAssets({ html: FIXTURE.replace('<a href="tel:+5511999990000">Ligar</a>', '<a href="tel:6892660444">Ligar</a>'), finalUrl: "https://padariaexemplo.example/", checkedAt: CHECKED_AT });
+  const local = generateRedesign({ lead: { slug: "padaria", nome: "Padaria Exemplo", cidade: "Orlando, FL" }, site: coletaComTelLocal.site, texts: coletaComTelLocal.texts, assets: coletaComTelLocal.assets, palette: coletaComTelLocal.palette, contacts: coletaComTelLocal.contacts });
+  assert.match(local.html, /href="tel:6892660444"/, "número nacional publicado fica sem DDI inventado");
+  assert.doesNotMatch(local.html, /tel:\+6892660444/);
+  const coleta = COLETA();
+  const semDdi = { ...coleta, contacts: { ...coleta.contacts, whatsapp: [{ value: "4075550100", source: "crm", source_url: null }] } };
+  const gerado = generateRedesign({ lead: { slug: "padaria", nome: "Padaria Exemplo", cidade: "Orlando, FL" }, site: semDdi.site, texts: semDdi.texts, assets: semDdi.assets, palette: semDdi.palette, contacts: semDdi.contacts });
+  assert.doesNotMatch(gerado.html, /wa\.me/);
+  assert.ok(gerado.warnings.some((aviso) => aviso.code === "redesign_whatsapp_country_unknown"));
+  assert.match(gerado.html, /tel:\+5511999990000/, "o telefone real continua como CTA");
 });
 
 test("a UI oferece redesign no lead e mantém os 13 módulos", () => {
