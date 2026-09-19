@@ -475,14 +475,14 @@ function dsDescobrir(){
  var nicho=dsF('disc-nicho'),cidade=dsF('disc-cidade');
  if(!nicho||!cidade){DS_DISC_MSG='<div class="prod-error">Informe o nicho e a cidade/região para consultar a fonte pública.</div>';render();return}
  DS_DISC_LOADING=true;DS_DISC=null;DS_DISC_SEL={};DS_DISC_MSG='';render();
- fetch('/api/discovery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nicho:nicho,cidade:cidade,quantidade:Number(dsF('disc-quantidade')||10),product:dsF('disc-produto')})})
+ fetch('/api/discovery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nicho:nicho,cidade:cidade,quantidade_alvo:Number(dsF('disc-quantidade')||10),limite_candidatos:Number(dsF('disc-limite')||25),product:dsF('disc-produto')})})
   .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
   .then(function(x){
    DS_DISC_LOADING=false;
    if(!x.ok||x.d.error||x.d.erro){DS_DISC=null;DS_DISC_MSG='<div class="prod-error"><b>A busca real não devolveu empresas.</b> '+esc(x.d.message||x.d.error||x.d.erro||'erro')+' Nada foi inventado e nada foi salvo.</div>';render();return}
    DS_DISC=x.d;
    (x.d.results||[]).forEach(function(r,i){DS_DISC_SEL[i]=!r.deduplicated});
-   DS_DISC_MSG='<div class="prod-ok"><b>'+esc(String(x.d.returned||0))+'</b> empresa(s) real(is) · '+esc((x.d.place||{}).nome||cidade)+'<br>fonte '+esc(x.d.provider_label||x.d.provider||'')+' · '+esc(x.d.licence||'')+' · verificado em '+esc(x.d.searched_at||'')+(x.d.warning?'<br><small>'+esc(x.d.warning)+'</small>':'')+'</div>';
+   DS_DISC_MSG='<div class="prod-ok"><b>'+esc(String(x.d.returned||0))+'</b> empresa(s) real(is) · limite de candidatos: '+esc(String((x.d.query||{}).limite_candidatos||''))+ ' · quantidade alvo: '+esc(String((x.d.query||{}).quantidade_alvo||''))+'<br>'+esc((x.d.place||{}).nome||cidade)+'<br>fonte '+esc(x.d.provider_label||x.d.provider||'')+' · '+esc(x.d.licence||'')+' · verificado em '+esc(x.d.searched_at||'')+(x.d.warning?'<br><small>'+esc(x.d.warning)+'</small>':'')+'<br><small>'+esc(x.d.regra||'')+'</small></div>';
    render();
   })
   .catch(function(){DS_DISC_LOADING=false;DS_DISC=null;DS_DISC_MSG='<div class="prod-error">Falha de conexão com a fonte pública. Nada foi salvo e nenhum dado foi inventado.</div>';render()});
@@ -490,8 +490,8 @@ function dsDescobrir(){
 function dsAdicionarDescobertos(){
  var cands=(DS_DISC&&DS_DISC.results?DS_DISC.results:[]).filter(function(r,i){return DS_DISC_SEL[i]});
  if(!cands.length){DS_DISC_MSG='<div class="prod-error">Selecione ao menos uma empresa real da busca.</div>';render();return}
- var quantidade=Number(dsF('disc-quantidade')||10);
- var query={niche:dsF('disc-nicho'),city:dsF('disc-cidade'),region:'',product:dsF('disc-produto'),target_quantity:quantidade,search_limit:quantidade};
+ var quantidade=Number(dsF('disc-quantidade')||10),limite=Number(dsF('disc-limite')||25);
+ var query={niche:dsF('disc-nicho'),city:dsF('disc-cidade'),region:'',product:dsF('disc-produto'),target_quantity:quantidade,search_limit:Math.min(limite,25)};
  fetch('/api/prospects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:query,candidates:cands})})
   .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
   .then(function(x){
@@ -512,8 +512,8 @@ function vDiscPainel(){
    :'<div class="vazio">Nenhuma empresa real encontrada para esse nicho e cidade. Ajuste a consulta e busque de novo.</div>';
  }
  return '<div class="painel"><h2>Descoberta real <small style="color:var(--muted)">nicho + cidade → empresas reais</small></h2>'
- +'<p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">A busca consulta uma fonte pública real. Cada empresa volta com origem, categoria e data de verificação; campo que a fonte não informa fica vazio. A seleção entra no CRM sem copiar e colar, e nada é contatado automaticamente.</p>'
- +'<div class="mrow"><div><label>Nicho *</label><input id="disc-nicho" placeholder="ex.: restaurante, clínica de estética"></div><div><label>Cidade / região *</label><input id="disc-cidade" placeholder="ex.: Orlando, FL"></div><div><label>Quantidade</label><input id="disc-quantidade" type="number" min="1" max="50" value="10"></div><div><label>Produto preferencial</label><select id="disc-produto"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div></div>'
+ +'<p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">A busca consulta uma fonte pública real. Cada empresa volta com origem, categoria e data de verificação; campo que a fonte não informa fica vazio. A seleção entra no CRM sem copiar e colar, e nada é contatado automaticamente.<br><b>Quantidade alvo</b> é a referência de trabalho do operador; <b>limite de candidatos</b> é o teto do que a busca devolve (padrão 25, máximo 50), priorizando quem tem contato público. Quantidade alvo 5 com limite 25 pode devolver até 25 empresas.</p>'
+ +'<div class="mrow"><div><label>Nicho *</label><input id="disc-nicho" placeholder="ex.: restaurante, clínica de estética"></div><div><label>Cidade / região *</label><input id="disc-cidade" placeholder="ex.: Orlando, FL"></div><div><label>Quantidade alvo</label><input id="disc-quantidade" type="number" min="1" max="50" value="10"></div><div><label>Limite de candidatos</label><input id="disc-limite" type="number" min="1" max="50" value="25"></div><div><label>Produto preferencial</label><select id="disc-produto"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div></div>'
  +'<button style="margin-top:10px" onclick="dsDescobrir()">Buscar empresas reais</button>'
  +(DS_DISC_MSG||'')
  +resultado

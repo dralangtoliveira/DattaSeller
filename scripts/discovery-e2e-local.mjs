@@ -174,6 +174,9 @@ try {
     strategy: descoberta.json.strategy,
     localidade: descoberta.json.place?.nome ?? null,
     retornadas: descoberta.json.returned,
+    quantidade_alvo: descoberta.json.query?.quantidade_alvo ?? null,
+    limite_candidatos: descoberta.json.query?.limite_candidatos ?? null,
+    regra: descoberta.json.regra ?? descoberta.json.query?.regra ?? null,
     exemplos: candidatos.slice(0, QUANTIDADE).map((candidato) => ({
       nome: candidato.nome,
       cidade: candidato.cidade,

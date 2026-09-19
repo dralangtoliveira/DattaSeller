@@ -72,6 +72,18 @@ Resultado da execução:
 
 ## 5. Limites conhecidos (registrados, não escondidos)
 
+- **Regra de retorno (explícita):** o **limite de candidatos** (padrão 25, máximo 50)
+  é o teto do que a busca devolve; a **quantidade alvo** (padrão 10) é a referência
+  de trabalho do operador e dimensiona a amostra consultada. Portanto `quantidade
+  alvo 5` com `limite 25` pode devolver **até 25** empresas, priorizando as que têm
+  contato público. A resposta da API traz `query.quantidade_alvo`,
+  `query.limite_candidatos` e `regra` com esse texto, e a UI mostra os dois campos
+  separados. Prova: `test/discovery.test.js` (30 resultados na fonte, alvo 5, limite
+  25 → 25 devolvidos; alvo 30, limite 4 → 4 devolvidos).
+- **Proteção SSRF:** toda URL de terceiro (site do lead, provedor) passa por
+  `lib/net/ssrf-guard.js` antes da requisição — localhost, RFC1918, link-local/
+  metadata, host que resolve para IP privado e redirect público → privado são
+  recusados. Ver `docs/EVIDENCIA-SSRF-E-REGRA-DE-QUANTIDADE-2026-09-19.md`.
 - A completude do OpenStreetMap varia: telefone/website existem em parte dos
   estabelecimentos. A busca pede uma amostra maior (`máx(quantidade*2, 20)`) e
   ordena priorizando quem tem contato público — o que também vale para os testes.

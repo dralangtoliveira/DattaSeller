@@ -1,9 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { DiagnosisError, analyzeSite, diagnoseSite } from "../lib/diagnosis/site.js";
+import { DiagnosisError, analyzeSite, diagnoseSite as diagnoseSiteReal } from "../lib/diagnosis/site.js";
 
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
+// Resolução pública injetada: o guard SSRF é exercitado sem depender de DNS real.
+const RESOLVE_PUBLICO = async () => [{ address: "93.184.216.34", family: 4 }];
+const diagnoseSite = (url, opcoes = {}) => diagnoseSiteReal(url, { resolveHost: RESOLVE_PUBLICO, ...opcoes });
 const route = ler("../app/api/[...path]/route.ts");
 const patch = ler("../scripts/production-dashboard-patch.mjs");
 const poc = ler("../poc/dattaseller-local/app/dashboard.html");
@@ -95,6 +98,7 @@ test("a rota grava o diagnóstico do site real e falha fechado", () => {
   assert.match(bloco, /if \(!lead\) return out\(\{ error: "lead_not_found" \}, 404\);/);
   assert.match(bloco, /if \(insertError\) return storageUnavailable\(\);/);
   assert.doesNotMatch(bloco, /"lento"|"inseguro"|SEO ruim/, "a rota não pode afirmar problema sem teste");
+  assert.match(bloco, /startsWith\("ssrf_"\) \? 400 : 503/, "site privado precisa ser recusado com 400 antes de qualquer fetch");
 });
 
 test("o CRM oferece o diagnóstico factual por lead", () => {

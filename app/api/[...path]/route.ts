@@ -11,7 +11,7 @@ import { canGenerateContract, canSoftDeleteLead, firstDisallowedKey, isSafeLeadS
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { duplicateOf, isPublicHttpUrl, normalizeEmail, normalizePhone, normalizeQualification, normalizeUrl } from "@/lib/prospector.js";
 // @ts-expect-error motor de descoberta real (DS-VALUE-01) exercitado por node:test sem build.
-import { DISCOVERY_DEFAULT_LIMIT, DISCOVERY_DEFAULT_QUANTITY, DISCOVERY_MAX_LIMIT, DiscoveryError, discoverCompanies } from "@/lib/discovery/provider.js";
+import { DISCOVERY_DEFAULT_LIMIT, DISCOVERY_DEFAULT_QUANTITY, DISCOVERY_MAX_LIMIT, DISCOVERY_QUANTITY_RULE, DiscoveryError, discoverCompanies } from "@/lib/discovery/provider.js";
 // @ts-expect-error ponte descoberta → lead exercitada por node:test sem build.
 import { disambiguateSlug, resultsToCandidates } from "@/lib/discovery/candidates.js";
 // @ts-expect-error motor de enriquecimento real (DS-VALUE-02) exercitado por node:test sem build.
@@ -159,8 +159,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (root === "discovery") {
     const nicho = String(body.nicho ?? body.niche ?? "").trim();
     const cidade = String(body.cidade ?? body.city ?? "").trim();
-    const quantidade = Number(body.quantidade ?? body.target_quantity ?? 0) || DISCOVERY_DEFAULT_QUANTITY;
-    const limite = Number(body.limite ?? body.search_limit ?? 0) || DISCOVERY_DEFAULT_LIMIT;
+    // quantidade_alvo ≠ limite_candidatos: o retorno é limitado pelo limite de
+    // candidatos; a quantidade alvo é referência de trabalho (ver DISCOVERY_QUANTITY_RULE).
+    const quantidade = Number(body.quantidade_alvo ?? body.quantidade ?? body.target_quantity ?? 0) || DISCOVERY_DEFAULT_QUANTITY;
+    const limite = Number(body.limite_candidatos ?? body.limite ?? body.search_limit ?? 0) || DISCOVERY_DEFAULT_LIMIT;
     const produto = String(body.product ?? "").trim();
     if (!nicho || !cidade) return out({ error: "nicho e cidade são obrigatórios para a descoberta real" }, 400);
     if (nicho.length > 80 || cidade.length > 120 || quantidade < 1 || quantidade > DISCOVERY_MAX_LIMIT || limite < 1 || limite > DISCOVERY_MAX_LIMIT || (produto && !["datta360", "dattavps", "both"].includes(produto))) return out({ error: "parâmetros de descoberta inválidos" }, 400);
@@ -170,7 +172,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     } catch (error) {
       if (error instanceof DiscoveryError) {
         const falha = error as { code: string; message: string; details?: unknown };
-        return out({ error: falha.code, message: falha.message, details: falha.details ?? null, provider: "openstreetmap", results: [] }, 503);
+        const status = String(falha.code).startsWith("ssrf_") ? 400 : 503;
+        return out({ error: falha.code, message: falha.message, details: falha.details ?? null, provider: "openstreetmap", results: [] }, status);
       }
       throw error;
     }
@@ -188,7 +191,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       takenSlugs.add(String(slug));
       return { ...candidate, slug, deduplicated: Boolean(match), existing_lead_slug: match?.lead?.slug ?? null, criterion: match?.criterion ?? null };
     });
-    return out({ provider: search.provider, provider_label: search.provider_label, licence: search.licence, strategy: search.strategy, categoria_mapeada: search.categoria_mapeada, warning: search.warning, query: search.query, place: search.place, searched_at: search.searched_at, considerados: search.considerados, ignorados: search.ignorados, returned: results.length, results });
+    return out({ provider: search.provider, provider_label: search.provider_label, licence: search.licence, strategy: search.strategy, categoria_mapeada: search.categoria_mapeada, warning: search.warning, query: search.query, regra: DISCOVERY_QUANTITY_RULE, place: search.place, searched_at: search.searched_at, considerados: search.considerados, ignorados: search.ignorados, returned: results.length, results });
   }
   // DS-VALUE-02 — enriquecimento real com proveniência: completa campo vazio do
   // lead com valor + fonte + data + confiança. Valor já existente é preservado e
@@ -204,7 +207,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     } catch (error) {
       if (error instanceof EnrichmentError) {
         const falha = error as { code: string; message: string; details?: { warnings?: unknown[] } | null };
-        return out({ error: falha.code, message: falha.message, fields: {}, updated: [], sources: [], warnings: falha.details?.warnings ?? [], lead_preservado: true }, 503);
+        const status = String(falha.code).startsWith("ssrf_") ? 400 : 503;
+        return out({ error: falha.code, message: falha.message, fields: {}, updated: [], sources: [], warnings: falha.details?.warnings ?? [], lead_preservado: true }, status);
       }
       throw error;
     }
@@ -233,7 +237,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     } catch (error) {
       if (error instanceof DiagnosisError) {
         const falha = error as { code: string; message: string; details?: unknown };
-        return out({ error: falha.code, message: falha.message, details: falha.details ?? null, fatos: null, lead_preservado: true }, 503);
+        const status = String(falha.code).startsWith("ssrf_") ? 400 : 503;
+        return out({ error: falha.code, message: falha.message, details: falha.details ?? null, fatos: null, lead_preservado: true }, status);
       }
       throw error;
     }

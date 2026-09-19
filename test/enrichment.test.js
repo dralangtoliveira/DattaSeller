@@ -3,14 +3,19 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   EnrichmentError,
-  enrichFromOpenStreetMap,
-  enrichFromWebsite,
-  enrichLead,
+  enrichFromOpenStreetMap as enrichFromOpenStreetMapReal,
+  enrichFromWebsite as enrichFromWebsiteReal,
+  enrichLead as enrichLeadReal,
   extractContactsFromHtml,
   planEnrichmentUpdate,
 } from "../lib/enrichment/provider.js";
 
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
+// Resolução pública injetada: o guard SSRF é exercitado sem depender de DNS real.
+const RESOLVE_PUBLICO = async () => [{ address: "93.184.216.34", family: 4 }];
+const enrichFromWebsite = (url, opcoes = {}) => enrichFromWebsiteReal(url, { resolveHost: RESOLVE_PUBLICO, ...opcoes });
+const enrichFromOpenStreetMap = (entrada, opcoes = {}) => enrichFromOpenStreetMapReal(entrada, { resolveHost: RESOLVE_PUBLICO, ...opcoes });
+const enrichLead = (opcoes = {}) => enrichLeadReal({ resolveHost: RESOLVE_PUBLICO, ...opcoes });
 const route = ler("../app/api/[...path]/route.ts");
 const patch = ler("../scripts/production-dashboard-patch.mjs");
 const poc = ler("../poc/dattaseller-local/app/dashboard.html");
@@ -136,13 +141,14 @@ test("a rota enriquece o lead real, preserva o que existe e falha fechado", () =
   assert.match(post, /enrichLead\(\{ lead \}\)/);
   assert.match(post, /planEnrichmentUpdate\(lead, enrichment\.fields/);
   assert.match(post, /lead_preservado: true/, "falha de fonte precisa declarar que o lead não foi alterado");
-  assert.match(post, /\}, 503\)/);
+  assert.match(post, /\}, status\)/, "a resposta precisa usar o status decidido pelo tipo de falha");
   assert.match(post, /if \(!lead\) return out\(\{ error: "lead_not_found" \}, 404\);/);
   assert.match(post, /contact_evidence: \[\.\.\.evidence/);
   assert.match(post, /"enrichment\.applied"/);
   const bloco = post.slice(post.indexOf('if (root === "enrichment")'), post.indexOf('if (root === "prospects")'));
   assert.doesNotMatch(bloco, /delete\(/, "enriquecimento nunca remove o lead");
   assert.match(bloco, /if \(updateError\) return storageUnavailable\(\);/);
+  assert.match(bloco, /startsWith\("ssrf_"\) \? 400 : 503/, "site privado precisa ser recusado com 400 antes de qualquer fetch");
 });
 
 test("o CRM oferece enriquecer no lead e o artefato publicado mantém a ação", () => {
