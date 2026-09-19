@@ -15,14 +15,14 @@ Nenhum `checkout_url` é inventado. Os itens com preço publicado permanecem `aw
 | SKU | Serviço | Preço público | Situação |
 | --- | --- | ---: | --- |
 | `datta360_diagnostico` | Diagnóstico digital | sem preço independente publicado | componente de escopo |
-| `datta360_site` | Site profissional | a partir de **R$ 2.510** | aguarda checkout |
-| `datta360_instagram` | Instagram | a partir de **R$ 615** | aguarda checkout |
-| `datta360_tiktok` | TikTok | a partir de **R$ 554** | aguarda checkout |
-| `datta360_google_business` | Google Business Profile | a partir de **R$ 615** | aguarda checkout |
-| `datta360_facebook` | Facebook Business | a partir de **R$ 410** | aguarda checkout |
-| `datta360_whatsapp` | WhatsApp Business | a partir de **R$ 410** | aguarda checkout |
+| `datta360_site` | Site profissional | **R$ 2.510** | aguarda checkout |
+| `datta360_instagram` | Instagram | **R$ 615** | aguarda checkout |
+| `datta360_tiktok` | TikTok | **R$ 554** | aguarda checkout |
+| `datta360_google_business` | Google Business Profile | **R$ 615** | aguarda checkout |
+| `datta360_facebook` | Facebook Business | **R$ 410** | aguarda checkout |
+| `datta360_whatsapp` | WhatsApp Business | **R$ 410** | aguarda checkout |
 | `datta360_crm` | CRM | sem preço independente publicado | componente de escopo |
-| `datta360_integracoes` | Integrações | a partir de **R$ 770** | aguarda checkout |
+| `datta360_integracoes` | Integrações | **R$ 770** | aguarda checkout |
 | `datta360` | Pacote completo | **R$ 4.045** | promoção pública atual **R$ 2.427 (-40%)**; aguarda checkout |
 
 ## Regras comerciais de Production
