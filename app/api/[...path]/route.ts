@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { resendConfigurationError } from "@/lib/email/provider";
+import { resendConfigurationError, resolveEmailRecipient } from "@/lib/email/provider";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { buildFollowUpDraft, canScheduleFollowUp } from "@/lib/email/follow-up.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -27,6 +27,20 @@ type SavedQualification = Qualification & { id: string; lead_slug: string };
 const tables: Record<string, string> = { proposals: "ds_proposals", emails: "ds_emails", orders: "ds_orders", checkouts: "ds_checkouts", payments: "ds_payments", contracts: "ds_contracts", handoffs: "ds_handoffs", commissions: "ds_commissions", qualifications: "ds_qualifications", diagnoses: "ds_site_diagnoses", "social-audits": "ds_social_audits", previews: "ds_previews", timeline: "ds_timeline" };
 const id = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 const now = () => new Date().toISOString();
+
+/**
+ * O rascunho do CRM não guarda destinatário (o e-mail do lead é a fonte), então o
+ * envio real precisa resolver e persistir o destinatário antes da transição —
+ * mesmo critério de `/api/email-send`. Sem isso o provedor receberia `null`.
+ */
+async function hydrateEmailRecipient(db: Db, emailId: string) {
+  const { data: email } = await db.from("ds_emails").select("id,lead_slug,recipient").eq("id", emailId).maybeSingle();
+  if (!email || String(email.recipient ?? "").trim()) return;
+  const { data: lead } = await db.from("ds_leads").select("email").eq("slug", email.lead_slug).maybeSingle();
+  const recipient = resolveEmailRecipient(email, lead);
+  if (!recipient) return;
+  await db.from("ds_emails").update({ recipient, updated_at: now() }).eq("id", emailId);
+}
 
 async function context() {
   const db = await createSupabaseServerClient();
@@ -138,7 +152,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const row = { id: id("prop"), lead_slug: body.lead_slug, product_id: body.product_id, base_price: base, negotiated_price: price, discount, margin: price - Number(product.cost), currency: product.currency, terms: body.terms || "Pagamento mock local", valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(), version: 1, status: "draft", artifacts: { diagnosis_ids: Array.isArray(body.diagnosis_ids) ? body.diagnosis_ids : [], preview_ids: Array.isArray(body.preview_ids) ? body.preview_ids : [], social_audit_ids: Array.isArray(body.social_audit_ids) ? body.social_audit_ids : [], comparator: body.comparator === true } };
     const { error } = await db.from("ds_proposals").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "proposal.created", row.id); return out(row);
   }
-  if (root === "emails" && parts[2] === "transition") return transitionEmail(db, parts[1], body.status, body.fixture);
+  if (root === "emails" && parts[2] === "transition") { if (body.status === "sent_simulated") await hydrateEmailRecipient(db, parts[1]); return transitionEmail(db, parts[1], body.status, body.fixture); }
   if (root === "emails" && parts[2] === "follow-up") return followUp(db, parts[1]);
   if (root === "emails") { const row = { id: id("email"), lead_slug: body.lead_slug, proposal_id: body.proposal_id || null, subject: String(body.subject || "Proposta DattaSeller"), body: String(body.body || "Olá, segue a proposta para sua revisão."), status: "draft", provider: "mock", attempt: 0 }; const { error } = await db.from("ds_emails").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "email.draft", row.id); return out(row); }
   if (root === "orders" && parts[2] === "checkout") return checkout(db, parts[1], body.result);
