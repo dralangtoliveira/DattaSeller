@@ -11,7 +11,7 @@
 // chamada de rede quando o banco é o de Production, quando o host é domínio de
 // Production ou quando o ref esperado do HML não foi declarado/confere.
 import { createServerClient } from "@supabase/ssr";
-import { E2E_STEPS, e2eLeadSlug, e2eProspectCandidate, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
+import { E2E_STEPS, e2eHeaders, e2eLeadSlug, e2eProspectCandidate, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
 import { formatGuardReport, guardE2eTarget } from "../lib/e2e/target-guard.js";
 
 const env = process.env;
@@ -56,7 +56,11 @@ const supabase = createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLI
 async function call(method, path, body) {
   const response = await fetch(`${base}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", Origin: base, Cookie: [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; ") },
+    headers: e2eHeaders({
+      base,
+      cookie: [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; "),
+      bypass: env.DS_E2E_BYPASS,
+    }),
     body: body === undefined ? undefined : JSON.stringify(body),
     redirect: "manual",
   });

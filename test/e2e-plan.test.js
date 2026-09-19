@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { E2E_STEPS, REQUIRED_ENV, e2eLeadSlug, e2eProspectCandidate, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
+import { E2E_STEPS, REQUIRED_ENV, e2eHeaders, e2eLeadSlug, e2eProspectCandidate, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
 import { isSafeLeadSlug } from "../lib/hardening/guards.ts";
 import { isPublicHttpUrl } from "../lib/prospector.js";
 
@@ -51,6 +51,20 @@ test("o candidato do E2E carrega source_url pública exigida por /api/prospects"
   assert.ok(candidate.instagram_url);
   assert.ok(candidate.telefone);
   assert.ok(candidate.cidade);
+});
+
+test("o E2E alcança Preview protegido com o bypass oficial e nunca o registra", () => {
+  const base = "https://preview.example.vercel.app";
+  const semBypass = e2eHeaders({ base, cookie: "sb-x=1" });
+  assert.equal(semBypass["x-vercel-protection-bypass"], undefined, "sem segredo não há header de bypass");
+  assert.equal(semBypass.Cookie, "sb-x=1");
+  assert.equal(semBypass.Origin, base);
+  const comBypass = e2eHeaders({ base, cookie: "sb-x=1", bypass: "segredo-de-teste" });
+  assert.equal(comBypass["x-vercel-protection-bypass"], "segredo-de-teste");
+  const runner = readFileSync(new URL("../scripts/e2e-authenticated.mjs", import.meta.url), "utf8");
+  assert.match(runner, /env\.DS_E2E_BYPASS/, "o runner precisa aceitar o bypass por variável de ambiente");
+  assert.doesNotMatch(runner, /console\.log\([^)]*BYPASS/, "o segredo de bypass não pode ser impresso");
+  assert.ok(!REQUIRED_ENV.includes("DS_E2E_BYPASS"), "o bypass é opcional (alvo não protegido continua válido)");
 });
 
 test("o runner do E2E exercita o envio pelo endpoint do CRM e o reload", () => {
