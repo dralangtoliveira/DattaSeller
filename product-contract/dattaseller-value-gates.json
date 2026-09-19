@@ -25,9 +25,13 @@
     {
       "id": "DS-VALUE-02",
       "name": "Enriquecimento com proveniência",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Histórico b23a3aa define enriquecimento obrigatório; motor operacional não está na linha web atual."
+        "POST /api/enrichment completa somente campo vazio do lead com valor + fonte + data + confiança + classificação (confirmado/provável), usando o site público do próprio lead e o registro público do OpenStreetMap (Nominatim com extratags).",
+        "Teste funcional real 2026-09-19: Empire Szechuan (Orlando, FL) recebeu telefone 4078391236 do site público e endereço/site do OpenStreetMap node/940735101, com checked_at e classificação; telefone e site já existentes foram preservados em vez de sobrescritos.",
+        "Fluxo HTTP da linha web: leads descobertos de verdade foram enriquecidos (fat-rosie-s-taco-tequila-bar ganhou e-mail e Instagram do próprio site) e a segunda passada não sobrescreveu nenhum campo preenchido (sobrescritos: 0); falha de fonte responde 503 sem alterar o lead (lead_preservado).",
+        "Defeito real corrigido no caminho: normalizeUrl tratava ausência de site como domínio literal 'undefined' e deduplicava leads sem site; corrigido com teste de regressão.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-02-ENRIQUECIMENTO-REAL-2026-09-19.md"
       ]
     },
     {

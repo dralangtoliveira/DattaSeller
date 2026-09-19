@@ -1,14 +1,17 @@
 /**
- * Teste funcional do DS-VALUE-01 pela linha web (HTTP real, Next dev).
+ * Teste funcional do DS-VALUE-01 (descoberta) e do DS-VALUE-02 (enriquecimento)
+ * pela linha web (HTTP real, Next dev).
  *
  * Sobe o CRM local apontado para um stub Supabase em memória (nenhuma base
  * real é tocada) e executa o fluxo do operador:
  *   nicho + cidade → POST /api/discovery (fonte pública real)
  *   → POST /api/prospects (o mesmo contrato do dashboard)
- *   → GET /api/leads (persistência com origem e data).
+ *   → GET /api/leads (persistência com origem e data)
+ *   → POST /api/enrichment (fontes públicas + proveniência por campo, sem
+ *     sobrescrever o que já existe).
  *
- * O provedor da descoberta NÃO é simulado: a busca consulta OpenStreetMap de
- * verdade. O stub substitui apenas o banco já existente e comprovado.
+ * Os provedores NÃO são simulados: a busca e o enriquecimento consultam fontes
+ * públicas de verdade. O stub substitui apenas o banco já existente e comprovado.
  */
 
 import { spawn } from "node:child_process";
@@ -45,10 +48,22 @@ function startStub() {
       if (request.method !== "GET") {
         const parsed = JSON.parse(body || "[]");
         const rows = Array.isArray(parsed) ? parsed : [parsed];
-        for (const row of rows) state.leads.set(row.slug, { ...(state.leads.get(row.slug) ?? {}), ...row });
-        return send(rows, 201);
+        const filtro = url.searchParams.get("slug")?.replace(/^eq\./, "") ?? null;
+        for (const row of rows) {
+          const slug = row.slug ?? filtro;
+          state.leads.set(slug, { ...(state.leads.get(slug) ?? {}), ...row, slug });
+        }
+        response.writeHead(204);
+        return response.end();
       }
-      return send([...state.leads.values()]);
+      const filtro = url.searchParams.get("slug")?.replace(/^eq\./, "") ?? null;
+      const rows = [...state.leads.values()].filter((row) => (filtro ? row.slug === filtro : true));
+      // maybeSingle() pede um objeto único; o PostgREST responde 406 quando não
+      // há exatamente uma linha.
+      if (String(request.headers.accept ?? "").includes("vnd.pgrst.object")) {
+        return rows.length === 1 ? send(rows[0]) : send({ code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" }, 406);
+      }
+      return send(rows);
     }
     if (url.pathname.startsWith("/rest/v1/")) return send([]);
     return send({});
@@ -205,12 +220,66 @@ try {
     throw new Error("lead persistido sem origem/data de verificação");
   }
   resumo.persistidos = persistidos;
+
+  // DS-VALUE-02 — enriquecimento real do lead persistido: fontes públicas,
+  // proveniência por campo e preservação do que já existe.
+  resumo.etapa = "enriquecimento";
+  const enriquecer = async (slug) => {
+    const resposta = await call("/api/enrichment", { method: "POST", body: JSON.stringify({ lead_slug: slug }) });
+    if (resposta.status !== 200 || !resposta.json?.ok) {
+      throw new Error(`o enriquecimento de ${slug} falhou (status ${resposta.status}: ${resposta.json?.error ?? resposta.text.slice(0, 200)})`);
+    }
+    for (const campo of resposta.json.updated ?? []) {
+      if (!campo.source || !campo.checked_at || !campo.confidence || !campo.classification) {
+        throw new Error(`campo enriquecido sem proveniência completa: ${campo.field}`);
+      }
+    }
+    return resposta.json;
+  };
+  const porLead = [];
+  for (const lead of persistidos) {
+    const resultado = await enriquecer(lead.slug);
+    porLead.push({
+      lead: lead.slug,
+      campos: (resultado.updated ?? []).map((campo) => ({ field: campo.field, value: campo.value, source: campo.source, source_url: campo.source_url, classification: campo.classification, confidence: campo.confidence })),
+      preservados: (resultado.ignored ?? []).map((item) => item.field),
+      fontes: (resultado.sources ?? []).map((origem) => origem.source),
+    });
+  }
+  // Lead incompleto (entrada manual permitida como alternativa) enriquecido por
+  // fonte pública real: prova o aceite do gate, que começa em lead incompleto.
+  const criado = await call("/api/leads", { method: "POST", body: JSON.stringify({ slug: "empire-szechuan", nome: "Empire Szechuan", cidade: "Orlando, FL", source: "manual", source_url: "https://www.openstreetmap.org/node/940735101" }) });
+  if (criado.status !== 200) throw new Error(`não foi possível criar o lead de teste (status ${criado.status})`);
+  const incompleto = await enriquecer("empire-szechuan");
+  const camposNovos = incompleto.updated ?? [];
+  if (!camposNovos.length) throw new Error("o lead incompleto não recebeu nenhum dado público");
+  resumo.enriquecimento = { leads_descobridos: porLead, lead_incompleto: { lead: "empire-szechuan", campos: camposNovos.map((campo) => ({ field: campo.field, value: campo.value, source: campo.source, classification: campo.classification, confidence: campo.confidence })), fontes: (incompleto.sources ?? []).map((origem) => origem.source) } };
+
+  resumo.etapa = "enriquecimento não sobrescreve";
+  const antes = (await call("/api/leads")).json.find((lead) => lead.slug === "empire-szechuan") ?? {};
+  const repetido = await enriquecer("empire-szechuan");
+  const sobrescritos = (repetido.updated ?? []).filter((campo) => String(antes[campo.field] ?? "").trim() !== "");
+  if (sobrescritos.length) throw new Error(`a segunda passada sobrescreveu campo já preenchido: ${sobrescritos.map((campo) => campo.field).join(", ")}`);
+  resumo.enriquecimento_repetido = {
+    atualizados: (repetido.updated ?? []).map((campo) => campo.field),
+    preservados: (repetido.ignored ?? []).map((item) => item.field),
+    sobrescritos: 0,
+  };
+
+  const final = await call("/api/leads");
+  const leadFinal = (final.json ?? []).find((lead) => lead.slug === "empire-szechuan");
+  if (!leadFinal) throw new Error("o lead desapareceu depois do enriquecimento");
+  if (!Array.isArray(leadFinal.contact_evidence) || !leadFinal.contact_evidence.length) {
+    throw new Error("o lead enriquecido não registrou evidência de proveniência");
+  }
+  resumo.lead_final = { slug: leadFinal.slug, fonte: leadFinal.source, evidencia: leadFinal.contact_evidence.length, campos: { telefone: leadFinal.telefone || null, email: leadFinal.email || null, site_antigo: leadFinal.site_antigo || null, end_cliente: leadFinal.end_cliente || null } };
   resumo.etapa = "ok";
   console.log(JSON.stringify(resumo, null, 2));
-  console.error("RESULTADO: fluxo nicho+cidade → empresas reais → CRM executado com dados reais da fonte pública.");
+  console.error("RESULTADO: fluxo nicho+cidade → empresas reais → CRM → enriquecimento executado com dados reais de fontes públicas.");
 } catch (error) {
   console.log(JSON.stringify({ ...resumo, erro: error?.message ?? String(error) }, null, 2));
   console.error(`FALHA: ${error?.message ?? error}`);
+  console.error(`DIAGNOSTICO: leads no stub = ${[...stub.state.leads.keys()].join(", ") || "(vazio)"}`);
   console.error(log.split("\n").filter((line) => /error|Error|⨯/.test(line)).slice(-8).join("\n"));
   process.exitCode = 1;
 } finally {

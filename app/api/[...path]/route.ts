@@ -14,6 +14,8 @@ import { duplicateOf, isPublicHttpUrl, normalizeEmail, normalizePhone, normalize
 import { DISCOVERY_DEFAULT_LIMIT, DISCOVERY_DEFAULT_QUANTITY, DISCOVERY_MAX_LIMIT, DiscoveryError, discoverCompanies } from "@/lib/discovery/provider.js";
 // @ts-expect-error ponte descoberta → lead exercitada por node:test sem build.
 import { disambiguateSlug, resultsToCandidates } from "@/lib/discovery/candidates.js";
+// @ts-expect-error motor de enriquecimento real (DS-VALUE-02) exercitado por node:test sem build.
+import { EnrichmentError, enrichLead, planEnrichmentUpdate } from "@/lib/enrichment/provider.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { withProspectorEditor } from "@/lib/prospector-preview-editor.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -185,6 +187,36 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       return { ...candidate, slug, deduplicated: Boolean(match), existing_lead_slug: match?.lead?.slug ?? null, criterion: match?.criterion ?? null };
     });
     return out({ provider: search.provider, provider_label: search.provider_label, licence: search.licence, strategy: search.strategy, categoria_mapeada: search.categoria_mapeada, warning: search.warning, query: search.query, place: search.place, searched_at: search.searched_at, considerados: search.considerados, ignorados: search.ignorados, returned: results.length, results });
+  }
+  // DS-VALUE-02 — enriquecimento real com proveniência: completa campo vazio do
+  // lead com valor + fonte + data + confiança. Valor já existente é preservado e
+  // falha de fonte não altera o lead.
+  if (root === "enrichment") {
+    if (!isSafeLeadSlug(body.lead_slug)) return out({ error: "invalid_lead_slug" }, 400);
+    const { data: lead, error: leadError } = await db.from("ds_leads").select("*").eq("slug", body.lead_slug).is("deleted_at", null).maybeSingle();
+    if (leadError) return storageUnavailable();
+    if (!lead) return out({ error: "lead_not_found" }, 404);
+    let enrichment: Awaited<ReturnType<typeof enrichLead>>;
+    try {
+      enrichment = await enrichLead({ lead });
+    } catch (error) {
+      if (error instanceof EnrichmentError) {
+        const falha = error as { code: string; message: string; details?: { warnings?: unknown[] } | null };
+        return out({ error: falha.code, message: falha.message, fields: {}, updated: [], sources: [], warnings: falha.details?.warnings ?? [], lead_preservado: true }, 503);
+      }
+      throw error;
+    }
+    const ignorar = Array.isArray(body.ignorar) ? (body.ignorar.filter((field: unknown) => typeof field === "string") as string[]).slice(0, 20) : [];
+    const { updates, ignored } = planEnrichmentUpdate(lead, enrichment.fields, { force: body.force === true, ignorar }) as { updates: Record<string, { value: unknown; source: string; source_url: string; checked_at: string; confidence: string; classification: string }>; ignored: unknown[] };
+    const campos = Object.keys(updates);
+    if (!campos.length) return out({ ok: true, updated: [], ignored, sources: enrichment.sources, warnings: enrichment.warnings, checked_at: enrichment.checked_at, lead_preservado: true });
+    const evidence = Array.isArray(lead.contact_evidence) ? (lead.contact_evidence as unknown[]) : [];
+    const patch: Record<string, unknown> = { updated_at: now(), contact_evidence: [...evidence, ...campos.map((field) => ({ field, ...updates[field] }))] };
+    for (const field of campos) patch[field] = updates[field].value;
+    const { error: updateError } = await db.from("ds_leads").update(patch).eq("slug", lead.slug);
+    if (updateError) return storageUnavailable();
+    await event(db, String(lead.slug), "enrichment.applied", campos.map((field) => `${field}:${updates[field].source}/${updates[field].classification}`).join(" · "));
+    return out({ ok: true, updated: campos.map((field) => ({ field, ...updates[field] })), ignored, sources: enrichment.sources, warnings: enrichment.warnings, checked_at: enrichment.checked_at });
   }
   if (root === "prospects") { const q = body.query ?? {}, candidates = (Array.isArray(body.candidates) ? body.candidates.slice(0, 25) : []) as Record<string, unknown>[], product = String(q.product ?? "").trim(); const radius = Number(q.search_radius_km ?? 0), target = Number(q.target_quantity ?? 0), limit = Number(q.search_limit ?? 0), prepared: { candidate: Record<string, unknown>; qualification: NormalizedQualification }[] = candidates.map((candidate: Record<string, unknown>) => ({ candidate, qualification: normalizeQualification(candidate.qualification) as NormalizedQualification })); if (!String(q.niche ?? "").trim() || !String(q.city ?? q.region ?? "").trim() || !candidates.length) return out({ error: "nicho, cidade/região e candidatos públicos são obrigatórios" }, 400); if ((product && !["datta360","dattavps","both"].includes(product)) || radius < 0 || radius > 500 || target < 0 || target > 100 || limit < 0 || limit > 25) return out({ error: "parâmetros de prospecção inválidos" }, 400); const invalidQualification = prepared.find((entry: { qualification: NormalizedQualification }) => entry.qualification.error); if (invalidQualification) return out({ error: invalidQualification.qualification.error }, 400); const results = []; for (const { candidate: c, qualification } of prepared) { const result = await saveProspect(db, { ...c, nicho: c.nicho || q.niche, cidade: c.cidade || q.city, region: c.region || q.region, product_suggested: c.product_suggested || qualification.value?.recommendation || product, search_radius_km: c.search_radius_km ?? (radius || null), target_quantity: c.target_quantity ?? (target || null), search_limit: c.search_limit ?? (limit || null), source: c.source || "public_search", source_checked_at: c.source_checked_at || now() }, false) as Record<string, unknown>; if (result.error) return storageUnavailable(); if (qualification.value) { const qualificationResult = await saveQualification(db, String(result.lead), qualification.value); if ("error" in qualificationResult) return storageUnavailable(); result.qualification_id = qualificationResult.id; } results.push(result); } return out({ evaluated: candidates.length, results }); }
   if (root === "proposals") {

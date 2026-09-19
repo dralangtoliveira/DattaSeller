@@ -13,7 +13,7 @@ import {
   resetGeocodeCache,
 } from "../lib/discovery/provider.js";
 import { disambiguateSlug, publicContactType, resultsToCandidates } from "../lib/discovery/candidates.js";
-import { isPublicHttpUrl } from "../lib/prospector.js";
+import { duplicateOf, isPublicHttpUrl, normalizeUrl } from "../lib/prospector.js";
 import { LEAD_INPUT_KEYS } from "../lib/hardening/guards.ts";
 
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
@@ -192,11 +192,24 @@ test("nomes repetidos e slugs já usados no CRM não se sobrescrevem", () => {
   assert.equal(publicContactType({}), "");
 });
 
+test("lead sem site não deduplica por domínio vazio", () => {
+  // Regressão real: `new URL("https://undefined")` produzia o domínio literal
+  // "undefined", então dois leads sem site eram tratados como duplicados.
+  assert.equal(normalizeUrl(undefined, true), "");
+  assert.equal(normalizeUrl(null, true), "");
+  assert.equal(normalizeUrl("", true), "");
+  assert.equal(normalizeUrl("https://www.exemplo.com/pagina/", true), "exemplo.com");
+  const semSite = { slug: "empresa-a", nome: "Empresa A", cidade: "Orlando, FL", source_url: "https://www.openstreetmap.org/node/1" };
+  assert.equal(duplicateOf(semSite, [{ slug: "empresa-b", nome: "Empresa B", cidade: "Orlando, FL", site_antigo: null }]), null);
+  const comMesmoSite = { nome: "Outra Razão", cidade: "Miami, FL", site_antigo: "https://www.exemplo.com/" };
+  assert.equal(duplicateOf(comMesmoSite, [{ slug: "empresa-c", nome: "Empresa C", cidade: "Orlando, FL", site_antigo: "https://exemplo.com/contato" }])?.criterion, "dominio");
+});
+
 test("a rota expõe a descoberta real, autenticada e com falha fechada", () => {
   const post = route.slice(route.indexOf("export async function POST"));
   assert.match(post, /if \(root === "discovery"\) \{/);
   assert.match(post, /discoverCompanies\(\{ nicho, cidade, quantidade, limite \}\)/);
-  assert.match(post, /error\.code/);
+  assert.match(post, /falha\.code/);
   assert.match(post, /\}, 503\)/, "falha do provedor precisa responder 503");
   assert.match(post, /results: \[\]/, "falha do provedor não devolve resultado parcial");
   assert.match(post, /duplicateOf\(candidate, leads \?\? \[\]\)/);

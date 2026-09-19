@@ -520,6 +520,26 @@ function vDiscPainel(){
  +'</div>';
 }
 function vProspeccao(){
+// DS-VALUE-02 — enriquecimento real: consulta fontes públicas e completa apenas
+// campo vazio, sempre com fonte, data, confiança e classificação. O que já
+// existe não é sobrescrito e falha de fonte não altera o lead.
+function dsEnriquecer(slug){
+ if(!confirm('Consultar fontes públicas e completar os campos vazios deste lead?'))return;
+ fetch('/api/enrichment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_slug:slug})})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+  .then(function(x){
+   if(!x.ok||x.d.error||x.d.erro){alert('Enriquecimento não aplicado: '+String(x.d.message||x.d.error||x.d.erro||'erro')+'. O lead não foi alterado.');return}
+   var novos=(x.d.updated||[]).map(function(u){return u.field+' ('+u.source+', '+u.classification+', '+u.confidence+')'});
+   var preservados=(x.d.ignored||[]).map(function(i){return i.field});
+   var texto=novos.length?('Campos enriquecidos: '+novos.join(', ')):'Nenhum campo novo encontrado nas fontes públicas.';
+   if(preservados.length) texto+='\nPreservados (já preenchidos): '+preservados.join(', ');
+   if((x.d.warnings||[]).length) texto+='\nFontes sem resposta: '+(x.d.warnings||[]).map(function(w){return w.source}).join(', ');
+   alert(texto);
+   dsLoad().then(render);
+  })
+  .catch(function(){alert('Falha de conexão ao enriquecer. O lead não foi alterado.')});
+}
+function vProspeccao(){
  var fila=DS_CANDS.map(function(c,i){return '<div class="fup-item"><b>'+esc(c.nome)+'</b><span style="color:var(--muted);font-size:12px">'+esc(c.cidade)+' · '+esc(c.slug)+'</span><span class="sp" style="flex:1"></span><a href="#" style="font-size:11px;color:var(--accent)" onclick="dsRemoveCand('+i+');return false">remover</a></div>'}).join('');
  return vDiscPainel()
  +'<div class="painel"><h2>Prospecção assistida <small style="color:var(--muted)">entrada alternativa, com rastreabilidade</small></h2>'
@@ -755,6 +775,7 @@ nav();document.getElementById("view").innerHTML="<div class=\"painel\"><h2>Sincr
     if(/^\d{6,20}$/.test(String(l.whatsapp||''))) a.push('<a href="https://wa.me/'+esc(l.whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>');
     if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(l.email||''))) a.push('<a href="#" onclick="dsQuickEmail(decodeURIComponent(\''+slug+'\'));return false">e-mail</a>');
     a.push('<a href="#" onclick="abrirEdit(decodeURIComponent(\''+slug+'\'));return false">✎ dados</a>');
+    a.push('<a href="#" onclick="dsEnriquecer(decodeURIComponent(\''+slug+'\'));return false">enriquecer</a>');
     a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };
