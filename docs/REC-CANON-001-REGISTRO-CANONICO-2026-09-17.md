@@ -542,6 +542,16 @@ componente · cards afetados · responsável · evidência · condição de revi
 | caminho | `poc/dattaseller-local/app/dashboard.html`, `public/dashboard.html`, `scripts/sync-dashboard.mjs`, `scripts/production-dashboard-patch.mjs`, `test/dashboard-nav.test.js` |
 | componente | dashboard do CRM (navegação/boot) / Vercel Production |
 | cards afetados | `NAV-CANONICA-001`, Final Gate n. 4 (pré-requisito de promoção) |
-| responsável | Codex (execução); confirmação visual autenticada no domínio real depende da sessão do operador (o admin E2E existe apenas no HML) |
+| responsável | Codex (execução) com sessão do operador no domínio real: login feito pelo operador em janela Chrome dedicada (CDP 9222) e verificação conduzida por Playwright |
 | evidência | Playwright no Preview isolado (alias `v0-project-git-codex-supervisor-dattaseller-datta-x.vercel.app`): **13 itens canônicos idênticos** antes/depois da sincronização e após 5 s, 17 snapshots **sem nenhum** marcador de POC/DEMO, 13/13 views abrindo com conteúdo e 0 erros de console; artefato com **uma** definição de `nav()` (sem `nav=function`) e `NAV_CANONICO` de 13 itens; boot exibe "Sincronizando com o servidor" em vez de dado local; suíte **129/129**, `tsc --noEmit` exit 0, `secret-scan` 0 em 237 arquivos, `next build` exit 0, CI `SUCCESS` (push + pull_request) no head `61d7ae3`; Production: `/login` byte-idêntico (`sha256 05be0fe3eca3…`) ao build promovido e **diferente** do deployment anterior (`76f2b90b3069…`), com `/dashboard.html` e `/api/leads` sem sessão ainda respondendo **307 → `/login`** (gate preservado) |
 | condição de revisão | reabrir se a navegação voltar a divergir, se o boot exibir dado local/POC, se os marcadores de demonstração reaparecerem, ou se a confirmação autenticada no domínio real (sessão do operador) apontar divergência |
+
+### D-033 — confirmação autenticada no domínio real (2026-09-19 00:32)
+
+| Campo | Valor |
+| --- | --- |
+| verificação | `https://crm.datta360.com.br/dashboard.html` com sessão do operador (Chrome visível com `--remote-debugging-port=9222`, perfil temporário; Playwright via `connectOverCDP`) |
+| resultado | `nav_estavel=true` com **uma única** assinatura de menu (`geral,prospeccao,pipeline,clientes,intelligence,workspace,timeline,sites,comparador,followup,contratos,financeiro,config`) idêntica antes da sincronização, depois dela e após 5 s; **13/13 views** abriram com conteúdo e título corretos; `console_errors=[]`; **0** snapshots com marcador de POC/DEMO; boot exibiu "Sincronizando com o servidor" (menu já completo) |
+| dados reais | a tela renderizou dados de Production (3 leads em andamento, 1 proposta registrada, badges Pipeline 3 / Clientes 3 / Sites 1 / Comparador 1, timeline com `proposal.created` e comparador com o lead real) — prova adicional de que o ambiente servido é o de produção |
+| artefato | `public/dashboard.html` com **uma** definição de `nav()` (sem `nav=function`), `NAV_CANONICO` de 13 itens, `Contratos` presente, sem resíduo de POC (`modo arquivo`, `operação comercial local`, `Baseado no Prospector`) |
+| evidência | `prod-01-antes-sync.png`, `prod-02-depois-sync.png`, `prod-03-views.png` na pasta de visualizações da sessão |
