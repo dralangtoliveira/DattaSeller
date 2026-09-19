@@ -83,42 +83,42 @@
       "key": "datta360_site", "name": "Datta360° — Site profissional", "description": "Novo site profissional ou modernização do site atual.",
       "ideal_customer": "Empresas que precisam modernizar ou criar presença web profissional.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 2510, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 2510, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
       "key": "datta360_instagram", "name": "Datta360° — Instagram", "description": "Diagnóstico e transformação visual do perfil.",
       "ideal_customer": "Empresas com Instagram desalinhado à presença digital.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 615, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 615, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
       "key": "datta360_tiktok", "name": "Datta360° — TikTok", "description": "Perfil, identidade visual e conteúdo alinhados à presença da empresa.",
       "ideal_customer": "Empresas que precisam estruturar sua presença no TikTok.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 554, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 554, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
       "key": "datta360_google_business", "name": "Datta360° — Google Business Profile", "description": "Estruturação para busca local e Google Maps.",
       "ideal_customer": "Empresas locais que precisam organizar sua presença pública no Google.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 615, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 615, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
       "key": "datta360_facebook", "name": "Datta360° — Facebook Business", "description": "Estruturação ou correção da página e integração com a presença digital.",
       "ideal_customer": "Empresas que precisam corrigir ou estruturar sua página comercial.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 410, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 410, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
       "key": "datta360_whatsapp", "name": "Datta360° — WhatsApp Business", "description": "Configuração do canal comercial de WhatsApp Business.",
       "ideal_customer": "Empresas que precisam organizar o WhatsApp como canal comercial.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 410, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 410, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
@@ -132,7 +132,7 @@
       "key": "datta360_integracoes", "name": "Datta360° — Integrações", "description": "Integração dos canais digitais dentro da jornada comercial.",
       "ideal_customer": "Empresas com canais digitais isolados.", "recurrence": "one_time",
       "sales_script": "Confirmar escopo no diagnóstico e apresentar o preço publicado como valor inicial.", "objections": ["Preço", "escopo", "prazo"],
-      "pricing": { "status": "published_on_public_site", "amount": 770, "currency": "BRL", "pricing_basis": "starting_from" }, "checkout_url": null,
+      "pricing": { "status": "published_on_public_site", "amount": 770, "currency": "BRL", "pricing_basis": "fixed_public_ceiling" }, "checkout_url": null,
       "delivery": "Execução conforme escopo aprovado.", "commercial_status": "awaiting_checkout", "blocking_dependencies": ["checkout Asaas real/homologado", "custo e comissão aprovados no CRM"]
     },
     {
