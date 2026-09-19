@@ -465,6 +465,15 @@ function dsSalvarCands(){
   })
   .catch(function(){DS_CAND_MSG='<div class="prod-error">Falha de conexão ao salvar. Nada foi persistido.</div>';render()});
 }
+// Importação em lote (JSON) herdada do painel "Pesquisa pública assistida".
+// Na aplicação web o patch de produção redefine window.dsProspect com a
+// implementação real; na POC aberta como arquivo esta versão só avisa que a ação
+// depende do servidor. A descoberta/enriquecimento/diagnóstico foram acrescentados
+// sem remover esta entrada.
+function dsProspect(){
+ var alvo=document.getElementById('prospect-result');
+ if(alvo)alvo.textContent='Disponível na aplicação web (requer servidor).';
+}
 // DS-VALUE-01 — descoberta real: nicho + cidade → empresas reais da fonte
 // pública, executada pelo servidor. O operador revisa, seleciona e manda para
 // o CRM pela mesma rota de prospecção já existente (sem copiar e colar).
@@ -571,6 +580,14 @@ function vProspeccao(){
  +'<div class="painel"><h2>Fila de candidatos <span style="color:var(--muted);font-size:12px">('+DS_CANDS.length+')</span></h2>'
  +(DS_CANDS.length?fila:'<div class="vazio">Nenhum candidato na fila.</div>')
  +'<button style="margin-top:12px" onclick="dsSalvarCands()">Salvar e deduplicar</button>'
+ +'</div>'
+ +'<div class="painel"><h2>Pesquisa pública assistida <small style="color:var(--muted)">importação em lote (JSON)</small></h2>'
+ +'<p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">Importe apenas candidatos obtidos por fontes públicas. E-mail não é obrigatório; fonte e rastreabilidade são obrigatórias. Não há scraping, envio ou contato automático.</p>'
+ +'<div class="mrow"><div><label>Nicho</label><input id="prospect-niche"></div><div><label>Cidade</label><input id="prospect-city"></div><div><label>Região</label><input id="prospect-region"></div><div><label>Raio (km)</label><input id="prospect-radius" type="number" min="0" max="500"></div></div>'
+ +'<div class="mrow"><div><label>Produto preferencial</label><select id="prospect-product"><option value="">não definido</option><option value="datta360">Datta360°</option><option value="dattavps">DattaVPS</option><option value="both">ambos</option></select></div><div><label>Quantidade alvo</label><input id="prospect-target" type="number" min="1" max="100" value="10"></div><div><label>Limite de candidatos</label><input id="prospect-limit" type="number" min="1" max="25" value="25"></div></div>'
+ +'<label>Candidatos públicos (JSON)</label><textarea id="prospect-candidates" rows="8" placeholder="[{&quot;slug&quot;:&quot;empresa-exemplo&quot;,&quot;nome&quot;:&quot;Empresa Exemplo&quot;,&quot;source_url&quot;:&quot;https://fonte-publica.exemplo&quot;,&quot;public_contact_type&quot;:&quot;telefone&quot;}]"></textarea>'
+ +'<button onclick="dsProspect()">Salvar e deduplicar</button>'
+ +'<p id="prospect-result"></p>'
  +'</div>';
 }
  function render(){nav();var views={geral:vGeral,prospeccao:vProspeccao,pipeline:vPipeline,clientes:vClientes,sites:vSites,comparador:vComparador,followup:vFollowup,contratos:vContractsLocal,financeiro:vFinanceiroLocal,config:vConfigLocal,workspace:vWorkspace,timeline:vTimeline,intelligence:vIntelligence};document.getElementById('view').innerHTML=(views[view]||vGeral)()}
