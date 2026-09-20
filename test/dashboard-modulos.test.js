@@ -100,6 +100,25 @@ test("a POC alimenta a web: sincronização e patch continuam explícitos no bui
   assert.match(patch, /requireTarget\(html, "var NAV_CANONICO=\["/, "o patch precisa exigir a navegação canônica");
 });
 
+test("guard da POC: modo arquivo é inequívoco e não existe na aplicação servida", () => {
+  // A) POC em file://: marcadores + aviso explícito de que não é o produto.
+  assert.ok(poc.includes("<!-- POC-FILE-GUARD-START -->") && poc.includes("<!-- POC-FILE-GUARD-END -->"), "a POC precisa do bloco de guard");
+  assert.match(poc, /não é a aplicação oficial do DattaSeller/, "a POC precisa dizer que não é a aplicação oficial");
+  assert.match(poc, /location\.protocol === "file:"/, "o aviso só aparece em modo arquivo");
+  assert.ok(poc.includes('document.title = "POC histórica (modo arquivo) — DattaSeller"'), "o título em modo arquivo precisa ser inequívoco");
+  // B) aplicação servida: sem resíduo de POC/arquivo.
+  assert.doesNotMatch(publicado, /POC-FILE-GUARD/, "o artefato servido não pode conter o guard");
+  assert.doesNotMatch(publicado, /não é a aplicação oficial do DattaSeller/, "o artefato servido não pode se declarar POC");
+  assert.doesNotMatch(publicado, /modo arquivo/, "o artefato servido não pode exibir modo arquivo");
+  // C) patch exige e remove o guard (falha fechado se o alvo sumir).
+  assert.match(patch, /requireTarget\(html, "<!-- POC-FILE-GUARD-START -->"/);
+  assert.match(patch, /marcador final do guard de arquivo da POC/);
+  // D) nenhuma regressão de módulo.
+  for (const id of ["geral", "prospeccao", "pipeline", "clientes", "intelligence", "workspace", "timeline", "sites", "comparador", "followup", "contratos", "financeiro", "config"]) {
+    assert.ok(publicado.includes(`['${id}','`), `o módulo ${id} desapareceu`);
+  }
+});
+
 test("nenhum módulo canônico existente na base foi removido pelo HEAD", (t) => {
   const git = (args) => execFileSync("git", args, { encoding: "utf8", maxBuffer: 40 * 1024 * 1024, cwd: process.cwd(), stdio: ["ignore", "pipe", "ignore"] });
   try {

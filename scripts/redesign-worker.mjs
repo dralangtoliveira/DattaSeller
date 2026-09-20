@@ -19,7 +19,9 @@ import { createServer } from "node:http";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { REDESIGN_ACTION, RedesignError, parseRedesignJob, resolveContextUrl } from "../lib/redesign/contract.js";
-import { createRedesignWorker, runRedesignOnce } from "../lib/redesign/worker.js";
+import { AGENT_ACTIONS, parseSocialJob } from "../lib/agent/contract.js";
+import { createAgent } from "../lib/agent/worker.js";
+import { runRedesignOnce } from "../lib/redesign/worker.js";
 
 const args = process.argv.slice(2);
 const flag = (name, fallback = null) => {
@@ -65,6 +67,24 @@ if (has("once")) {
   const site_url = flag("site-url");
   const diagnosis_id = flag("diagnosis-id");
   try {
+    const acao = flag("action", AGENT_ACTIONS.redesign);
+    if (acao !== AGENT_ACTIONS.redesign) {
+      const agente = createAgent({ contextProvider: API_URL ? contextProvider : null, requireContext: Boolean(API_URL) });
+      const job = parseSocialJob({ action: acao, lead_slug, profile_url: flag("profile-url"), diagnosis_id, requested_by: "cli" });
+      const { job_id } = agente.submit(job);
+      const registro = await agente.wait(job_id);
+      if (!registro || registro.status !== "completed") throw new Error(registro?.error?.message ?? "job social não concluído");
+      const destino = flag("out");
+      if (destino) {
+        const caminho = resolve(destino);
+        writeFileSync(caminho, JSON.stringify(registro.artifact, null, 2), "utf8");
+        if (registro.artifact.generated_html) writeFileSync(caminho.replace(/\.json$/, ".html"), registro.artifact.generated_html, "utf8");
+        console.log(`ARTEFATO: ${caminho}`);
+      } else {
+        console.log(JSON.stringify({ action: registro.artifact.platform ? AGENT_ACTIONS.socialAnalysis : AGENT_ACTIONS.socialDemo, lead_slug, created_at: registro.artifact.created_at ?? registro.artifact.checked_at }, null, 2));
+      }
+      process.exit(0);
+    }
     const job = parseRedesignJob({ lead_slug, site_url, diagnosis_id, requested_by: "cli" });
     const artifact = await runRedesignOnce(job, { contextProvider: API_URL ? contextProvider : null, requireContext: Boolean(API_URL) });
     const destino = flag("out");
@@ -81,7 +101,8 @@ if (has("once")) {
     process.exitCode = 1;
   }
 } else {
-  const worker = createRedesignWorker({ contextProvider: API_URL ? contextProvider : null, requireContext: Boolean(API_URL) });
+  const agent = createAgent({ contextProvider: API_URL ? contextProvider : null, requireContext: Boolean(API_URL) });
+  const ROTAS_DE_JOB = { "/jobs/redesign": AGENT_ACTIONS.redesign, "/jobs/social-analysis": AGENT_ACTIONS.socialAnalysis, "/jobs/social-demo": AGENT_ACTIONS.socialDemo };
 
   const json = (response, payload, status = 200) => {
     response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -91,32 +112,33 @@ if (has("once")) {
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, `http://${request.headers.host ?? "127.0.0.1"}`);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json(response, { status: "ok", action: REDESIGN_ACTION, worker: "dattaseller-worker-agent" });
+      return json(response, { status: "ok", worker: "dattaseller-agent", actions: Object.values(AGENT_ACTIONS), llm: agent.llm() });
     }
     // Em modo exposto (ou com segredo configurado) o segredo é obrigatório nas
     // rotas de job; sem ele, 401.
     if (SECRET && request.headers["x-worker-secret"] !== SECRET) {
       return json(response, { error: "unauthorized_worker" }, 401);
     }
-    if (request.method === "POST" && url.pathname === "/jobs/redesign") {
+    if (request.method === "POST" && (url.pathname === "/jobs" || ROTAS_DE_JOB[url.pathname])) {
       let body = "";
       for await (const chunk of request) body += chunk;
       try {
         const payload = JSON.parse(body || "{}");
-        const resultado = worker.submit(payload);
+        const acaoDaRota = ROTAS_DE_JOB[url.pathname] ?? null;
+        const resultado = agent.submit(acaoDaRota ? { ...payload, action: acaoDaRota } : payload);
         return json(response, resultado, 202);
       } catch (error) {
-        const code = error instanceof RedesignError ? error.code : "redesign_invalid_job";
+        const code = error?.code ?? (url.pathname === "/jobs/redesign" ? "redesign_invalid_job" : "agent_invalid_job");
         return json(response, { error: code, message: error?.message ?? "job inválido" }, 400);
       }
     }
     const jobMatch = /^\/jobs\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
     if (request.method === "GET" && jobMatch) {
-      const estado = worker.status(jobMatch[1]);
+      const estado = agent.status(jobMatch[1]);
       if (!estado) return json(response, { error: "job_not_found" }, 404);
       return json(response, estado);
     }
-    return json(response, { error: "route_not_found", action: REDESIGN_ACTION }, 404);
+    return json(response, { error: "route_not_found", actions: Object.values(AGENT_ACTIONS) }, 404);
   });
 
   server.listen(PORT, HOST, () => {

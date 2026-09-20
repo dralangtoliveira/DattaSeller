@@ -68,17 +68,26 @@
     {
       "id": "DS-VALUE-05",
       "name": "Diagnóstico social real",
-      "status": "PARTIAL",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Persistência social existe; coleta/análise operacional do perfil real não está comprovada."
+        "Ação ANALYZE_SOCIAL no DattaSeller Agent (worker existente evoluído, mesmo processo/contrato/autenticação): perfil público confirmado no lead, coleta com proveniência por fato (source_url + checked_at) e persistência em ds_social_audits (idempotente por job).",
+        "Instagram devolve muro de login para HTML puro (comprovado: social_profile_not_public, fail-closed). A perna de browser reaproveita o Playwright já disponível e entra como browser_evidence validada pelo contrato (mesmo host do perfil, data e conteúdo mínimo), gravando evidence_source=browser.",
+        "Prova real 2026-09-20 com Fat Rosie's Taco & Tequila Bar (Orlando, empresa do DS-VALUE-01): perfil @fat_rosies confirmado, 37.200 seguidores, 98 seguindo, 1.752 publicações, bio pública e link publicado na bio, imagem de perfil, formatos observados; 8 evidências com fonte e data; auditoria social_5e77f5860936.",
+        "O que a página pública não expõe (cadência de postagens, lista completa de formatos) é registrado como limitação (social_limits_public_html) — nada é inferido; nenhum bypass de CAPTCHA, login de terceiro ou coleta privada.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-05-06-SOCIAL-2026-09-20.md"
       ]
     },
     {
       "id": "DS-VALUE-06",
       "name": "Demonstração social visual",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Não há evidência web atual de peças demonstrativas equivalentes ao escopo definido."
+        "Ação BUILD_SOCIAL_DEMO no mesmo agente, seguindo o material original (docs/sources/prospector/OS-5-PROMPTS-SERVICOS-COM-IA-extracted.md): Nome, O que vende, Público, Tom de voz, O que NUNCA dizer e, por peça, gancho + legenda + 5 hashtags + sugestão visual.",
+        "Artefato visual demonstrável (não só JSON/texto): HTML renderizável de ~11 KB persistido em ds_previews (kind social_demo) com direção visual (paleta real #ffc400/#3a7f20 e logo real do cliente), calendário de 7 dias, 3 peças de feed com 5 hashtags cada e foto real, 3 stories e o bloco O que NUNCA dizer (6 regras).",
+        "Regras bloqueantes: prova social e oferta ficam marcadas requires_client_input (nenhum depoimento/nota/preço inventado); Público e Tom de voz só entram com sinal nos textos publicados, senão a_confirmar_com_cliente; findForbiddenClaims continua barrando afirmação sem fonte.",
+        "Sem provider de LLM autorizado no ambiente, a composição é determinística a partir dos dados reais e o artefato registra llm.authorized=false (execução agentic de LLM NÃO é declarada comprovada; exige autorização de provider).",
+        "Responsividade medida em navegador real nas 6 larguras (360/375/768/1024/1280/1440): a página não rola na horizontal em nenhuma delas; o calendário tem rolagem interna própria no celular.",
+        "Evidência: docs/EVIDENCIA-DS-VALUE-05-06-SOCIAL-2026-09-20.md"
       ]
     },
     {

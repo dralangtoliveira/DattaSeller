@@ -16,7 +16,8 @@
     "redesign:worker": "node scripts/redesign-worker.mjs",
     "test": "node --experimental-strip-types --test",
     "secret-scan": "node scripts/secret-scan.mjs",
-    "e2e-cleanup": "node scripts/e2e-cleanup.mjs"
+    "e2e-cleanup": "node scripts/e2e-cleanup.mjs",
+    "browser:install": "playwright install chromium"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
@@ -27,6 +28,7 @@
     "resend": "^6.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.51.1",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
