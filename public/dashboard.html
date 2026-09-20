@@ -192,6 +192,7 @@ select.mini{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-
   <div class="side-foot">CRM comercial Datta. Operação autenticada e persistida no servidor.</div>
 </aside>
 <main>
+
   <div class="topbar"><h1 id="titulo">Visão geral</h1><span class="upd" id="upd"></span><span class="modo" id="modo">conectando</span><button id="limpar-ov" style="display:none;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer;font-family:var(--sans)" onclick="if(confirm('Descartar as edições feitas neste navegador e voltar aos dados do plugin?')){localStorage.removeItem('prospector_ov');location.reload()}">limpar edições locais</button><button id="logout-btn" class="logout-btn" type="button">Sair</button><span id="logout-status" class="logout-status" role="status" aria-live="polite"></span><input class="busca" id="busca" placeholder="Buscar cliente, nicho, cidade..."></div>
   <div id="view"></div>
 </main>

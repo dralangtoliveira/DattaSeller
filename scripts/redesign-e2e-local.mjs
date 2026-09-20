@@ -227,6 +227,9 @@ try {
   writeFileSync(resolve(ARTIFACTS, "comparador.html"), comparador.texto, "utf8");
 
   // DS-VALUE-05/06 — análise social pública e demonstração social do mesmo lead.
+  if (process.env.REDESIGN_E2E_SKIP_SOCIAL === "1") {
+    resumo.etapa = "social ignorado nesta execução (REDESIGN_E2E_SKIP_SOCIAL=1)";
+  } else {
   resumo.etapa = "análise social (DS-VALUE-05)";
   const perfil = (await chamar("/api/leads")).json.find((linha) => linha.slug === escolhido.slug)?.instagram_url ?? "";
   if (!perfil) throw new Error("o lead não tem perfil social público registrado para a análise");
@@ -290,6 +293,7 @@ try {
   writeFileSync(resolve(ARTIFACTS, "social-analysis.json"), JSON.stringify(auditoria.artifact, null, 2), "utf8");
   writeFileSync(resolve(ARTIFACTS, "social-demo.html"), artefatoSocial.artifact.generated_html, "utf8");
   resumo.demo_social.preview_bytes = demoPreview.texto.length;
+  }
   writeFileSync(resolve(ARTIFACTS, "resumo.json"), JSON.stringify(resumo, null, 2), "utf8");
   resumo.arquivos = { pasta: ARTIFACTS, redesign: resolve(ARTIFACTS, "redesign.html"), editor: resolve(ARTIFACTS, "editor.html"), comparador: resolve(ARTIFACTS, "comparador.html") };
   resumo.etapa = "ok";

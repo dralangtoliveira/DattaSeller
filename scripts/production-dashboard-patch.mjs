@@ -32,6 +32,17 @@ html = replaceRequired(
   "<title>DattaSeller — CRM Comercial</title>",
   "título da POC"
 );
+// Guard de modo arquivo da POC: existe para o arquivo histórico e NÃO pode
+// existir na aplicação servida (aqui ele é removido por inteiro, com alvo
+// obrigatório para o patch falhar fechado se o marcador desaparecer).
+html = requireTarget(html, "<!-- POC-FILE-GUARD-START -->", "marcador inicial do guard de arquivo da POC");
+html = requireTarget(html, "<!-- POC-FILE-GUARD-END -->", "marcador final do guard de arquivo da POC");
+html = replaceRegexRequired(
+  html,
+  /<!-- POC-FILE-GUARD-START -->[\s\S]*?<!-- POC-FILE-GUARD-END -->/,
+  "",
+  "guard de modo arquivo da POC"
+);
 html = replaceRequired(
   html,
   "<span>operação comercial local</span>",

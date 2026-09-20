@@ -192,6 +192,21 @@ select.mini{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-
   <div class="side-foot">Baseado no Prospector. Contatos, envio de propostas, publicação e checkout exigem confirmação humana.</div>
 </aside>
 <main>
+<!-- POC-FILE-GUARD-START -->
+<div id="poc-file-guard" hidden style="background:#fff7e8;border:1px solid #efd39a;border-radius:10px;padding:14px 16px;margin:0 0 16px;font-size:13px;color:#6d5524">
+<b>POC histórica do Prospector — não é a aplicação oficial do DattaSeller.</b>
+Este arquivo é a base histórica aberta em modo arquivo (sem servidor e sem dados reais).
+A interface operacional do produto é a aplicação <b>servida</b> em <code>/dashboard.html</code>
+(Preview Vercel ou <code>npm run dev</code>), com autenticação, Supabase e persistência.
+</div>
+<script>
+(function(){
+  var emModoArquivo = (typeof location !== "undefined" && location.protocol === "file:");
+  var banner = document.getElementById("poc-file-guard");
+  if (emModoArquivo && banner) { banner.hidden = false; document.title = "POC histórica (modo arquivo) — DattaSeller"; }
+})();
+</script>
+<!-- POC-FILE-GUARD-END -->
   <div class="topbar"><h1 id="titulo">Visão geral</h1><span class="upd" id="upd"></span><span class="modo file" id="modo" title="Abra pelo iniciar-dashboard.bat para salvar no banco">modo arquivo</span><button id="limpar-ov" style="display:none;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer;font-family:var(--sans)" onclick="if(confirm('Descartar as edições feitas neste navegador e voltar aos dados do plugin?')){localStorage.removeItem('prospector_ov');location.reload()}">limpar edições locais</button><button id="logout-btn" class="logout-btn" type="button">Sair</button><span id="logout-status" class="logout-status" role="status" aria-live="polite"></span><input class="busca" id="busca" placeholder="Buscar cliente, nicho, cidade..."></div>
   <div id="view"></div>
 </main>
