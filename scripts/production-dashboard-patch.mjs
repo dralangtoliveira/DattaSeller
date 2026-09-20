@@ -142,6 +142,8 @@ const patch = String.raw`
     a.push('<a href="#" onclick="dsEnriquecer(decodeURIComponent(\''+slug+'\'));return false">enriquecer</a>');
     a.push('<a href="#" onclick="dsDiagnostico(decodeURIComponent(\''+slug+'\'));return false">diagnóstico</a>');
     a.push('<a href="#" onclick="dsRedesign(decodeURIComponent(\''+slug+'\'));return false">redesign</a>');
+    a.push('<a href="#" onclick="dsSocialAnalise(decodeURIComponent(\''+slug+'\'));return false">social</a>');
+    a.push('<a href="#" onclick="dsSocialDemo(decodeURIComponent(\''+slug+'\'));return false">demo social</a>');
     a.push('<a href="#" class="del" onclick="deletar(decodeURIComponent(\''+slug+'\'));return false">✕ excluir</a>');
     return '<div class="acoes">'+a.join('')+'</div>';
   };

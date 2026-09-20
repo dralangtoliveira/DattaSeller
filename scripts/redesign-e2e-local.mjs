@@ -17,7 +17,7 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -225,6 +225,71 @@ try {
   writeFileSync(resolve(ARTIFACTS, "redesign.html"), artifact.generated_html, "utf8");
   writeFileSync(resolve(ARTIFACTS, "editor.html"), editor.texto, "utf8");
   writeFileSync(resolve(ARTIFACTS, "comparador.html"), comparador.texto, "utf8");
+
+  // DS-VALUE-05/06 — análise social pública e demonstração social do mesmo lead.
+  resumo.etapa = "análise social (DS-VALUE-05)";
+  const perfil = (await chamar("/api/leads")).json.find((linha) => linha.slug === escolhido.slug)?.instagram_url ?? "";
+  if (!perfil) throw new Error("o lead não tem perfil social público registrado para a análise");
+  // Perna de browser: quando o ambiente fornece a evidência lida em browser real
+  // (Instagram bloqueia HTML puro), ela entra validada pelo contrato do agente.
+  let evidenciaBrowser = null;
+  if (process.env.REDESIGN_E2E_BROWSER_EVIDENCE) {
+    try {
+      evidenciaBrowser = JSON.parse(readFileSync(process.env.REDESIGN_E2E_BROWSER_EVIDENCE, "utf8"));
+    } catch (error) {
+      throw new Error(`evidência de browser inválida: ${error.message}`);
+    }
+  }
+  const analiseJob = await chamar("/api/social", { method: "POST", body: JSON.stringify({ lead_slug: escolhido.slug, action: "ANALYZE_SOCIAL", profile_url: perfil, browser_evidence: evidenciaBrowser }) });
+  if (analiseJob.status !== 202) throw new Error(`análise social não enfileirada (${analiseJob.status}: ${analiseJob.json?.error})`);
+  let analise = null;
+  for (let tentativa = 0; tentativa < 20; tentativa += 1) {
+    await delay(3000);
+    const estado = await chamar(`/api/social?job=${encodeURIComponent(analiseJob.json.job_id)}`);
+    if (estado.json?.status === "failed") throw new Error(`análise social falhou: ${estado.json.error?.code} — ${estado.json.error?.message}`);
+    if (estado.json?.status === "completed") { analise = estado.json; break; }
+  }
+  if (!analise) throw new Error("a análise social não concluiu no tempo do teste");
+  const auditoria = await fetch(`${resumo.worker}/jobs/${analiseJob.json.job_id}`, { headers: { "x-worker-secret": SEGREDO } }).then((r) => r.json());
+  resumo.analise_social = {
+    perfil,
+    handle: auditoria.artifact.handle,
+    contadores: auditoria.artifact.counters,
+    bio: auditoria.artifact.bio || null,
+    cta: auditoria.artifact.cta || null,
+    imagem: auditoria.artifact.visual_identity?.profile_image ?? null,
+    evidencias: auditoria.artifact.evidence.length,
+    avisos: auditoria.artifact.warnings.map((aviso) => aviso.code),
+    auditoria_id: analise.audit?.id ?? null,
+  };
+
+  resumo.etapa = "demonstração social (DS-VALUE-06)";
+  const demoJob = await chamar("/api/social", { method: "POST", body: JSON.stringify({ lead_slug: escolhido.slug, action: "BUILD_SOCIAL_DEMO" }) });
+  if (demoJob.status !== 202) throw new Error(`demonstração social não enfileirada (${demoJob.status}: ${demoJob.json?.error})`);
+  let demo = null;
+  for (let tentativa = 0; tentativa < 20; tentativa += 1) {
+    await delay(3000);
+    const estado = await chamar(`/api/social?job=${encodeURIComponent(demoJob.json.job_id)}`);
+    if (estado.json?.status === "failed") throw new Error(`demonstração social falhou: ${estado.json.error?.code} — ${estado.json.error?.message}`);
+    if (estado.json?.status === "completed") { demo = estado.json; break; }
+  }
+  if (!demo) throw new Error("a demonstração social não concluiu no tempo do teste");
+  const artefatoSocial = await fetch(`${resumo.worker}/jobs/${demoJob.json.job_id}`, { headers: { "x-worker-secret": SEGREDO } }).then((r) => r.json());
+  resumo.demo_social = {
+    preview: demo.preview,
+    dias: artefatoSocial.artifact.calendar.length,
+    pendentes_de_cliente: artefatoSocial.artifact.calendar.filter((dia) => dia.requires_client_input).map((dia) => dia.format),
+    pecas: artefatoSocial.artifact.feed_pieces.map((peca) => ({ id: peca.id, format: peca.format, hook: peca.hook, hashtags: peca.hashtags.length, visual: peca.visual.asset ? "foto real" : "tipografia + paleta" })),
+    stories: artefatoSocial.artifact.stories.length,
+    nunca_dizer: artefatoSocial.artifact.direction.never_say.length,
+    llm: artefatoSocial.artifact.generation_metadata.llm,
+    avisos: artefatoSocial.artifact.warnings.map((aviso) => aviso.code),
+  };
+  const demoPreview = await chamar(demo.preview.url);
+  if (demoPreview.status !== 200 || !demoPreview.texto.includes("demonstração social")) throw new Error(`o artefato visual da demonstração não abriu (${demoPreview.status})`);
+  writeFileSync(resolve(ARTIFACTS, "social-analysis.json"), JSON.stringify(auditoria.artifact, null, 2), "utf8");
+  writeFileSync(resolve(ARTIFACTS, "social-demo.html"), artefatoSocial.artifact.generated_html, "utf8");
+  resumo.demo_social.preview_bytes = demoPreview.texto.length;
   writeFileSync(resolve(ARTIFACTS, "resumo.json"), JSON.stringify(resumo, null, 2), "utf8");
   resumo.arquivos = { pasta: ARTIFACTS, redesign: resolve(ARTIFACTS, "redesign.html"), editor: resolve(ARTIFACTS, "editor.html"), comparador: resolve(ARTIFACTS, "comparador.html") };
   resumo.etapa = "ok";

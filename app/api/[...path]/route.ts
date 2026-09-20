@@ -24,6 +24,10 @@ import { DiagnosisError, diagnoseSite } from "@/lib/diagnosis/site.js";
 import { REDESIGN_ACTION, RedesignError, parseRedesignJob, validateRedesignArtifact } from "@/lib/redesign/contract.js";
 // @ts-expect-error executor do redesign (DS-VALUE-04) exercitado por node:test sem build.
 import { createRedesignWorker } from "@/lib/redesign/worker.js";
+// @ts-expect-error contrato e agente social (DS-VALUE-05/06) exercitados por node:test sem build.
+import { AGENT_ACTIONS, AgentError, parseSocialJob, validateSocialAuditArtifact, validateSocialDemoArtifact } from "@/lib/agent/contract.js";
+// @ts-expect-error agente social (DS-VALUE-05/06) exercitado por node:test sem build.
+import { createAgent } from "@/lib/agent/worker.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { withProspectorEditor } from "@/lib/prospector-preview-editor.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -48,6 +52,7 @@ const now = () => new Date().toISOString();
 // Executor de redesign em modo inline (dev/local). Em produção o CRM delega para
 // o DattaSeller Worker Agent (DATTASELLER_WORKER_URL) e não mantém requisição longa.
 const inlineRedesignWorker = () => (globalThis as unknown as { __dsRedesignWorker?: ReturnType<typeof createRedesignWorker> }).__dsRedesignWorker ??= createRedesignWorker();
+const inlineAgent = () => (globalThis as unknown as { __dsAgent?: ReturnType<typeof createAgent> }).__dsAgent ??= createAgent();
 const redesignWorkerUrl = () => String(process.env.DATTASELLER_WORKER_URL ?? "").replace(/\/$/, "");
 const redesignWorkerHeaders = () => ({ "Content-Type": "application/json", ...(process.env.DATTASELLER_WORKER_SECRET ? { "x-worker-secret": String(process.env.DATTASELLER_WORKER_SECRET) } : {}) });
 
@@ -56,6 +61,57 @@ const redesignWorkerHeaders = () => ({ "Content-Type": "application/json", ...(p
  * preview (`ds_previews`) de forma idempotente: o mesmo job nunca cria dois
  * previews. Também registra a trilha e vincula o lead à nova versão.
  */
+/**
+ * DS-VALUE-05 — persiste a auditoria social no modelo existente
+ * (`ds_social_audits`), idempotente por job.
+ */
+async function ingestSocialAudit(db: Db, jobId: string, artifact: Record<string, unknown>) {
+  const leadSlug = String(artifact.lead_slug ?? "");
+  const { data: existente, error: leituraError } = await db.from("ds_timeline").select("detail").eq("event", "social.analysis.persisted").like("detail", `${jobId}|%`).limit(1).maybeSingle();
+  if (leituraError) return { error: "storage_unavailable" };
+  if (existente?.detail) return { audit_id: String(existente.detail).split("|")[1] ?? null, reused: true };
+  const audit_id = id("social");
+  const visual = artifact.visual_identity as Record<string, unknown> | null;
+  const row = {
+    id: audit_id,
+    lead_slug: leadSlug,
+    platform: String(artifact.platform ?? "instagram"),
+    url: String(artifact.profile_url ?? ""),
+    username: String(artifact.handle ?? ""),
+    bio: String(artifact.bio ?? ""),
+    cta: String(artifact.cta ?? ""),
+    link: Array.isArray(artifact.links) ? (artifact.links as unknown[]).join(" ") : "",
+    visual_identity: visual ? `${String(visual.profile_image ?? "")} — ${String(visual.note ?? "")}` : String(artifact.consistency_note ?? ""),
+    consistency_note: String(artifact.consistency_note ?? ""),
+    frequency_note: String(artifact.frequency_note ?? ""),
+    factual_notes: JSON.stringify({ facts: artifact.facts ?? [], counters: artifact.counters ?? null, formats: artifact.formats ?? [], warnings: artifact.warnings ?? [], evidence_source: artifact.evidence_source ?? "http" }),
+    recommendation: "",
+    creative_direction: "",
+    evidence: JSON.stringify(artifact.evidence ?? []),
+  };
+  const { error: insertError } = await db.from("ds_social_audits").insert(row);
+  if (insertError) return { error: "storage_unavailable" };
+  await event(db, leadSlug, "social.analysis.generated", `${jobId} · ${row.platform} @${row.username}${row.cta ? " · CTA público" : ""}`);
+  await event(db, leadSlug, "social.analysis.persisted", `${jobId}|${audit_id}`);
+  return { audit_id, reused: false };
+}
+
+/** DS-VALUE-06 — persiste a demonstração social visual no preview existente. */
+async function ingestSocialDemo(db: Db, jobId: string, artifact: Record<string, unknown>) {
+  const leadSlug = String(artifact.lead_slug ?? "");
+  const { data: existente, error: leituraError } = await db.from("ds_timeline").select("detail").eq("event", "social.demo.persisted").like("detail", `${jobId}|%`).limit(1).maybeSingle();
+  if (leituraError) return { error: "storage_unavailable" };
+  if (existente?.detail) return { preview_id: String(existente.detail).split("|")[1] ?? null, reused: true };
+  const preview_id = id("preview");
+  const { error: insertError } = await db.from("ds_previews").insert({ id: preview_id, lead_slug: leadSlug, kind: "social_demo", url: `/api/previews/${preview_id}`, content: String(artifact.generated_html ?? ""), status: "ready" });
+  if (insertError) return { error: "storage_unavailable" };
+  const metadata = (artifact.generation_metadata ?? {}) as Record<string, unknown>;
+  const llm = (metadata.llm ?? {}) as Record<string, unknown>;
+  await event(db, leadSlug, "social.demo.generated", `${jobId} · 7 dias · 3 peças · 3 stories · LLM: ${String(llm.id ?? "n/d")}${llm.authorized ? "" : " (determinístico)"}`);
+  await event(db, leadSlug, "social.demo.persisted", `${jobId}|${preview_id}`);
+  return { preview_id, reused: false };
+}
+
 async function ingestRedesign(db: Db, jobId: string, artifact: Record<string, unknown>) {
   const leadSlug = String(artifact.lead_slug ?? "");
   const { data: existente, error: leituraError } = await db.from("ds_timeline").select("detail").eq("event", "redesign.persisted").like("detail", `${jobId}|%`).limit(1).maybeSingle();
@@ -148,22 +204,59 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
     }
     const leadSlug = new URL(request.url).searchParams.get("lead_slug") ?? "";
     if (!isSafeLeadSlug(leadSlug)) return out({ error: "invalid_lead_slug" }, 400);
-    const [{ data: lead, error: leadError }, { data: diagnosis, error: diagnosisError }] = await Promise.all([
+    const [{ data: lead, error: leadError }, { data: diagnosis, error: diagnosisError }, { data: socialAudit, error: socialError }] = await Promise.all([
       leitura.from("ds_leads").select("slug,nome,empresa,cidade,nicho,telefone,whatsapp,email,site_antigo,instagram_url,tiktok_url,end_cliente,source,source_url,source_checked_at,public_contact_type,contact_evidence,status,obs").eq("slug", leadSlug).is("deleted_at", null).maybeSingle(),
       leitura.from("ds_site_diagnoses").select("id,criteria,created_at").eq("lead_slug", leadSlug).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      leitura.from("ds_social_audits").select("id,platform,url,username,bio,cta,link,visual_identity,consistency_note,frequency_note,factual_notes,evidence,created_at").eq("lead_slug", leadSlug).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
-    if (leadError || diagnosisError) return out({ error: "storage_unavailable" }, 503);
+    if (leadError || diagnosisError || socialError) return out({ error: "storage_unavailable" }, 503);
     if (!lead) return out({ error: "lead_not_found" }, 404);
     const criteria = (diagnosis?.criteria ?? null) as Record<string, unknown> | null;
     return out({
       lead,
       diagnosis: diagnosis ? { id: diagnosis.id, created_at: diagnosis.created_at, url: criteria?.url ?? null, checked_at: criteria?.checked_at ?? null, fatos: criteria?.fatos ?? null, evidencias: Array.isArray(criteria?.evidencias) ? criteria.evidencias : [] } : null,
+      social_audit: socialAudit ?? null,
       contacts: Array.isArray(lead.contact_evidence) ? lead.contact_evidence : [],
     });
   }
   const auth = await context(); if (!auth) return out({ error: "unauthorized" }, 401);
   const { db } = auth;
   if (root === "settings") return out(await settings(db));
+  // DS-VALUE-05/06 — acompanha o job social e persiste no CRM (auditoria social
+  // em ds_social_audits; demonstração visual no preview existente).
+  if (root === "social") {
+    const jobId = new URL(request.url).searchParams.get("job") ?? "";
+    if (!/^[A-Za-z0-9_-]{3,64}$/.test(jobId)) return out({ error: "invalid_job_id" }, 400);
+    const worker = redesignWorkerUrl();
+    let estado: Record<string, unknown> | null = null;
+    if (worker) {
+      try {
+        const resposta = await fetch(`${worker}/jobs/${jobId}`, { headers: redesignWorkerHeaders(), signal: AbortSignal.timeout(15000), cache: "no-store" });
+        if (resposta.status === 404) return out({ error: "job_not_found" }, 404);
+        if (!resposta.ok) return out({ error: "worker_unavailable" }, 503);
+        estado = (await resposta.json()) as Record<string, unknown>;
+      } catch {
+        return out({ error: "worker_unavailable" }, 503);
+      }
+    } else {
+      estado = inlineAgent().status(jobId) as Record<string, unknown> | null;
+      if (!estado) return out({ error: "job_not_found", mode: "inline-dev" }, 404);
+    }
+    const status = String(estado.status ?? "unknown");
+    const action = String(estado.action ?? "");
+    if (status !== "completed") return out({ job_id: jobId, status, action, error: estado.error ?? null, mode: worker ? "worker" : "inline-dev" });
+    if (action === AGENT_ACTIONS.socialDemo) {
+      const artifact = validateSocialDemoArtifact(estado.artifact) as Record<string, unknown>;
+      const ingerido = await ingestSocialDemo(db, jobId, artifact);
+      if (ingerido.error) return storageUnavailable();
+      const preview_id = String(ingerido.preview_id ?? "");
+      return out({ job_id: jobId, status, action, mode: worker ? "worker" : "inline-dev", preview: { id: preview_id, url: `/api/previews/${preview_id}`, reused: Boolean(ingerido.reused) }, artifact: { lead_slug: artifact.lead_slug, days: (artifact.calendar as unknown[]).length, feed_pieces: (artifact.feed_pieces as unknown[]).length, stories: (artifact.stories as unknown[]).length, llm: (artifact.generation_metadata as Record<string, unknown>)?.llm ?? null, warnings: (artifact.warnings as Array<Record<string, unknown>>).map((item) => item?.code).filter(Boolean) } });
+    }
+    const artifact = validateSocialAuditArtifact(estado.artifact) as Record<string, unknown>;
+    const ingerido = await ingestSocialAudit(db, jobId, artifact);
+    if (ingerido.error) return storageUnavailable();
+    return out({ job_id: jobId, status, action, mode: worker ? "worker" : "inline-dev", audit: { id: ingerido.audit_id, reused: Boolean(ingerido.reused), platform: artifact.platform, handle: artifact.handle, counters: artifact.counters, warnings: (artifact.warnings as Array<Record<string, unknown>>).map((item) => item?.code).filter(Boolean) } });
+  }
   // DS-VALUE-04 — acompanha o job de redesign e persiste o artefato no preview existente.
   if (root === "redesign") {
     const jobId = new URL(request.url).searchParams.get("job") ?? "";
@@ -361,6 +454,43 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const submetido = instancia.submit(payload);
     after(() => instancia.wait(submetido.job_id));
     await event(db, String(lead.slug), "redesign.queued", `${submetido.job_id} · inline-dev`);
+    return out({ ...submetido, mode: "inline-dev" }, 202);
+  }
+  // DS-VALUE-05/06 — enfileira ANALYZE_SOCIAL ou BUILD_SOCIAL_DEMO no agente.
+  if (root === "social") {
+    if (!isSafeLeadSlug(body.lead_slug)) return out({ error: "invalid_lead_slug" }, 400);
+    const { data: lead, error: leadError } = await db.from("ds_leads").select("slug,nome,cidade,nicho,site_antigo,instagram_url,tiktok_url,telefone,whatsapp,email,end_cliente,source,source_url").eq("slug", body.lead_slug).is("deleted_at", null).maybeSingle();
+    if (leadError) return storageUnavailable();
+    if (!lead) return out({ error: "lead_not_found" }, 404);
+    const perfil = String(body.profile_url ?? lead.instagram_url ?? lead.tiktok_url ?? "").trim();
+    let payload;
+    try {
+      payload = parseSocialJob({ action: body.action ?? AGENT_ACTIONS.socialAnalysis, lead_slug: lead.slug, profile_url: perfil || null, diagnosis_id: body.diagnosis_id ?? null, requested_by: user?.email ?? "crm", context_url: `/api/worker/context?lead_slug=${lead.slug}`, browser_evidence: body.browser_evidence ?? null });
+    } catch (error) {
+      if (error instanceof AgentError) {
+        const falha = error as { code: string; message: string };
+        return out({ error: falha.code, message: falha.message }, 409);
+      }
+      throw error;
+    }
+    if (payload.action === AGENT_ACTIONS.socialDemo && !lead.site_antigo) return out({ error: "social_demo_site_required", message: "Demonstração social exige o site público do lead." }, 409);
+    const worker = redesignWorkerUrl();
+    if (worker) {
+      const rota = payload.action === AGENT_ACTIONS.socialDemo ? "/jobs/social-demo" : "/jobs/social-analysis";
+      try {
+        const resposta = await fetch(`${worker}${rota}`, { method: "POST", headers: redesignWorkerHeaders(), body: JSON.stringify(payload), signal: AbortSignal.timeout(15000) });
+        const dados = (await resposta.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!resposta.ok) return out({ error: String(dados.error ?? "worker_unavailable"), message: dados.message ?? null, mode: "worker" }, resposta.status === 400 ? 400 : 503);
+        await event(db, String(lead.slug), payload.action === AGENT_ACTIONS.socialDemo ? "social.demo.queued" : "social.analysis.queued", `${String(dados.job_id)} · worker`);
+        return out({ ...dados, mode: "worker" }, 202);
+      } catch {
+        return out({ error: "worker_unavailable", mode: "worker" }, 503);
+      }
+    }
+    const instancia = inlineAgent();
+    const submetido = instancia.submit(payload);
+    after(() => instancia.wait(submetido.job_id));
+    await event(db, String(lead.slug), payload.action === AGENT_ACTIONS.socialDemo ? "social.demo.queued" : "social.analysis.queued", `${submetido.job_id} · inline-dev`);
     return out({ ...submetido, mode: "inline-dev" }, 202);
   }
   // DS-VALUE-03 — diagnóstico factual do site real: registra somente o que foi

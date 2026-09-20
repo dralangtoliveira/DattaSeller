@@ -532,6 +532,41 @@ function vProspeccao(){
 // DS-VALUE-02 — enriquecimento real: consulta fontes públicas e completa apenas
 // DS-VALUE-03 — diagnóstico factual do site real: somente fatos observados.
 // DS-VALUE-04 — redesign real: enfileira o job no worker, acompanha o status e
+// DS-VALUE-05/06 — ações sociais: análise do perfil público e demonstração visual.
+function dsSocialJob(slug,action,rotulo){
+ fetch('/api/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_slug:slug,action:action})})
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+  .then(function(x){
+   if(!x.ok||x.d.error||x.d.erro){alert(rotulo+' não iniciada: '+String(x.d.message||x.d.error||x.d.erro||'erro')+'. Nada foi alterado.');return}
+   var tentativas=0;
+   var timer=setInterval(function(){
+    tentativas++;
+    fetch('/api/social?job='+encodeURIComponent(x.d.job_id),{cache:'no-store'})
+     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+     .then(function(y){
+      if(!y.ok||y.d.error||y.d.status==='failed'){
+       clearInterval(timer);
+       var motivo=y.d.error&&(y.d.error.message||y.d.error.code)?(y.d.error.message||y.d.error.code):(y.d.error||y.d.erro||'erro');
+       alert(rotulo+' falhou: '+String(motivo)+'. O lead não foi alterado.');
+       return;
+      }
+      if(y.d.status!=='completed'){if(tentativas>60){clearInterval(timer);alert(rotulo+' continua em execução no agente. Consulte a Timeline em instantes.')}return}
+      clearInterval(timer);
+      if(y.d.audit){
+       alert(rotulo+' concluída\nAuditoria: '+y.d.audit.id+'\nPerfil: @'+String(y.d.audit.handle||'')+'\nContadores: '+JSON.stringify(y.d.audit.counters||{}));
+      }else{
+       alert(rotulo+' concluída\nArtefato visual: '+y.d.preview.url+'\n(dias '+y.d.artifact.days+' · peças '+y.d.artifact.feed_pieces+' · stories '+y.d.artifact.stories+')');
+      }
+      dsLoad().then(render);
+     })
+     .catch(function(){});
+   },4000);
+  })
+  .catch(function(){alert('Falha de conexão. Nada foi alterado.')});
+}
+function dsSocialAnalise(slug){if(confirm('Analisar o perfil social público deste lead (somente dados públicos)?'))dsSocialJob(slug,'ANALYZE_SOCIAL','Análise social')}
+function dsSocialDemo(slug){if(confirm('Gerar a demonstração social (7 dias, 3 peças, 3 stories) a partir dos dados reais?'))dsSocialJob(slug,'BUILD_SOCIAL_DEMO','Demonstração social')}
+// DS-VALUE-04 — redesign real: enfileira o job no worker, acompanha o status e
 // abre preview/editor/comparador quando o artefato fica pronto no CRM.
 function dsRedesign(slug){
  if(!confirm('Gerar a nova versão da página deste lead a partir do site real?'))return;
