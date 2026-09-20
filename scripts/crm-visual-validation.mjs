@@ -29,6 +29,16 @@ const chromium = await loadPlaywright();
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 950 }, locale: "pt-BR" });
 await context.addCookies([{ name: "sb-127-auth-token", value: cookie.replace(/^sb-127-auth-token=/, ""), domain: "127.0.0.1", path: "/" }]);
+// Permite validar somente o boot e a navegação do artefato servido sem tocar
+// HML/Production. O modo é explícito e só pode ser ativado no ambiente local.
+if (process.env.CRM_VISUAL_MOCK_API === "yes") {
+  const collections = new Set(["leads", "products", "proposals", "emails", "orders", "checkouts", "payments", "contracts", "handoffs", "commissions", "timeline", "previews", "qualifications", "diagnoses", "social-audits"]);
+  await context.route("**/api/**", async (route) => {
+    const resource = new URL(route.request().url()).pathname.split("/").filter(Boolean).at(-1) ?? "";
+    const payload = collections.has(resource) ? [] : resource === "financial" || resource === "settings" || resource === "config" ? {} : {};
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(payload) });
+  });
+}
 const page = await context.newPage();
 const erros = [];
 page.on("pageerror", (erro) => erros.push(String(erro.message).slice(0, 200)));

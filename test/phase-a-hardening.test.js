@@ -77,7 +77,8 @@ test("the generated production dashboard inline scripts parse", () => {
   const dashboard = readFileSync(new URL("../public/dashboard.html", import.meta.url), "utf8");
   const scripts = [...dashboard.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
   for (const [index, match] of scripts.entries()) {
-    if (/application\/json/.test(match[0])) continue;
+    const openingTag = match[0].slice(0, match[0].indexOf(">") + 1);
+    if (/application\/json/.test(openingTag)) continue;
     assert.doesNotThrow(() => new vm.Script(match[1], { filename: `public/dashboard.html:inline-${index}` }));
   }
 });
