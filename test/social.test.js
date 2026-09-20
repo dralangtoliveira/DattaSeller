@@ -6,6 +6,8 @@ import { analyzeSocialProfile, extractSocialProfile } from "../lib/agent/social.
 import { analyzeFromBrowserEvidence } from "../lib/agent/social.js";
 import { buildSocialDemo } from "../lib/agent/social-demo.js";
 import { createAgent, resolveLlmProvider } from "../lib/agent/worker.js";
+import { browserEvidenceFrom, browserPublicPage } from "../lib/agent/browser.js";
+import { createLlmProvider, validateLlmOutput } from "../lib/agent/llm.js";
 import { collectSiteAssets } from "../lib/redesign/collector.js";
 import { findForbiddenClaims } from "../lib/redesign/contract.js";
 
@@ -147,7 +149,7 @@ test("a evidência do browser produz a mesma análise com proveniência e sem in
   assert.ok(analise.links.includes("linktr.ee/fatrosiestacoandtequila"));
   assert.deepEqual(analise.formats, ["feed", "vídeos curtos", "conteúdo marcado"]);
   assert.ok(analise.evidence.every((item) => item.source_url === "https://www.instagram.com/fat_rosies/" && item.checked_at === CHECKED_AT && item.collector === "playwright"));
-  assert.throws(() => analyzeFromBrowserEvidence({ profileUrl: "https://www.instagram.com/x/", platform: "instagram", evidence: { url: "https://www.instagram.com/x/", collected_at: CHECKED_AT, visible_text: "" } }), (error) => error.code === "social_invalid_browser_evidence");
+  assert.throws(() => analyzeFromBrowserEvidence({ profileUrl: "https://www.instagram.com/x/", platform: "instagram", evidence: { url: "https://www.instagram.com/x/", collected_at: CHECKED_AT, visible_text: "" } }), (error) => ["social_invalid_browser_evidence", "social_profile_not_public"].includes(error.code));
   assert.throws(() => parseSocialJob({ action: "ANALYZE_SOCIAL", lead_slug: "ok", profile_url: "https://www.instagram.com/ok/", browser_evidence: { url: "https://www.instagram.com/outro/", collected_at: CHECKED_AT, visible_text: "conteúdo público suficiente" } }), (error) => error.code === "social_invalid_browser_evidence");
 });
 
@@ -256,4 +258,161 @@ test("DS-VALUE-01 a 04 seguem PROVEN_REAL com o agente social", () => {
   assert.equal(porId["DS-VALUE-03"], "PROVEN_REAL");
   assert.equal(porId["DS-VALUE-04"], "PROVEN_REAL");
   assert.equal(contrato.product_ready, false);
+});
+
+test("a ferramenta de browser do agente coleta página pública sem evidência manual", async () => {
+  const chamadas = [];
+  const browserFalso = async () => ({
+    launch: async () => ({
+      newContext: async () => ({
+        newPage: async () => ({
+          goto: async (url) => { chamadas.push(url); return { status: () => 200 }; },
+          waitForTimeout: async () => {},
+          url: () => "https://www.instagram.com/fat_rosies/",
+          evaluate: async () => ({ title: "Fat Rosie's Taco & Tequila Bar (@fat_rosies) • Fotos e vídeos do Instagram", meta: { og_title: "Fat Rosie's Taco & Tequila Bar (@fat_rosies) • Fotos e vídeos do Instagram", og_description: "37K seguidores, seguindo 111, 1,752 posts", og_image: "https://scontent.cdninstagram.com/v/perfil.jpg", description: "" }, visible_text: "Entrar Cadastre-se fat_rosies 37,2 mil seguidores 98 seguindo Fat Rosie's Taco & Tequila Bar fat_rosies Chicagoland and Orlando desde 2015 linktr.ee/fatrosiestacoandtequila_ e mais 2 Brunch Comida", links: ["https://linktr.ee/fatrosiestacoandtequila_"], tabs: ["Publicações", "Reels"], images_public: ["https://scontent.cdninstagram.com/v/perfil.jpg"] }),
+        }),
+      }),
+      close: async () => {},
+    }),
+  });
+  const coletado = await browserPublicPage({ url: "https://www.instagram.com/fat_rosies/", purpose: "social:fat-rosie", resolveHost: RESOLVE_PUBLICO, now: NOW, browserFactory: browserFalso });
+  assert.equal(coletado.status, 200);
+  assert.equal(coletado.final_url, "https://www.instagram.com/fat_rosies/");
+  assert.equal(coletado.collector, "playwright");
+  assert.ok(coletado.links.includes("https://linktr.ee/fatrosiestacoandtequila_"));
+  assert.equal(coletado.tabs.length, 2);
+  assert.equal(coletado.collected_at, CHECKED_AT);
+  // O agente executa a ferramenta sozinho: job SEM browser_evidence.
+  const fetch = async (url) => { if (String(url).includes("instagram")) throw new Error("login wall"); return resposta(SITE_FIXTURE); };
+  const agente = createAgent({ fetchImpl: fetch, resolveHost: RESOLVE_PUBLICO, now: NOW, browserTool: (opcoes) => browserPublicPage({ ...opcoes, browserFactory: browserFalso }) });
+  const job = agente.submit({ action: AGENT_ACTIONS.socialAnalysis, lead_slug: "fat-rosie-s-taco-tequila-bar", profile_url: "https://www.instagram.com/fat_rosies/", context: { lead: { slug: "fat-rosie-s-taco-tequila-bar", nome: "Fat Rosie's Taco & Tequila Bar" } } });
+  const registro = await agente.wait(job.job_id);
+  assert.equal(registro.status, "completed", "o agente precisa coletar sozinho, sem evidência manual");
+  assert.equal(registro.artifact.handle, "fat_rosies");
+  assert.equal(registro.artifact.evidence_source, "browser");
+  assert.ok(registro.artifact.browser_tool, "o artefato registra a coleta do browser do agente");
+  assert.ok(registro.artifact.warnings.some((aviso) => String(aviso.code).startsWith("social_http")));
+});
+
+test("a ferramenta de browser recusa destino privado e redirect para rede privada", async () => {
+  let abriu = false;
+  const browserFalso = async () => { abriu = true; return { launch: async () => ({ close: async () => {} }) }; };
+  await assert.rejects(
+    () => browserPublicPage({ url: "http://127.0.0.1:3999/dashboard.html", resolveHost: RESOLVE_PUBLICO, browserFactory: browserFalso }),
+    (error) => error instanceof AgentError && String(error.code).startsWith("ssrf_")
+  );
+  assert.equal(abriu, false, "nenhum browser abre para destino privado");
+  await assert.rejects(
+    () => browserPublicPage({ url: "http://169.254.169.254/latest/meta-data/", resolveHost: RESOLVE_PUBLICO, browserFactory: browserFalso }),
+    (error) => String(error.code).startsWith("ssrf_")
+  );
+  const browserComRedirectPrivado = async () => ({
+    launch: async () => ({
+      newContext: async () => ({
+        newPage: async () => ({
+          goto: async () => ({ status: () => 200 }),
+          waitForTimeout: async () => {},
+          url: () => "http://10.0.0.7/interno",
+          evaluate: async () => ({}),
+        }),
+      }),
+      close: async () => {},
+    }),
+  });
+  await assert.rejects(
+    () => browserPublicPage({ url: "https://publico.example/", resolveHost: RESOLVE_PUBLICO, browserFactory: browserComRedirectPrivado }),
+    (error) => error instanceof AgentError && String(error.code).startsWith("ssrf_"),
+    "redirect público → privado precisa ser recusado depois da navegação"
+  );
+  const browserComTimeout = async () => ({
+    launch: async () => ({
+      newContext: async () => ({ newPage: async () => ({ goto: async () => { throw new Error("Timeout 30000ms exceeded"); }, waitForTimeout: async () => {}, url: () => "https://x.example/", evaluate: async () => ({}) }) }),
+      close: async () => {},
+    }),
+  });
+  await assert.rejects(
+    () => browserPublicPage({ url: "https://publico.example/", resolveHost: RESOLVE_PUBLICO, browserFactory: browserComTimeout }),
+    (error) => error.code === "agent_browser_timeout",
+    "timeout falha fechado"
+  );
+});
+
+test("muro de login não é contornado: o agente registra a limitação", async () => {
+  const browserComMuro = async () => ({
+    launch: async () => ({
+      newContext: async () => ({
+        newPage: async () => ({
+          goto: async () => ({ status: () => 200 }),
+          waitForTimeout: async () => {},
+          url: () => "https://www.instagram.com/perfil_privado/",
+          evaluate: async () => ({ title: "Login • Instagram", meta: {}, visible_text: "Entrar Cadastre-se", links: [], tabs: [], images_public: [] }),
+        }),
+      }),
+      close: async () => {},
+    }),
+  });
+  const coletado = await browserPublicPage({ url: "https://www.instagram.com/perfil_privado/", resolveHost: RESOLVE_PUBLICO, now: NOW, browserFactory: browserComMuro });
+  assert.ok(coletado.warnings.some((aviso) => aviso.code === "agent_browser_login_wall"));
+  assert.throws(() => analyzeFromBrowserEvidence({ profileUrl: "https://www.instagram.com/perfil_privado/", platform: "instagram", evidence: browserEvidenceFrom(coletado) }), (error) => ["social_invalid_browser_evidence", "social_profile_not_public"].includes(error.code), "muro de login não vira perfil confirmado");
+});
+
+test("o provider de LLM é contrato real e sem provider autorizado não há chamada", async () => {
+  let chamou = false;
+  const semProvider = createLlmProvider({ env: {}, fetchImpl: async () => { chamou = true; return resposta("{}", { contentType: "application/json" }); } });
+  assert.equal(semProvider.configured, false);
+  assert.match(semProvider.describe().note, /LLM_PROVIDER_REQUIRED/);
+  await assert.rejects(() => semProvider.generate({ action: "BUILD_SOCIAL_DEMO" }), (error) => error.code === "llm_provider_required");
+  assert.equal(chamou, false, "sem provider não pode haver chamada");
+  const corpo = [];
+  const comProvider = createLlmProvider({
+    env: { DATTASELLER_LLM_PROVIDER: "openai-compatible", DATTASELLER_LLM_BASE_URL: "https://llm.example/v1", DATTASELLER_LLM_MODEL: "modelo-teste", DATTASELLER_LLM_API_KEY: "chave-no-ambiente" },
+    fetchImpl: async (url, init) => { corpo.push({ url, init }); return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ hooks: ["Gancho real do cliente"], captions: ["Legenda com o serviço real"] }) } }], usage: { total_tokens: 10 } }) }; },
+    now: NOW,
+  });
+  const saida = await comProvider.generate({ action: "BUILD_SOCIAL_DEMO", system_contract: "contrato", context: { lead: { nome: "Fat Rosie's" } }, source_facts: ["Gancho real do cliente", "Legenda com o serviço real"], constraints: ["sem promessa"] });
+  assert.equal(saida.ok, true);
+  assert.equal(corpo[0].url, "https://llm.example/v1/chat/completions");
+  assert.match(String(corpo[0].init.headers.Authorization), /^Bearer /);
+  const enviado = JSON.parse(corpo[0].init.body);
+  assert.match(enviado.messages[0].content, /REGRAS INEGOCIÁVEIS/);
+  assert.match(enviado.messages[1].content, /Fat Rosie's/);
+  assert.doesNotMatch(JSON.stringify(comProvider.describe()), /chave-no-ambiente/);
+  assert.doesNotMatch(JSON.stringify(saida), /chave-no-ambiente/);
+});
+
+test("saída de LLM fora do schema ou com fato inventado é recusada pelo código", async () => {
+  assert.equal(validateLlmOutput({ hooks: ["ok"], captions: ["ok"] }, { allowedFacts: ["ok"] }).ok, true);
+  assert.equal(validateLlmOutput({ hooks: ["ok"] }, { allowedFacts: ["ok"] }).ok, false);
+  assert.equal(validateLlmOutput({ hooks: ["Temos 20 anos de experiência"], captions: ["ok"] }, { allowedFacts: ["ok"] }).errors.some((erro) => erro.startsWith("forbidden_claim")), true);
+  const comNumeroInventado = validateLlmOutput({ hooks: ["Atendemos 5.000 clientes"], captions: ["ok"] }, { allowedFacts: ["ok"] });
+  assert.equal(comNumeroInventado.ok, false);
+  assert.ok(comNumeroInventado.errors.some((erro) => erro.startsWith("unsupported_number")));
+  const provider = createLlmProvider({
+    env: { DATTASELLER_LLM_PROVIDER: "openai-compatible", DATTASELLER_LLM_BASE_URL: "https://llm.example/v1", DATTASELLER_LLM_MODEL: "m", DATTASELLER_LLM_API_KEY: "k" },
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ hooks: ["Somos o melhor da cidade"], captions: ["ok"] }) } }] }) }),
+  });
+  await assert.rejects(() => provider.generate({ action: "BUILD_SOCIAL_DEMO", system_contract: "c", context: {}, source_facts: ["ok"], allowedFacts: ["ok"] }), (error) => error.code === "llm_invalid_output");
+  const providerQuebrado = createLlmProvider({
+    env: { DATTASELLER_LLM_PROVIDER: "openai-compatible", DATTASELLER_LLM_BASE_URL: "https://llm.example/v1", DATTASELLER_LLM_MODEL: "m", DATTASELLER_LLM_API_KEY: "k" },
+    fetchImpl: async () => { throw new Error("rede caiu"); },
+  });
+  await assert.rejects(() => providerQuebrado.generate({ action: "BUILD_SOCIAL_DEMO", system_contract: "c", context: {}, source_facts: ["ok"] }), (error) => error.code === "llm_provider_error");
+});
+
+test("falha de LLM não destrói a demonstração: o código mantém a copy determinística", async () => {
+  const fetch = async () => resposta(SITE_FIXTURE);
+  const agente = createAgent({
+    fetchImpl: fetch,
+    resolveHost: RESOLVE_PUBLICO,
+    now: NOW,
+    llmProvider: { configured: true, describe: () => ({ id: "openai-compatible", model: "m", configured: true, authorized: true }), generate: async () => { throw new AgentError("llm_provider_error", "provider fora do ar"); } },
+  });
+  const job = agente.submit({ action: AGENT_ACTIONS.socialDemo, lead_slug: "fat-rosie-s-taco-tequila-bar", context: { lead: { slug: "fat-rosie-s-taco-tequila-bar", nome: "Fat Rosie's Taco & Tequila Bar", cidade: "Orlando, FL", site_antigo: "https://www.fatrosies.com/location/waterford-lakes/" } } });
+  const registro = await agente.wait(job.job_id);
+  assert.equal(registro.status, "completed", "falha do LLM não pode destruir a demonstração");
+  assert.equal(registro.artifact.calendar.length, 7);
+  assert.equal(registro.artifact.feed_pieces.length, 3);
+  assert.ok(registro.artifact.warnings.some((aviso) => aviso.code === "llm_provider_error"));
+  assert.equal(registro.artifact.generation_metadata.llm.used, false);
+  assert.equal(registro.artifact.direction.copy_source, "deterministico");
 });
