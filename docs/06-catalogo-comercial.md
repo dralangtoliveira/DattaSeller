@@ -40,3 +40,16 @@ Nenhum `checkout_url` é inventado. Os itens com preço publicado permanecem `aw
 Para retirar Production do modo DEMO ainda faltam valores operacionais reais que não estão publicados no site: **custo por SKU**, **comissão por SKU**, o **checkout Asaas real** e a confirmação do identificador do vendedor/remetente de Production. Esses dados devem ser aprovados antes da escrita em `ds_products`/`ds_settings`.
 
 As demais linhas Datta permanecem regidas por seus próprios gates e não são liberadas por esta reconciliação do Datta360°.
+
+
+## Condições comerciais padrão — decisão de 2026-09-21
+
+Para propostas Datta360°:
+
+- prazo comercial padrão: **7 dias**;
+- pagamento padrão: **50% de sinal** e **50% restante na entrega**;
+- outras condições podem ser negociadas **caso a caso**, sempre com revisão humana e registro na proposta específica.
+
+Essas regras não alteram os preços do catálogo. Exceções não se tornam regra global automaticamente.
+
+Fonte detalhada da decisão: `docs/DECISAO-COMERCIAL-DATTA360-2026-09-21.md`.
