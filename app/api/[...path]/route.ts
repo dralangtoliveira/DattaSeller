@@ -36,6 +36,8 @@ import { renderProspectorComparator } from "@/lib/prospector-comparator.js";
 import { renderProspectorProposalCover } from "@/lib/prospector-proposal-cover.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { renderProspectorRedesign } from "@/lib/prospector-redesign.js";
+// @ts-expect-error Central Datta360 commercial catalog is plain JS.
+import { buildCommercialSnapshot } from "@/lib/commercial/datta360-catalog.js";
 
 export const runtime = "nodejs";
 // A descoberta consulta fontes públicas reais (Nominatim + Overpass) e precisa
@@ -48,6 +50,19 @@ type SavedQualification = Qualification & { id: string; lead_slug: string };
 const tables: Record<string, string> = { proposals: "ds_proposals", emails: "ds_emails", orders: "ds_orders", checkouts: "ds_checkouts", payments: "ds_payments", contracts: "ds_contracts", handoffs: "ds_handoffs", commissions: "ds_commissions", qualifications: "ds_qualifications", diagnoses: "ds_site_diagnoses", "social-audits": "ds_social_audits", previews: "ds_previews", timeline: "ds_timeline" };
 const id = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 const now = () => new Date().toISOString();
+const proposalArtifactIds = (value: unknown) => Array.isArray(value) && value.every((item) => typeof item === "string" && /^[A-Za-z0-9_-]{3,64}$/.test(item)) ? value as string[] : null;
+
+async function proposalArtifactsBelongToLead(db: Db, leadSlug: string, refs: { preview_ids: string[]; diagnosis_ids: string[]; social_audit_ids: string[] }) {
+  if (!isSafeLeadSlug(leadSlug)) return { ok: false as const };
+  const [lead, previews, diagnoses, social] = await Promise.all([
+    db.from("ds_leads").select("slug").eq("slug", leadSlug).is("deleted_at", null).maybeSingle(),
+    db.from("ds_previews").select("id").eq("lead_slug", leadSlug).in("id", refs.preview_ids),
+    db.from("ds_site_diagnoses").select("id").eq("lead_slug", leadSlug).in("id", refs.diagnosis_ids),
+    db.from("ds_social_audits").select("id").eq("lead_slug", leadSlug).in("id", refs.social_audit_ids),
+  ]);
+  if (lead.error || previews.error || diagnoses.error || social.error) return { error: true as const };
+  return { ok: Boolean(lead.data) && (previews.data?.length ?? 0) === refs.preview_ids.length && (diagnoses.data?.length ?? 0) === refs.diagnosis_ids.length && (social.data?.length ?? 0) === refs.social_audit_ids.length };
+}
 
 // Executor de redesign em modo inline (dev/local). Em produção o CRM delega para
 // o DattaSeller Worker Agent (DATTASELLER_WORKER_URL) e não mantém requisição longa.
@@ -525,13 +540,45 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   }
   if (root === "prospects") { const q = body.query ?? {}, candidates = (Array.isArray(body.candidates) ? body.candidates.slice(0, 25) : []) as Record<string, unknown>[], product = String(q.product ?? "").trim(); const radius = Number(q.search_radius_km ?? 0), target = Number(q.target_quantity ?? 0), limit = Number(q.search_limit ?? 0), prepared: { candidate: Record<string, unknown>; qualification: NormalizedQualification }[] = candidates.map((candidate: Record<string, unknown>) => ({ candidate, qualification: normalizeQualification(candidate.qualification) as NormalizedQualification })); if (!String(q.niche ?? "").trim() || !String(q.city ?? q.region ?? "").trim() || !candidates.length) return out({ error: "nicho, cidade/região e candidatos públicos são obrigatórios" }, 400); if ((product && !["datta360","dattavps","both"].includes(product)) || radius < 0 || radius > 500 || target < 0 || target > 100 || limit < 0 || limit > 25) return out({ error: "parâmetros de prospecção inválidos" }, 400); const invalidQualification = prepared.find((entry: { qualification: NormalizedQualification }) => entry.qualification.error); if (invalidQualification) return out({ error: invalidQualification.qualification.error }, 400); const results = []; for (const { candidate: c, qualification } of prepared) { const result = await saveProspect(db, { ...c, nicho: c.nicho || q.niche, cidade: c.cidade || q.city, region: c.region || q.region, product_suggested: c.product_suggested || qualification.value?.recommendation || product, search_radius_km: c.search_radius_km ?? (radius || null), target_quantity: c.target_quantity ?? (target || null), search_limit: c.search_limit ?? (limit || null), source: c.source || "public_search", source_checked_at: c.source_checked_at || now() }, false) as Record<string, unknown>; if (result.error) return storageUnavailable(); if (qualification.value) { const qualificationResult = await saveQualification(db, String(result.lead), qualification.value); if ("error" in qualificationResult) return storageUnavailable(); result.qualification_id = qualificationResult.id; } results.push(result); } return out({ evaluated: candidates.length, results }); }
   if (root === "proposals") {
-    const { data: product } = await db.from("ds_products").select("*").eq("id", body.product_id).eq("active", true).maybeSingle(); if (!product) return out({ error: "Produto não disponível" }, 400);
-    const base = Number(product.base_price), price = body.negotiated_price == null || body.negotiated_price === "" ? base : Number(body.negotiated_price), discount = base - price;
-    const priceError = negotiatedPriceError({ publicPrice: product.public_price, basePrice: base, negotiatedPrice: price, maxDiscountPct: product.max_discount_pct });
-    if (priceError === "negotiated_price_not_positive" || priceError === "discount_above_max") return out({ error: "Preço inválido ou desconto acima do máximo" }, 400);
-    if (priceError) return out({ error: priceError }, 400);
-    const row = { id: id("prop"), lead_slug: body.lead_slug, product_id: body.product_id, base_price: base, negotiated_price: price, discount, margin: price - Number(product.cost), currency: product.currency, terms: String(body.terms || product.terms || "").trim(), valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(), version: 1, status: "draft", artifacts: { diagnosis_ids: Array.isArray(body.diagnosis_ids) ? body.diagnosis_ids : [], preview_ids: Array.isArray(body.preview_ids) ? body.preview_ids : [], social_audit_ids: Array.isArray(body.social_audit_ids) ? body.social_audit_ids : [], comparator: body.comparator === true, public_token: crypto.randomUUID().replaceAll("-", "") } };
-    const { error } = await db.from("ds_proposals").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "proposal.created", row.id); return out(row);
+    let commercialSnapshot;
+    try {
+      commercialSnapshot = buildCommercialSnapshot({
+        sku: body.commercial_sku,
+        negotiatedPrice: body.negotiated_price == null || body.negotiated_price === "" ? undefined : Number(body.negotiated_price),
+        specificTerms: body.specific_terms,
+        commercialOverrideConfirmed: body.commercial_override_confirmed === true,
+      });
+    } catch (error) {
+      return out({ error: error instanceof Error ? error.message : "proposal_commercial_snapshot_incomplete" }, 400);
+    }
+    const { data: product } = await db.from("ds_products").select("*").eq("id", body.product_id).eq("active", true).maybeSingle();
+    if (!product) return out({ error: "Produto não disponível" }, 400);
+    const diagnosisIds = proposalArtifactIds(body.diagnosis_ids), previewIds = proposalArtifactIds(body.preview_ids), socialAuditIds = proposalArtifactIds(body.social_audit_ids);
+    if (!diagnosisIds || !previewIds || !socialAuditIds) return out({ error: "proposal_artifact_ids_invalid" }, 400);
+    const refs = { diagnosis_ids: diagnosisIds, preview_ids: previewIds, social_audit_ids: socialAuditIds };
+    const bound = await proposalArtifactsBelongToLead(db, String(body.lead_slug ?? ""), refs);
+    if ("error" in bound) return storageUnavailable();
+    if (!bound.ok) return out({ error: "proposal_artifacts_cross_lead" }, 409);
+    const base = Number(commercialSnapshot.list_price), price = Number(commercialSnapshot.negotiated_price), discount = base - price;
+    const row = {
+      id: id("prop"),
+      lead_slug: body.lead_slug,
+      product_id: body.product_id,
+      base_price: base,
+      negotiated_price: price,
+      discount,
+      margin: price - Number(product.cost),
+      currency: "BRL",
+      terms: String(body.terms || commercialSnapshot.specific_terms || "").trim(),
+      valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(),
+      version: 1,
+      status: "draft",
+      artifacts: { ...refs, comparator: body.comparator === true, commercial_snapshot: commercialSnapshot },
+    };
+    const { error } = await db.from("ds_proposals").insert(row);
+    if (error) return storageUnavailable();
+    await event(db, row.lead_slug, "proposal.created", row.id);
+    return out(row);
   }
   if (root === "emails" && parts[2] === "transition") { if (body.status === "sent_simulated") await hydrateEmailRecipient(db, parts[1]); return transitionEmail(db, parts[1], body.status, body.fixture); }
   if (root === "emails" && parts[2] === "follow-up") return followUp(db, parts[1]);
