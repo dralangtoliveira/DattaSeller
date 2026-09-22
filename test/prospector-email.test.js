@@ -23,6 +23,11 @@ test("a rota autenticada exige proposta pública e base URL aprovada antes de pe
   assert.match(route, /email\.prospector_draft/);
 });
 
+test("a URL pública é uma configuração permitida, nunca um segredo", () => {
+  const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
+  assert.match(route, /"public_base_url"/);
+});
+
 test("a Central cria o rascunho pelo endpoint Prospector, sem fallback genérico", () => {
   const patch = readFileSync(new URL("../scripts/production-dashboard-patch.mjs", import.meta.url), "utf8");
   assert.match(patch, /prospector-draft/);
