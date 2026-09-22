@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // @ts-expect-error helper is deliberately implemented in plain JS and covered by node:test.
 import { publicProposalReadiness } from "@/lib/public-proposal.js";
 // @ts-expect-error helper is deliberately implemented in plain JS and covered by node:test.
-import { buildProspectorDraft } from "@/lib/email/prospector-draft.js";
+import { buildProspectorDraft, diagnosisFactsFromCriteria } from "@/lib/email/prospector-draft.js";
 
 export const runtime = "nodejs";
 
@@ -36,10 +36,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const settings = Object.fromEntries((settingsResult.data ?? []).map((row) => [row.key, row.value]));
   const base = String(settings.public_base_url ?? process.env.DATTASELLER_PUBLIC_URL ?? "").replace(/\/$/, "");
   if (!/^https:\/\/[^/?#]+$/i.test(base)) return Response.json({ error: "public_base_url_required" }, { status: 409 });
-  const criteria = (diagnosisResult.data ?? []).flatMap((row) => Array.isArray(row.criteria) ? row.criteria : [row.criteria]).map((x: unknown) => typeof x === "string" ? x : String((x as { detail?: unknown })?.detail ?? "")).filter(Boolean);
-  const firstLine = lead.nota ? `Vi a avaliação pública de ${lead.nota}${lead.avaliacoes ? ` (${lead.avaliacoes} avaliações)` : ""} para ${lead.nome}.` : `Vi a apresentação pública de ${lead.nome} e preparei uma observação específica sobre o site.`;
+  const criteria = diagnosisFactsFromCriteria((diagnosisResult.data ?? []).flatMap((row) => Array.isArray(row.criteria) ? row.criteria : [row.criteria]));
+  const firstLine = lead.nota
+    ? `Vi a avaliação pública de ${lead.nota}${lead.avaliacoes ? ` (${lead.avaliacoes} avaliações)` : ""} para ${lead.nome}.`
+    : criteria[0]
+      ? `No diagnóstico de ${lead.nome}, foi observado: ${criteria[0]}`
+      : `Revisei a apresentação pública de ${lead.nome} e preparei uma observação específica sobre o site.`;
   let draft;
-  try { draft = buildProspectorDraft({ businessName: lead.nome, firstLine, diagnosis: criteria, publicUrl: `${base}/p/${token}`, sellerName: settings.seller_name, identity: settings.identity, whatsapp: settings.whatsapp }); }
+  try { draft = buildProspectorDraft({ businessName: lead.nome, firstLine, diagnosis: criteria.slice(1), publicUrl: `${base}/p/${token}`, sellerName: settings.seller_name, identity: settings.identity, whatsapp: settings.whatsapp }); }
   catch (error) { return Response.json({ error: error instanceof Error ? error.message : "prospector_draft_invalid" }, { status: 409 }); }
   const row = { id: id(), lead_slug: proposal.lead_slug, proposal_id: proposal.id, recipient: lead.email, subject: draft.subject, body: draft.body, status: "draft", provider: "mock", attempt: 0 };
   const { data, error } = await db.from("ds_emails").insert(row).select().single();
