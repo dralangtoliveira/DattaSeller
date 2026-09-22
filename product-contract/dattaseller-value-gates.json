@@ -4,11 +4,11 @@
   "product_ready": false,
   "canonical_integration": {
     "branch": "hardening/phase-a-containment-clean",
-    "pull_request": 24,
-    "merge_commit": "160dee2ef4bcdcbe8b991cac073a36f7e318952e",
-    "merged_at": "2026-09-22T17:55:25Z",
-    "verified_head": "6ef19072d123ce7681547a2c56159fabad670dad",
-    "verification": "PR #24 CLEAN; CI verify (2), Vercel e Vercel Preview Comments SUCCESS; suíte local 257/257 e secret scan 300 arquivos sem credencial de alta confiança."
+    "pull_request": 26,
+    "merge_commit": "470ff162b1f74e8819b0d6df219bf9d2a124f85e",
+    "merged_at": "2026-09-22T19:07:05Z",
+    "verified_head": "cd60bce2bf17d71f05036a8c683bef1d7a52387a",
+    "verification": "PR #26 CLEAN; CI verify (2), secret scan, testes, typecheck, build e Vercel SUCCESS no HEAD cd60bce; no merge commit 470ff16, CI verify com secret scan/testes/typecheck/build e status Vercel SUCCESS; checkout local 258/258 testes, tsc e secret scan 300 arquivos aprovados. DS-VALUE-07/08 permanecem PARTIAL; binding Preview-HML não comprovado."
   },
   "allowed_status": [
     "MISSING",

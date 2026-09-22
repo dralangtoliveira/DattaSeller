@@ -568,3 +568,15 @@ componente · cards afetados · responsável · evidência · condição de revi
 | componente | Git / proposta pública / e-mail / gates de valor |
 | evidência | PR #24 `CLEAN`; `verify` CI (2), Vercel e Vercel Preview Comments `SUCCESS` no HEAD `6ef1907`; pós-checkout canônico: 257/257 testes, varredura de segredos em 300 arquivos aprovada e `git diff --check` limpo. |
 | condição de revisão | DS-VALUE-07 e DS-VALUE-08 permanecem `PARTIAL` até evidência HML reproduzível do fluxo completo, incluindo revisão/aprovação humana, provider real, entrega e follow-up com a mesma capability. |
+
+## D-035 — PR #26 integrada; preflight HML condicionado ao binding verificado
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-22 |
+| assunto | integração do preflight isolado e auditoria read-only do HML |
+| decisão | A PR #26 foi integrada em `hardening/phase-a-containment-clean` pelo merge commit `470ff162b1f74e8819b0d6df219bf9d2a124f85e`, a partir do HEAD validado `cd60bce2bf17d71f05036a8c683bef1d7a52387a`. O runner ganhou `npm run e2e:preflight`, que termina após validação das variáveis e da guarda de isolamento, antes de rede. A renegociação automática que alterava preço/prazo foi removida. DS-VALUE-07 e DS-VALUE-08 permanecem `PARTIAL`; `PRODUCT_READY` permanece falso. |
+| evidência | PR #26 `CLEAN`; dois jobs `verify` com secret scan, testes, typecheck e build aprovados no SHA `cd60bce`; Vercel `SUCCESS` nesse SHA. No merge commit `470ff16`, CI `verify` e status Vercel `SUCCESS`; checkout pós-merge: 258/258 testes, `tsc --noEmit` e secret scan de 300 arquivos aprovados. |
+| HML | O conector Supabase identifica `dattaseller-hml` (ref `qfwvkarvueuezeqfljbl`) como `INACTIVE`; Production é projeto separado (ref `vkvkzoulbljampcbxaim`) e `ACTIVE_HEALTHY`. Isso não prova qual ref o Preview usa. O conector Vercel devolve `403 Forbidden` para o escopo `datta-x` e solicita reautenticação nesse escopo; o token do CLI local também é inválido. Nenhuma variável de deployment ou provider foi lida. |
+| bloqueio | `PREVIEW_TO_HML_BINDING_UNVERIFIED`: sem leitura autenticada das variáveis efetivas do Preview, não se pode estabelecer que a URL HTTPS publicada pelo Vercel usa exclusivamente o projeto HML. `HML_INACTIVE`: o projeto de HML não está ativo. `DS_E2E_EMAIL_TO` não está registrado como caixa controlada e `DS_E2E_CONFIRM=yes` não foi fornecido para a execução. Nenhum preflight real ou fluxo mutável foi executado. |
+| próxima ação | Recuperar acesso read-only ao escopo Vercel `datta-x`, provar o deployment/ambiente/ref Preview→HML e reativar o HML por ação autorizada; registrar mailbox controlado. Então executar somente `npm run e2e:preflight` com `DS_E2E_CONFIRM=yes` efêmero. |
