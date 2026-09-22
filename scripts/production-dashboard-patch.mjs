@@ -215,6 +215,15 @@ const patch = String.raw`
       .replace('Pedidos, checkout, pagamento e handoff','Pedidos e integrações');
   };
 
+  // Rascunhos criados pela Central seguem o procedimento Prospector no servidor;
+  // falhas de pré-requisito (link público, domínio, e-mail) ficam visíveis e não
+  // degradam para o texto genérico anterior.
+  dsEmail=function(proposalId){
+    return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/prospector-draft',{method:'POST'})
+      .then(function(){return dsLoad()})
+      .catch(function(error){alert(error.message||'Não foi possível criar o rascunho Prospector.')});
+  };
+
   // O token é opaco e só é criado pelo backend autenticado. A Central não
   // reconstrói nem expõe dados extras: ela apenas oferece o link público já
   // vinculado à versão selecionada da proposta.
