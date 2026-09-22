@@ -1,5 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 // @ts-expect-error helper is deliberately implemented in plain JS and covered by node:test.
+import { publicProposalReadiness } from "@/lib/public-proposal.js";
+// @ts-expect-error helper is deliberately implemented in plain JS and covered by node:test.
 import { renderProspectorProposalCover } from "@/lib/prospector-proposal-cover.js";
 
 export const runtime = "nodejs";
@@ -22,9 +24,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   if (!proposal) return new Response("Proposta não encontrada", { status: 404 });
 
   const artifacts = proposal.artifacts && typeof proposal.artifacts === "object" ? proposal.artifacts as Record<string, unknown> : {};
-  const previewId = stringIds(artifacts.preview_ids)[0];
-  if (!previewId) return new Response("Proposta indisponível", { status: 409 });
-  const diagnosisIds = stringIds(artifacts.diagnosis_ids), socialIds = stringIds(artifacts.social_audit_ids);
+  const previewIds = stringIds(artifacts.preview_ids), diagnosisIds = stringIds(artifacts.diagnosis_ids), socialIds = stringIds(artifacts.social_audit_ids);
+  const previewId = previewIds[0];
+  if (!previewId) return new Response("Proposta ainda não está completa para publicação", { status: 409 });
   const [leadResult, previewResult, diagnosisResult, socialResult, settingsResult] = await Promise.all([
     db.from("ds_leads").select("nome,site_antigo").eq("slug", proposal.lead_slug).is("deleted_at", null).maybeSingle(),
     db.from("ds_previews").select("id,content").eq("id", previewId).eq("lead_slug", proposal.lead_slug).maybeSingle(),
@@ -34,6 +36,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   ]);
   if (leadResult.error || previewResult.error || diagnosisResult.error || socialResult.error || settingsResult.error) return new Response("Proposta indisponível", { status: 503 });
   if (!leadResult.data || !previewResult.data) return new Response("Proposta não encontrada", { status: 404 });
+  const readiness = publicProposalReadiness({ token, previewIds, diagnosisIds, socialIds, price: proposal.negotiated_price, currency: proposal.currency, terms: proposal.terms, validUntil: proposal.valid_until, oldUrl: leadResult.data.site_antigo, previewFound: Boolean(previewResult.data), diagnosesFound: (diagnosisResult.data ?? []).length === diagnosisIds.length, socialFound: (socialResult.data ?? []).length === socialIds.length });
+  if (!readiness.ready) return new Response("Proposta ainda não está completa para publicação", { status: 409 });
   const settings = Object.fromEntries((settingsResult.data ?? []).map((row) => [row.key, row.value]));
   const diagnosisCriteria = (diagnosisResult.data ?? []).flatMap((row) => Array.isArray(row.criteria) ? row.criteria : [row.criteria]);
   const product = proposal.ds_products as unknown as { name?: string } | null;

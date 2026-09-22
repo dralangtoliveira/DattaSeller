@@ -18,6 +18,8 @@ test("a checklist bloqueia gatilhos, mais de um link e texto fora do tamanho", (
 test("a rota autenticada exige proposta pública e base URL aprovada antes de persistir", () => {
   const route = readFileSync(new URL("../app/api/proposals/[id]/prospector-draft/route.ts", import.meta.url), "utf8");
   assert.match(route, /public_proposal_required/);
+  assert.match(route, /public_proposal_incomplete/);
+  assert.match(route, /publicProposalReadiness/);
   assert.match(route, /public_base_url_required/);
   assert.match(route, /buildProspectorDraft/);
   assert.match(route, /email\.prospector_draft/);

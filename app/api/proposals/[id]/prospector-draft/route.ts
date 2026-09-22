@@ -1,5 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 // @ts-expect-error helper is deliberately implemented in plain JS and covered by node:test.
+import { publicProposalReadiness } from "@/lib/public-proposal.js";
+// @ts-expect-error helper is deliberately implemented in plain JS and covered by node:test.
 import { buildProspectorDraft } from "@/lib/email/prospector-draft.js";
 
 export const runtime = "nodejs";
@@ -14,18 +16,23 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { data: profile } = await db.from("ds_users").select("role").eq("id", user.id).maybeSingle();
   if (profile?.role !== "admin") return Response.json({ error: "forbidden" }, { status: 403 });
   const { id: proposalId } = await params;
-  const { data: proposal } = await db.from("ds_proposals").select("id,lead_slug,artifacts").eq("id", proposalId).maybeSingle();
+  const { data: proposal } = await db.from("ds_proposals").select("id,lead_slug,artifacts,negotiated_price,currency,terms,valid_until").eq("id", proposalId).maybeSingle();
   if (!proposal) return Response.json({ error: "proposal_not_found" }, { status: 404 });
   const artifacts = proposal.artifacts && typeof proposal.artifacts === "object" ? proposal.artifacts as Record<string, unknown> : {};
   const token = typeof artifacts.public_token === "string" && /^[A-Za-z0-9_-]{32,128}$/.test(artifacts.public_token) ? artifacts.public_token : "";
   if (!token) return Response.json({ error: "public_proposal_required" }, { status: 409 });
-  const [leadResult, diagnosisResult, settingsResult] = await Promise.all([
-    db.from("ds_leads").select("nome,email,nota,avaliacoes").eq("slug", proposal.lead_slug).is("deleted_at", null).maybeSingle(),
-    ids(artifacts.diagnosis_ids).length ? db.from("ds_site_diagnoses").select("criteria").eq("lead_slug", proposal.lead_slug).in("id", ids(artifacts.diagnosis_ids)) : Promise.resolve({ data: [] }),
+  const previewIds = ids(artifacts.preview_ids), diagnosisIds = ids(artifacts.diagnosis_ids), socialIds = ids(artifacts.social_audit_ids);
+  const [leadResult, previewResult, diagnosisResult, socialResult, settingsResult] = await Promise.all([
+    db.from("ds_leads").select("nome,email,nota,avaliacoes,site_antigo").eq("slug", proposal.lead_slug).is("deleted_at", null).maybeSingle(),
+    previewIds[0] ? db.from("ds_previews").select("id").eq("id", previewIds[0]).eq("lead_slug", proposal.lead_slug).maybeSingle() : Promise.resolve({ data: null }),
+    diagnosisIds.length ? db.from("ds_site_diagnoses").select("criteria").eq("lead_slug", proposal.lead_slug).in("id", diagnosisIds) : Promise.resolve({ data: [] }),
+    socialIds.length ? db.from("ds_social_audits").select("id").eq("lead_slug", proposal.lead_slug).in("id", socialIds) : Promise.resolve({ data: [] }),
     db.from("ds_settings").select("key,value"),
   ]);
   const lead = leadResult.data;
   if (!lead?.email) return Response.json({ error: "lead_email_required" }, { status: 409 });
+  const readiness = publicProposalReadiness({ token, previewIds, diagnosisIds, socialIds, price: proposal.negotiated_price, currency: proposal.currency, terms: proposal.terms, validUntil: proposal.valid_until, oldUrl: lead.site_antigo, previewFound: Boolean(previewResult.data), diagnosesFound: (diagnosisResult.data ?? []).length === diagnosisIds.length, socialFound: (socialResult.data ?? []).length === socialIds.length });
+  if (!readiness.ready) return Response.json({ error: "public_proposal_incomplete", missing: readiness.missing }, { status: 409 });
   const settings = Object.fromEntries((settingsResult.data ?? []).map((row) => [row.key, row.value]));
   const base = String(settings.public_base_url ?? process.env.DATTASELLER_PUBLIC_URL ?? "").replace(/\/$/, "");
   if (!/^https:\/\/[^/?#]+$/i.test(base)) return Response.json({ error: "public_base_url_required" }, { status: 409 });

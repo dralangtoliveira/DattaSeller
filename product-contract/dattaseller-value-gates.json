@@ -95,7 +95,7 @@
       "name": "Proposta pública sem login",
       "status": "PARTIAL",
       "evidence": [
-        "A rota pública GET /p/:token usa token opaco de 32+ caracteres, renderiza a proposta sem login por acesso server-side e impede indexação/referrer. O CRM mostra o link público apenas para propostas que possuem token.",
+        "A rota pública GET /p/:token usa token opaco de 32+ caracteres, renderiza a proposta sem login por acesso server-side e impede indexação/referrer. Ela falha fechada até haver antes/depois, preview, diagnóstico, direção social, preço, moeda, termos e validade; o rascunho Prospector aplica a mesma trava.",
         "A origem HTTPS da proposta é configurável no CRM, mas falta evidência reproduzível em HML de uma proposta real contendo diagnóstico, antes/depois, preview, social e escopo/preço comercial aprovados."
       ]
     },

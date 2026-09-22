@@ -2,6 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { renderProspectorProposalCover } from "../lib/prospector-proposal-cover.js";
+import { publicProposalReadiness } from "../lib/public-proposal.js";
+
+test("a publicação pública falha fechada até reunir todos os artefatos e termos", () => {
+  const base = { token: "a".repeat(32), previewIds: ["preview_1"], diagnosisIds: ["diag_1"], socialIds: ["social_1"], price: 1500, currency: "BRL", terms: "Escopo aprovado", validUntil: "2026-09-30", oldUrl: "https://empresa.example/", previewFound: true, diagnosesFound: true, socialFound: true };
+  assert.equal(publicProposalReadiness(base).ready, true);
+  assert.deepEqual(publicProposalReadiness({ ...base, socialIds: [] }), { ready: false, missing: ["social"] });
+  assert.deepEqual(publicProposalReadiness({ ...base, terms: "" }), { ready: false, missing: ["terms"] });
+});
 
 test("a capa de proposta apresenta diagnóstico factual e direção social persistidos", () => {
   const html = renderProspectorProposalCover({
@@ -54,6 +62,8 @@ test("a rota pública exige token opaco e nunca depende de sessão do cliente", 
   assert.match(route, /public_token/);
   assert.match(route, /createSupabaseAdminClient/);
   assert.match(route, /previewDocument/);
+  assert.match(route, /publicProposalReadiness/);
+  assert.match(route, /Proposta ainda não está completa para publicação/);
   assert.match(route, /noindex, nofollow/);
 });
 
