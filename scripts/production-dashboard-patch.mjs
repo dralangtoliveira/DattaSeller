@@ -215,6 +215,17 @@ const patch = String.raw`
       .replace('Pedidos, checkout, pagamento e handoff','Pedidos e integrações');
   };
 
+  // O token é opaco e só é criado pelo backend autenticado. A Central não
+  // reconstrói nem expõe dados extras: ela apenas oferece o link público já
+  // vinculado à versão selecionada da proposta.
+  var oldProposalEditor=vProposalEditor;
+  vProposalEditor=function(){
+    var result=oldProposalEditor(), proposal=(DS.proposals||[]).filter(function(x){return x.id===dsProposalEditId})[0];
+    var token=proposal&&proposal.artifacts&&typeof proposal.artifacts.public_token==='string'&&/^[A-Za-z0-9_-]{32,128}$/.test(proposal.artifacts.public_token)?proposal.artifacts.public_token:'';
+    if(!result||!token)return result;
+    return result.replace('</div>','<p><a href="/p/'+esc(token)+'" target="_blank" rel="noopener">Abrir proposta pública ↗</a></p></div>');
+  };
+
   var oldFinance=vFinanceiroLocal;
   vFinanceiroLocal=function(){
     return '<div class="prod-alert">Indicadores operacionais do CRM. Pagamentos só são definitivos quando confirmados pelo gateway integrado.</div>'+oldFinance();
