@@ -5,7 +5,7 @@ import { renderProspectorProposalCover } from "../lib/prospector-proposal-cover.
 import { publicProposalReadiness } from "../lib/public-proposal.js";
 
 test("a publicação pública falha fechada até reunir todos os artefatos e termos", () => {
-  const base = { token: "a".repeat(32), previewIds: ["preview_1"], diagnosisIds: ["diag_1"], socialIds: ["social_1"], price: 1500, currency: "BRL", terms: "Escopo aprovado", validUntil: "2026-09-30", oldUrl: "https://empresa.example/", previewFound: true, diagnosesFound: true, socialFound: true };
+  const base = { token: "a".repeat(43), previewIds: ["preview_1"], diagnosisIds: ["diag_1"], socialIds: ["social_1"], price: 1500, currency: "BRL", terms: "Escopo aprovado", validUntil: "2026-09-30", oldUrl: "https://empresa.example/", previewFound: true, diagnosesFound: true, socialFound: true };
   assert.equal(publicProposalReadiness(base).ready, true);
   assert.deepEqual(publicProposalReadiness({ ...base, socialIds: [] }), { ready: false, missing: ["social"] });
   assert.deepEqual(publicProposalReadiness({ ...base, terms: "" }), { ready: false, missing: ["terms"] });
@@ -58,18 +58,26 @@ test("a rota específica da capa vincula somente artefatos do mesmo lead", () =>
 
 test("a rota pública exige token opaco e nunca depende de sessão do cliente", () => {
   const route = readFileSync(new URL("../app/p/[token]/route.ts", import.meta.url), "utf8");
-  assert.match(route, /tokenIsValid/);
-  assert.match(route, /public_token/);
+  assert.match(route, /hashPublicProposalToken/);
+  assert.match(route, /token_hash/);
   assert.match(route, /createSupabaseAdminClient/);
   assert.match(route, /previewDocument/);
   assert.match(route, /publicProposalReadiness/);
-  assert.match(route, /Proposta ainda não está completa para publicação/);
+  assert.match(route, /notFound/);
   assert.match(route, /noindex, nofollow/);
 });
 
-test("o dashboard oferece o link público somente para o token emitido pelo backend", () => {
+test("o dashboard publica capability pelo servidor e não lê token em claro da proposta", () => {
   const patch = readFileSync(new URL("../scripts/production-dashboard-patch.mjs", import.meta.url), "utf8");
-  assert.match(patch, /Abrir proposta pública/);
-  assert.match(patch, /public_token/);
-  assert.match(patch, /\^\[A-Za-z0-9_-\]\{32,128\}/);
+  assert.match(patch, /\/public/);
+  assert.match(patch, /public_proposal/);
+  assert.match(patch, /token_hash/);
+  assert.doesNotMatch(patch, /artifacts\.public_token/);
+});
+
+test("a criação de proposta não persiste capability em claro", () => {
+  const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
+  const proposalSection = route.slice(route.indexOf('if (root === "proposals")'), route.indexOf('if (root === "emails"'));
+  assert.doesNotMatch(proposalSection, /public_token/);
+  assert.match(proposalSection, /commercial_snapshot/);
 });
