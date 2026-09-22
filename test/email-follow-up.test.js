@@ -55,3 +55,17 @@ test("um envio que falhou volta a ser rascunho editável antes de nova aprovaç�
   assert.match(dashboard, /\/follow-up/);
   assert.match(dashboard, /dsScheduleFollowUp/);
 });
+
+
+test("DS-VALUE-10 exige três dias completos, ausência de resposta e unicidade por lead", () => {
+  assert.equal(canScheduleFollowUp("generic_reply"), false);
+  assert.equal(isFollowUpDue({ status: "sent", updated_at: "2026-09-20T12:00:00Z" }, new Date("2026-09-22T12:00:00Z"), 3), false);
+  assert.equal(isFollowUpDue({ status: "sent", updated_at: "2026-09-19T12:00:00Z" }, new Date("2026-09-22T12:00:00Z"), 3), true);
+  const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
+  assert.match(route, /isFollowUpDue\(parent, new Date\(\), config\.followup_days\)/);
+  assert.match(route, /ds_followups"\)\.select\("\*"\)\.eq\("lead_slug", parent\.lead_slug\)/);
+});
+
+test("DS-VALUE-10 recusa follow-up sem o mesmo link público capability", () => {
+  assert.throws(() => buildFollowUpDraft({ status: "sent", body: "sem link", updated_at: "2026-09-19T12:00:00Z" }), /public_proposal_url_required/);
+});

@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resendConfigurationError, resolveEmailRecipient } from "@/lib/email/provider";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
-import { buildFollowUpDraft, canScheduleFollowUp } from "@/lib/email/follow-up.js";
+import { buildFollowUpDraft, canScheduleFollowUp, isFollowUpDue } from "@/lib/email/follow-up.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { contractDocxFilename, contractDocxMime, renderContractDocx } from "@/lib/contracts/docx.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -167,11 +167,14 @@ async function followUp(db: Db, emailId: string) {
   if (parentError) return storageUnavailable();
   if (!parent) return out({ error: "email_not_found" }, 404);
   if (!canScheduleFollowUp(parent.status)) return out({ error: "follow_up_requires_sent_email" }, 409);
-  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("email_id", emailId).eq("status", "scheduled").limit(1).maybeSingle();
+  const config = await settings(db);
+  if (!isFollowUpDue(parent, new Date(), config.followup_days)) return out({ error: "follow_up_not_due" }, 409);
+  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("lead_slug", parent.lead_slug).limit(1).maybeSingle();
   if (openError) return storageUnavailable();
   if (open) return out({ ok: true, duplicate: true, follow_up: open, email_id: open.detail });
-  const config = await settings(db);
-  const draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days });
+  let draft;
+  try { draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days }); }
+  catch { return out({ error: "public_proposal_url_required" }, 409); }
   const row = { id: id("email"), lead_slug: parent.lead_slug, proposal_id: parent.proposal_id || null, sender: parent.sender || null, recipient: parent.recipient || null, reply_to: parent.reply_to || null, subject: draft.subject, body: draft.body, status: "draft", provider: "mock", attempt: 0 };
   const { data: email, error: insertError } = await db.from("ds_emails").insert(row).select().single();
   if (insertError) return storageUnavailable();
