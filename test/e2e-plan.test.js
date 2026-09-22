@@ -73,11 +73,14 @@ test("o runner do E2E exercita o envio pelo endpoint do CRM e o reload", () => {
   assert.match(script, /\/api\/emails\/\$\{state\.emailId\}\/transition/);
   assert.match(script, /sent_simulated/);
   assert.match(script, /\/api\/emails\/\$\{state\.emailId\}\/follow-up/);
-  assert.match(script, /negotiated_price_above_public_price/);
+  assert.match(script, /snapshot comercial preservado/);
+  assert.doesNotMatch(script, /publicPrice \?\? 1500/);
   assert.match(script, /\/api\/contracts\/\$\{state\.contractId\}\/docx/);
   assert.match(script, /wordprocessingml/);
   assert.match(script, /\/api\/timeline/);
   assert.match(script, /process\.exit\(summary\.ok \? 0 : 1\)/);
   const packageJson = readFileSync(new URL("../package.json", import.meta.url), "utf8");
   assert.match(packageJson, /e2e:authenticated/);
+  assert.match(packageJson, /e2e:preflight/);
+  assert.match(script, /--preflight/);
 });
