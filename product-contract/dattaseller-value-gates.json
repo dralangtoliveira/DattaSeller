@@ -8,7 +8,7 @@
     "merge_commit": "470ff162b1f74e8819b0d6df219bf9d2a124f85e",
     "merged_at": "2026-09-22T19:07:05Z",
     "verified_head": "cd60bce2bf17d71f05036a8c683bef1d7a52387a",
-    "verification": "PR #26 CLEAN; CI verify (2), secret scan, testes, typecheck, build e Vercel SUCCESS no HEAD cd60bce; no merge commit 470ff16, CI verify com secret scan/testes/typecheck/build e status Vercel SUCCESS; checkout local 258/258 testes, tsc e secret scan 300 arquivos aprovados. DS-VALUE-07/08 permanecem PARTIAL; binding Preview-HML não comprovado."
+    "verification": "PR #26 CLEAN; CI verify (2), secret scan, testes, typecheck, build e Vercel SUCCESS no HEAD cd60bce; no merge commit 470ff16, CI verify com secret scan/testes/typecheck/build e status Vercel SUCCESS; checkout local 258/258 testes, tsc e secret scan 300 arquivos aprovados. O Preview da branch canônica herda NEXT_PUBLIC_SUPABASE_URL de Production (ref vkvkzoulbljampcbxaim); preflight HML real bloqueado. DS-VALUE-07/08 permanecem PARTIAL."
   },
   "allowed_status": [
     "MISSING",
