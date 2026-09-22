@@ -20,6 +20,12 @@ test("o E2E falha fechado quando o ambiente está incompleto ou sem confirmaçã
   assert.equal(validateEnv(valid).ok, true);
 });
 
+test("o template de ambiente nomeia todos os inputs do preflight sem autorizar envio", () => {
+  const example = readFileSync(new URL("../.env.example", import.meta.url), "utf8");
+  for (const key of REQUIRED_ENV) assert.match(example, new RegExp(`^${key}=`, "m"), `${key} precisa estar no template`);
+  assert.match(example, /^DS_E2E_CONFIRM=$/m, "o template não pode pré-autorizar o envio");
+});
+
 test("a cadeia do E2E é a ordem registrada e não perde nenhum passo", () => {
   assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "prospect", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "email_draft", "email_edit", "email_approve", "email_send", "email_followup", "email_timeline", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
   for (const step of E2E_STEPS) assert.ok(step.label && step.endpoint, `${step.id} precisa de rótulo e endpoint`);
