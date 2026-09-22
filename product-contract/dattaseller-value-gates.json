@@ -95,8 +95,9 @@
       "name": "Proposta pública sem login",
       "status": "PARTIAL",
       "evidence": [
-        "A rota pública GET /p/:token usa token opaco de 32+ caracteres, renderiza a proposta sem login por acesso server-side e impede indexação/referrer. Ela falha fechada até haver antes/depois, preview, diagnóstico, direção social, preço, moeda, termos e validade; o rascunho Prospector aplica a mesma trava.",
-        "A origem HTTPS da proposta é configurável no CRM, mas falta evidência reproduzível em HML de uma proposta real contendo diagnóstico, antes/depois, preview, social e escopo/preço comercial aprovados."
+        "A publicação autenticada gera capability CSPRNG de 32 bytes (43 caracteres base64url) e persiste somente SHA-256 em artifacts.public_proposal; o token em claro não é armazenado na proposta.",
+        "GET /p/:token resolve o hash server-side, exige artefatos do mesmo lead e snapshot comercial Datta360 válido, sanitiza o preview e aplica noindex, DENY, CSP sem frame externo, no-referrer e permissions policy.",
+        "Falta evidência reproduzível em HML do ciclo publicar → abrir sem login → revogar; portanto permanece PARTIAL."
       ]
     },
     {
@@ -104,8 +105,9 @@
       "name": "Gerador de e-mail Prospector",
       "status": "PARTIAL",
       "evidence": [
-        "POST /api/proposals/:id/prospector-draft gera e persiste somente rascunho personalizado, exigindo lead com e-mail, proposta pública e origem HTTPS válida. A checklist bloqueia palavras-gatilho, assunto sem pergunta ou acima de 60 caracteres, corpo fora de 120–180 palavras, mais de um link e link divergente.",
-        "Falta evidência HML de um rascunho com dados comerciais reais e revisão humana; nenhum e-mail real foi enviado por este gate."
+        "POST /api/proposals/:id/prospector-draft exige admin, publicação hash-only ativa, URL capability correspondente, lead com e-mail, artefatos completos e snapshot comercial canônico; a checklist bloqueia gatilhos, assunto inválido, 120–180 palavras e link divergente.",
+        "O gerador consome o formato real de diagnóstico persistido pelo DS-VALUE-03 (criteria.evidencias[].observacao) e mantém compatibilidade com o formato controlado anterior.",
+        "Falta evidência HML do rascunho com publicação real; nenhum e-mail real foi enviado por este gate."
       ]
     },
     {
@@ -121,8 +123,9 @@
       "name": "Follow-up Prospector",
       "status": "PARTIAL",
       "evidence": [
-        "Agendamento e rascunho existem; o gerador reutiliza o primeiro link HTTPS do e-mail original e limita o corpo a quatro linhas.",
-        "Falta prova HML de 3+ dias sem resposta, uma única execução por lead e revisão humana no fluxo controlado."
+        "Follow-up exige status sem resposta, três dias completos pelo followup_days configurado, reutiliza exatamente o link /p/:token e cria no máximo um ds_followups por lead.",
+        "generic_reply e demais respostas não são elegíveis; repetição devolve duplicidade sem novo rascunho.",
+        "Falta evidência HML temporal/persistida; portanto permanece PARTIAL."
       ]
     },
     {
