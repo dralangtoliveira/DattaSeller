@@ -93,17 +93,19 @@
     {
       "id": "DS-VALUE-07",
       "name": "Proposta pública sem login",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "evidence": [
-        "Capa atual exige contexto admin autenticado."
+        "A rota pública GET /p/:token usa token opaco de 32+ caracteres, renderiza a proposta sem login por acesso server-side e impede indexação/referrer. O CRM mostra o link público apenas para propostas que possuem token.",
+        "A origem HTTPS da proposta é configurável no CRM, mas falta evidência reproduzível em HML de uma proposta real contendo diagnóstico, antes/depois, preview, social e escopo/preço comercial aprovados."
       ]
     },
     {
       "id": "DS-VALUE-08",
       "name": "Gerador de e-mail Prospector",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "evidence": [
-        "Resend existe, mas o backend aceita assunto/corpo genéricos sem checklist anti-spam obrigatório."
+        "POST /api/proposals/:id/prospector-draft gera e persiste somente rascunho personalizado, exigindo lead com e-mail, proposta pública e origem HTTPS válida. A checklist bloqueia palavras-gatilho, assunto sem pergunta ou acima de 60 caracteres, corpo fora de 120–180 palavras, mais de um link e link divergente.",
+        "Falta evidência HML de um rascunho com dados comerciais reais e revisão humana; nenhum e-mail real foi enviado por este gate."
       ]
     },
     {
@@ -119,7 +121,8 @@
       "name": "Follow-up Prospector",
       "status": "PARTIAL",
       "evidence": [
-        "Agendamento e rascunho existem; procedimento original completo e mesmo link público não estão garantidos."
+        "Agendamento e rascunho existem; o gerador reutiliza o primeiro link HTTPS do e-mail original e limita o corpo a quatro linhas.",
+        "Falta prova HML de 3+ dias sem resposta, uma única execução por lead e revisão humana no fluxo controlado."
       ]
     },
     {
