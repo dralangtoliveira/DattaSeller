@@ -215,24 +215,37 @@ const patch = String.raw`
       .replace('Pedidos, checkout, pagamento e handoff','Pedidos e integrações');
   };
 
-  // Rascunhos criados pela Central seguem o procedimento Prospector no servidor;
-  // falhas de pré-requisito (link público, domínio, e-mail) ficam visíveis e não
-  // degradam para o texto genérico anterior.
+  // Publicação e rascunho são encadeados: a capability nasce no servidor,
+  // a proposta guarda somente o hash e o URL em claro permanece no rascunho.
   dsEmail=function(proposalId){
-    return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/prospector-draft',{method:'POST'})
+    return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/public',{method:'POST'})
+      .then(function(publication){
+        if(!publication||!publication.url) throw new Error('Link público não foi emitido.');
+        return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/prospector-draft',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({public_proposal_url:publication.url})
+        });
+      })
       .then(function(){return dsLoad()})
       .catch(function(error){alert(error.message||'Não foi possível criar o rascunho Prospector.')});
   };
+  window.dsPublicProposal=function(proposalId){
+    return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/public',{method:'POST'})
+      .then(function(publication){if(publication&&publication.url)window.open(publication.url,'_blank','noopener');return dsLoad()})
+      .catch(function(error){alert(error.message||'Não foi possível publicar a proposta.')});
+  };
 
-  // O token é opaco e só é criado pelo backend autenticado. A Central não
-  // reconstrói nem expõe dados extras: ela apenas oferece o link público já
-  // vinculado à versão selecionada da proposta.
   var oldProposalEditor=vProposalEditor;
   vProposalEditor=function(){
     var result=oldProposalEditor(), proposal=(DS.proposals||[]).filter(function(x){return x.id===dsProposalEditId})[0];
-    var token=proposal&&proposal.artifacts&&typeof proposal.artifacts.public_token==='string'&&/^[A-Za-z0-9_-]{32,128}$/.test(proposal.artifacts.public_token)?proposal.artifacts.public_token:'';
-    if(!result||!token)return result;
-    return result.replace('</div>','<p><a href="/p/'+esc(token)+'" target="_blank" rel="noopener">Abrir proposta pública ↗</a></p></div>');
+    if(!result||!proposal)return result;
+    var publication=proposal.artifacts&&proposal.artifacts.public_proposal;
+    var active=publication&&typeof publication.token_hash==='string'&&!publication.revoked_at;
+    var existing=(DS.emails||[]).filter(function(x){return x.proposal_id===proposal.id&&/https:\/\/[^\\s]+\/p\/[A-Za-z0-9_-]{43}/.test(x.body||'')})[0];
+    var url=existing?(existing.body.match(/https:\/\/[^\\s]+\/p\/[A-Za-z0-9_-]{43}/)||[])[0]:'';
+    var action=url?'<p><a href="'+esc(url)+'" target="_blank" rel="noopener">Abrir proposta pública ↗</a></p>':active?'<p><small>Proposta pública ativa. O token não é armazenado em claro; o link permanece no rascunho Prospector.</small></p>':'<p><button onclick="dsPublicProposal(\''+esc(proposal.id)+'\')">Publicar proposta</button></p>';
+    return result.replace('</div>',action+'</div>');
   };
 
   var oldFinance=vFinanceiroLocal;
