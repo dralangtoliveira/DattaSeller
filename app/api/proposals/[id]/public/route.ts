@@ -27,7 +27,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!proposal) return noStore({ error: "proposal_not_found" }, 404);
   const artifacts = artifactObject(proposal.artifacts);
   const existing = artifactObject(artifacts.public_proposal);
-  if (typeof existing.token_hash === "string" && !existing.revoked_at) return noStore({ error: "proposal_already_published" }, 409);
   const snapshot = artifactObject(artifacts.commercial_snapshot);
   if (!validateCommercialSnapshot(snapshot)) return noStore({ error: "proposal_commercial_snapshot_incomplete" }, 409);
   const previewIds = ids(artifacts.preview_ids), diagnosisIds = ids(artifacts.diagnosis_ids), socialIds = ids(artifacts.social_audit_ids);
@@ -41,6 +40,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     auth.db.from("ds_settings").select("key,value"),
   ]);
   if (lead.error || previews.error || diagnoses.error || social.error || settings.error) return noStore({ error: "storage_unavailable" }, 503);
+
+  const cfg = Object.fromEntries((settings.data ?? []).map((row) => [row.key, row.value]));
+  const requestOrigin = new URL(request.url).origin;
+  const configured = String(cfg.public_base_url ?? "").replace(/\/$/, "");
+  const base = configured || requestOrigin;
+  if (!/^https:\/\/[^/?#]+$/i.test(base)) return noStore({ error: "public_base_url_required" }, 409);
 
   const token = createPublicProposalToken();
   const readiness = publicProposalReadiness({
@@ -60,16 +65,36 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
   if (!readiness.ready) return noStore({ error: "proposal_publication_incomplete", missing: readiness.missing }, 409);
 
-  const publicProposal = { token_hash: hashPublicProposalToken(token), published_at: new Date().toISOString(), revoked_at: null };
+  const activeHash = typeof existing.token_hash === "string" && !existing.revoked_at ? existing.token_hash : "";
+  if (activeHash) {
+    const { data: emails, error: emailError } = await auth.db.from("ds_emails").select("body").eq("proposal_id", proposal.id).order("created_at", { ascending: false }).limit(20);
+    if (emailError) return noStore({ error: "storage_unavailable" }, 503);
+    for (const email of emails ?? []) {
+      const matches = String(email.body ?? "").match(/https:\/\/[^\s]+\/p\/[A-Za-z0-9_-]{43}/g) ?? [];
+      const recovered = matches.find((candidate) => {
+        try {
+          const parsed = new URL(candidate);
+          const candidateToken = parsed.pathname.match(/^\/p\/([A-Za-z0-9_-]{43})$/)?.[1] ?? "";
+          return parsed.origin === base && hashPublicProposalToken(candidateToken) === activeHash;
+        } catch {
+          return false;
+        }
+      });
+      if (recovered) return noStore({ ok: true, url: recovered, reused: true }, 200);
+    }
+  }
+
+  const timestamp = new Date().toISOString();
+  const publicProposal = {
+    token_hash: hashPublicProposalToken(token),
+    published_at: typeof existing.published_at === "string" ? existing.published_at : timestamp,
+    ...(activeHash ? { rotated_at: timestamp } : {}),
+    revoked_at: null,
+  };
   const { error: updateError } = await auth.db.from("ds_proposals").update({ artifacts: { ...artifacts, public_proposal: publicProposal } }).eq("id", proposal.id);
   if (updateError) return noStore({ error: "storage_unavailable" }, 503);
 
-  const cfg = Object.fromEntries((settings.data ?? []).map((row) => [row.key, row.value]));
-  const requestOrigin = new URL(request.url).origin;
-  const configured = String(cfg.public_base_url ?? "").replace(/\/$/, "");
-  const base = configured || requestOrigin;
-  if (!/^https:\/\/[^/?#]+$/i.test(base)) return noStore({ error: "public_base_url_required" }, 409);
-  return noStore({ ok: true, url: new URL(`/p/${token}`, base).toString() }, 201);
+  return noStore({ ok: true, url: new URL(`/p/${token}`, base).toString(), rotated: Boolean(activeHash) }, 201);
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
