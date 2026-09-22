@@ -4,7 +4,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resendConfigurationError, resolveEmailRecipient } from "@/lib/email/provider";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
-import { buildFollowUpDraft, canScheduleFollowUp } from "@/lib/email/follow-up.js";
+import { buildFollowUpDraft, canScheduleFollowUp, isFollowUpDue } from "@/lib/email/follow-up.js";
+// @ts-expect-error helper is deliberately exercised by node:test without a build step.
+import { buildProspectorEmailDraft, publicProposalTokenFromUrl } from "@/lib/email/prospector.js";
+// @ts-expect-error helper is deliberately exercised by node:test without a build step.
+import { hashPublicProposalToken } from "@/lib/public-proposal.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { contractDocxFilename, contractDocxMime, renderContractDocx } from "@/lib/contracts/docx.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -169,11 +173,12 @@ async function followUp(db: Db, emailId: string) {
   if (parentError) return storageUnavailable();
   if (!parent) return out({ error: "email_not_found" }, 404);
   if (!canScheduleFollowUp(parent.status)) return out({ error: "follow_up_requires_sent_email" }, 409);
-  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("email_id", emailId).eq("status", "scheduled").limit(1).maybeSingle();
+  const config = await settings(db);
+  if (!isFollowUpDue(parent, new Date(), config.followup_days)) return out({ error: "follow_up_not_due" }, 409);
+  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("lead_slug", parent.lead_slug).limit(1).maybeSingle();
   if (openError) return storageUnavailable();
   if (open) return out({ ok: true, duplicate: true, follow_up: open, email_id: open.detail });
-  const config = await settings(db);
-  const draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days });
+  let draft; try { draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days }); } catch { return out({ error: "public_proposal_url_required" }, 409); }
   const row = { id: id("email"), lead_slug: parent.lead_slug, proposal_id: parent.proposal_id || null, sender: parent.sender || null, recipient: parent.recipient || null, reply_to: parent.reply_to || null, subject: draft.subject, body: draft.body, status: "draft", provider: "mock", attempt: 0 };
   const { data: email, error: insertError } = await db.from("ds_emails").insert(row).select().single();
   if (insertError) return storageUnavailable();
@@ -182,6 +187,30 @@ async function followUp(db: Db, emailId: string) {
   if (recordError) { await db.from("ds_emails").delete().eq("id", email.id); return storageUnavailable(); }
   await event(db, parent.lead_slug, "email.follow_up.scheduled", email.id);
   return out({ ok: true, duplicate: false, follow_up: record, email }, 201);
+}
+async function createProspectorEmailDraft(db: Db, body: Record<string, unknown>, requestUrl: string) {
+  const proposalId = String(body.proposal_id ?? "").trim();
+  const publicUrl = String(body.public_proposal_url ?? "").trim();
+  const token = publicProposalTokenFromUrl(publicUrl);
+  let url: URL; try { url = new URL(publicUrl); } catch { return out({ error: "public_proposal_url_required" }, 400); }
+  if (!proposalId || !token || url.origin !== new URL(requestUrl).origin) return out({ error: "public_proposal_url_required" }, 400);
+  const { data: proposal, error: proposalError } = await db.from("ds_proposals").select("id,lead_slug,artifacts").eq("id", proposalId).maybeSingle();
+  if (proposalError) return storageUnavailable();
+  const artifacts = proposal?.artifacts && typeof proposal.artifacts === "object" ? proposal.artifacts as Record<string, unknown> : null;
+  const publication = artifacts?.public_proposal && typeof artifacts.public_proposal === "object" ? artifacts.public_proposal as Record<string, unknown> : null;
+  if (!proposal || !publication || publication.revoked_at || publication.token_hash !== hashPublicProposalToken(token)) return out({ error: "public_proposal_not_available" }, 409);
+  const { data: lead, error: leadError } = await db.from("ds_leads").select("nome,empresa").eq("slug", proposal.lead_slug).is("deleted_at", null).maybeSingle();
+  const { data: diagnosis, error: diagnosisError } = await db.from("ds_site_diagnoses").select("criteria").eq("lead_slug", proposal.lead_slug).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (leadError || diagnosisError) return storageUnavailable();
+  const firstFact = Array.isArray(diagnosis?.criteria) ? diagnosis.criteria[0] : diagnosis?.criteria;
+  const diagnosisFact = typeof firstFact === "string" ? firstFact : String((firstFact as Record<string, unknown> | null)?.detail ?? (firstFact as Record<string, unknown> | null)?.value ?? "");
+  const config = await settings(db);
+  let draft; try { draft = buildProspectorEmailDraft({ leadName: lead?.nome, companyName: lead?.empresa || lead?.nome, diagnosisFact, publicProposalUrl: publicUrl, sellerName: config.seller_name }); } catch (error) { return out({ error: error instanceof Error ? error.message : "prospector_email_contract_invalid" }, 409); }
+  const row = { id: id("email"), lead_slug: proposal.lead_slug, proposal_id: proposal.id, subject: draft.subject, body: draft.body, template: draft.template, status: "draft", provider: "mock", attempt: 0 };
+  const { data: email, error: insertError } = await db.from("ds_emails").insert(row).select().single();
+  if (insertError) return storageUnavailable();
+  await event(db, proposal.lead_slug, "email.prospector.draft", email.id);
+  return out(email, 201);
 }
 const leadToUi = (l: Record<string, unknown>) => ({ ...l, siteAntigo: l.site_antigo, urlNova: l.url_nova, dataProposta: l.data_proposta, contratoStatus: l.contrato_status, contratoEm: l.contrato_em, docCliente: l.doc_cliente, endCliente: l.end_cliente });
 const uiToLead = (l: Record<string, unknown>) => {
@@ -531,6 +560,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const row = { id: id("prop"), lead_slug: body.lead_slug, product_id: body.product_id, base_price: base, negotiated_price: price, discount, margin: price - Number(product.cost), currency: "BRL", terms: String(body.terms || commercialSnapshot.specific_terms || "").trim(), valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(), version: 1, status: "draft", artifacts: { diagnosis_ids: Array.isArray(body.diagnosis_ids) ? body.diagnosis_ids : [], preview_ids: Array.isArray(body.preview_ids) ? body.preview_ids : [], social_audit_ids: Array.isArray(body.social_audit_ids) ? body.social_audit_ids : [], comparator: body.comparator === true, commercial_snapshot: commercialSnapshot } };
     const { error } = await db.from("ds_proposals").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "proposal.created", row.id); return out(row);
   }
+  if (root === "emails" && parts[1] === "prospector") return createProspectorEmailDraft(db, body, request.url);
   if (root === "emails" && parts[2] === "transition") { if (body.status === "sent_simulated") await hydrateEmailRecipient(db, parts[1]); return transitionEmail(db, parts[1], body.status, body.fixture); }
   if (root === "emails" && parts[2] === "follow-up") return followUp(db, parts[1]);
   if (root === "emails") { const row = { id: id("email"), lead_slug: body.lead_slug, proposal_id: body.proposal_id || null, subject: String(body.subject || "Proposta DattaSeller"), body: String(body.body || "Olá, segue a proposta para sua revisão."), status: "draft", provider: "mock", attempt: 0 }; const { error } = await db.from("ds_emails").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "email.draft", row.id); return out(row); }
