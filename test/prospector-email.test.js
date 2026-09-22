@@ -8,10 +8,16 @@ test("DS-VALUE-08 cria rascunho Datta360° limpo, revisável e com um único lin
   const draft = buildProspectorEmailDraft({ leadName: "Ana", companyName: "Empresa", diagnosisFact: "CTA principal não foi localizado na página inicial.", publicProposalUrl: link, sellerName: "João" });
   const count = draft.body.trim().split(/\s+/).length;
   assert.equal(draft.status, "draft");
+  assert.ok(draft.subject.length <= 60);
   assert.ok(count >= 120 && count <= 180);
   assert.equal((draft.body.match(/https:\/\//g) ?? []).length, 1);
   assert.doesNotMatch(draft.body, /preço|valor|r\$|desconto|cupom|promoção/i);
   assert.equal(publicProposalTokenFromUrl(link).length, 43);
+});
+
+test("assunto do rascunho não excede sessenta caracteres", () => {
+  const draft = buildProspectorEmailDraft({ leadName: "Ana", companyName: "Empresa com nome deliberadamente muito longo para a regra", diagnosisFact: "CTA ausente.", publicProposalUrl: link });
+  assert.ok(draft.subject.length <= 60);
 });
 
 test("gerador recusa contexto ou URL de capability incompletos", () => {
