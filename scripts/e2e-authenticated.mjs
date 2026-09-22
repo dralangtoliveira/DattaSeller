@@ -2,7 +2,7 @@
 // Uso: DS_E2E_CONFIRM=yes DS_E2E_BASE_URL=... DS_E2E_EMAIL=... DS_E2E_PASSWORD=... \
 //      NEXT_PUBLIC_SUPABASE_URL=... DS_E2E_EXPECTED_SUPABASE_REF=... \
 //      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=... DS_E2E_EMAIL_TO=... \
-//      [DS_E2E_RUN_ID=<id>] node scripts/e2e-authenticated.mjs
+//      [DS_E2E_RUN_ID=<id>] node scripts/e2e-authenticated.mjs [--preflight]
 //
 // O script cria dados controlados de teste (um lead E2E, uma proposta, um pedido
 // e um e-mail). Ele nunca apaga nada: a linha web não expõe reset de dados.
@@ -15,6 +15,7 @@ import { E2E_STEPS, e2eHeaders, e2eLeadSlug, e2eProspectCandidate, e2eRunId, sum
 import { formatGuardReport, guardE2eTarget } from "../lib/e2e/target-guard.js";
 
 const env = process.env;
+const preflightOnly = process.argv.includes("--preflight");
 const check = validateEnv(env);
 if (!check.ok) {
   console.error("E2E abortado: ambiente incompleto. Nada foi executado.");
@@ -28,6 +29,11 @@ for (const line of formatGuardReport(isolation)) console.error(`  ${line}`);
 if (!isolation.ok) {
   console.error("E2E abortado: alvo não isolado de Production. Nada foi executado.");
   process.exit(4);
+}
+
+if (preflightOnly) {
+  console.log("E2E preflight aprovado: ambiente e alvo isolado validados. Nada foi executado.");
+  process.exit(0);
 }
 
 const base = String(env.DS_E2E_BASE_URL).replace(/\/+$/, "");
@@ -120,13 +126,10 @@ if (state.previewId) {
   state.publicPrice = proposal.json?.base_price ?? null;
   record("proposal", proposal.status === 200 && state.proposalId ? "pass" : "fail", `proposta=${state.proposalId ?? "-"}`);
   if (state.proposalId) {
-    const above = await call("PUT", `/api/proposals/${state.proposalId}`, { negotiated_price: Number(state.publicPrice ?? 1500) + 100 });
-    if (above.status !== 400 || above.json?.error !== "negotiated_price_above_public_price") record("negotiation", "fail", `preço acima do público devolveu HTTP ${above.status} ${above.text.slice(0, 120)}`);
-    else {
-      const negotiated = await call("PUT", `/api/proposals/${state.proposalId}`, { negotiated_price: Number(state.publicPrice ?? 1500) - 100, valid_days: 7 });
-      state.negotiatedProposalId = negotiated.json?.id ?? null;
-      record("negotiation", negotiated.status === 200 ? "pass" : "fail", `preço acima recusado; revisão=${state.negotiatedProposalId ?? "-"}`);
-    }
+    // O E2E não cria preço, desconto ou prazo por suposição. A proposta nasce do
+    // snapshot comercial aprovado; qualquer renegociação exige decisão humana
+    // fora deste runner. A regra de teto de preço é coberta por testes unitários.
+    record("negotiation", "skip", "snapshot comercial preservado; sem renegociação automática");
     const cover = await call("GET", `/api/proposals/${state.proposalId}/cover`);
     record("cover", cover.status === 200 ? "pass" : "fail", `HTTP ${cover.status}`);
   } else record("negotiation", "skip", "sem proposta");

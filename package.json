@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "brain:sync": "node scripts/sync-dattabrain-supervisor.mjs",
+    "e2e:preflight": "node scripts/e2e-authenticated.mjs --preflight",
     "e2e:authenticated": "node scripts/e2e-authenticated.mjs",
     "discovery:real": "node scripts/discovery-smoke.mjs",
     "discovery:e2e": "node scripts/discovery-e2e-local.mjs",
