@@ -2,6 +2,14 @@
   "version": "2026-09-19",
   "product": "DattaSeller",
   "product_ready": false,
+  "canonical_integration": {
+    "branch": "hardening/phase-a-containment-clean",
+    "pull_request": 24,
+    "merge_commit": "160dee2ef4bcdcbe8b991cac073a36f7e318952e",
+    "merged_at": "2026-09-22T17:55:25Z",
+    "verified_head": "6ef19072d123ce7681547a2c56159fabad670dad",
+    "verification": "PR #24 CLEAN; CI verify (2), Vercel e Vercel Preview Comments SUCCESS; suíte local 257/257 e secret scan 300 arquivos sem credencial de alta confiança."
+  },
   "allowed_status": [
     "MISSING",
     "PARTIAL",

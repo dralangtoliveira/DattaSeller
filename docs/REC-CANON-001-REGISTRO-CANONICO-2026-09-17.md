@@ -555,3 +555,16 @@ componente · cards afetados · responsável · evidência · condição de revi
 | dados reais | a tela renderizou dados de Production (3 leads em andamento, 1 proposta registrada, badges Pipeline 3 / Clientes 3 / Sites 1 / Comparador 1, timeline com `proposal.created` e comparador com o lead real) — prova adicional de que o ambiente servido é o de produção |
 | artefato | `public/dashboard.html` com **uma** definição de `nav()` (sem `nav=function`), `NAV_CANONICO` de 13 itens, `Contratos` presente, sem resíduo de POC (`modo arquivo`, `operação comercial local`, `Baseado no Prospector`) |
 | evidência | `prod-01-antes-sync.png`, `prod-02-depois-sync.png`, `prod-03-views.png` na pasta de visualizações da sessão |
+
+## D-034 — Integração canônica da PR #24: proposta pública segura e fluxo Prospector
+
+| Campo | Valor |
+| --- | --- |
+| data | 2026-09-22 |
+| assunto | integração da PR #24 na branch canônica e classificação da PR #23 |
+| decisão | A PR #24 foi integrada em `hardening/phase-a-containment-clean` pelo merge commit `160dee2ef4bcdcbe8b991cac073a36f7e318952e`. O HEAD verificado imediatamente antes do merge foi `6ef19072d123ce7681547a2c56159fabad670dad`. A PR #23 não possui conteúdo exclusivo: sua ponta `2b99011` é ancestral da #24; o GitHub a classificou como `MERGED` quando a cadeia foi integrada. |
+| motivo | consolidar a publicação pública hash-only, o rascunho Prospector, o follow-up fail-closed, o snapshot comercial canônico e os hardenings sem elevar gates sem prova HML. |
+| fonte | GitHub PR #24/#23, `git merge-base --is-ancestor origin/codex/ds-value-05-06-social-agent origin/codex/ds-proposal-email-clean` (exit 0), checkout canônico pós-merge. |
+| componente | Git / proposta pública / e-mail / gates de valor |
+| evidência | PR #24 `CLEAN`; `verify` CI (2), Vercel e Vercel Preview Comments `SUCCESS` no HEAD `6ef1907`; pós-checkout canônico: 257/257 testes, varredura de segredos em 300 arquivos aprovada e `git diff --check` limpo. |
+| condição de revisão | DS-VALUE-07 e DS-VALUE-08 permanecem `PARTIAL` até evidência HML reproduzível do fluxo completo, incluindo revisão/aprovação humana, provider real, entrega e follow-up com a mesma capability. |
