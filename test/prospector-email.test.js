@@ -9,6 +9,9 @@ test("DS-VALUE-08 cria rascunho Datta360° limpo, revisável e com um único lin
   const count = draft.body.trim().split(/\s+/).length;
   assert.equal(draft.status, "draft");
   assert.ok(draft.subject.length <= 60);
+  assert.match(draft.subject, /\?$/);
+  assert.match(draft.body.split("\n")[0], /CTA principal/);
+  assert.match(draft.body, /demonstração preparada/);
   assert.ok(count >= 120 && count <= 180);
   assert.equal((draft.body.match(/https:\/\//g) ?? []).length, 1);
   assert.doesNotMatch(draft.body, /preço|valor|r\$|desconto|cupom|promoção/i);
