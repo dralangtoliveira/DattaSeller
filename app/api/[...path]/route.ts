@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resendConfigurationError, resolveEmailRecipient } from "@/lib/email/provider";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
-import { buildFollowUpDraft, canScheduleFollowUp } from "@/lib/email/follow-up.js";
+import { buildFollowUpDraft, canScheduleFollowUp, isFollowUpDue } from "@/lib/email/follow-up.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { contractDocxFilename, contractDocxMime, renderContractDocx } from "@/lib/contracts/docx.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -36,6 +36,8 @@ import { renderProspectorComparator } from "@/lib/prospector-comparator.js";
 import { renderProspectorProposalCover } from "@/lib/prospector-proposal-cover.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { renderProspectorRedesign } from "@/lib/prospector-redesign.js";
+// @ts-expect-error Central Datta360 commercial catalog is plain JS.
+import { buildCommercialSnapshot } from "@/lib/commercial/datta360-catalog.js";
 
 export const runtime = "nodejs";
 // A descoberta consulta fontes públicas reais (Nominatim + Overpass) e precisa
@@ -48,6 +50,19 @@ type SavedQualification = Qualification & { id: string; lead_slug: string };
 const tables: Record<string, string> = { proposals: "ds_proposals", emails: "ds_emails", orders: "ds_orders", checkouts: "ds_checkouts", payments: "ds_payments", contracts: "ds_contracts", handoffs: "ds_handoffs", commissions: "ds_commissions", qualifications: "ds_qualifications", diagnoses: "ds_site_diagnoses", "social-audits": "ds_social_audits", previews: "ds_previews", timeline: "ds_timeline" };
 const id = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 const now = () => new Date().toISOString();
+const proposalArtifactIds = (value: unknown) => Array.isArray(value) && value.every((item) => typeof item === "string" && /^[A-Za-z0-9_-]{3,64}$/.test(item)) ? value as string[] : null;
+
+async function proposalArtifactsBelongToLead(db: Db, leadSlug: string, refs: { preview_ids: string[]; diagnosis_ids: string[]; social_audit_ids: string[] }) {
+  if (!isSafeLeadSlug(leadSlug)) return { ok: false as const };
+  const [lead, previews, diagnoses, social] = await Promise.all([
+    db.from("ds_leads").select("slug").eq("slug", leadSlug).is("deleted_at", null).maybeSingle(),
+    db.from("ds_previews").select("id").eq("lead_slug", leadSlug).in("id", refs.preview_ids),
+    db.from("ds_site_diagnoses").select("id").eq("lead_slug", leadSlug).in("id", refs.diagnosis_ids),
+    db.from("ds_social_audits").select("id").eq("lead_slug", leadSlug).in("id", refs.social_audit_ids),
+  ]);
+  if (lead.error || previews.error || diagnoses.error || social.error) return { error: true as const };
+  return { ok: Boolean(lead.data) && (previews.data?.length ?? 0) === refs.preview_ids.length && (diagnoses.data?.length ?? 0) === refs.diagnosis_ids.length && (social.data?.length ?? 0) === refs.social_audit_ids.length };
+}
 
 // Executor de redesign em modo inline (dev/local). Em produção o CRM delega para
 // o DattaSeller Worker Agent (DATTASELLER_WORKER_URL) e não mantém requisição longa.
@@ -167,11 +182,14 @@ async function followUp(db: Db, emailId: string) {
   if (parentError) return storageUnavailable();
   if (!parent) return out({ error: "email_not_found" }, 404);
   if (!canScheduleFollowUp(parent.status)) return out({ error: "follow_up_requires_sent_email" }, 409);
-  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("email_id", emailId).eq("status", "scheduled").limit(1).maybeSingle();
+  const config = await settings(db);
+  if (!isFollowUpDue(parent, new Date(), config.followup_days)) return out({ error: "follow_up_not_due" }, 409);
+  const { data: open, error: openError } = await db.from("ds_followups").select("*").eq("lead_slug", parent.lead_slug).limit(1).maybeSingle();
   if (openError) return storageUnavailable();
   if (open) return out({ ok: true, duplicate: true, follow_up: open, email_id: open.detail });
-  const config = await settings(db);
-  const draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days });
+  let draft;
+  try { draft = buildFollowUpDraft(parent, { sellerName: config.seller_name, days: config.followup_days }); }
+  catch { return out({ error: "public_proposal_url_required" }, 409); }
   const row = { id: id("email"), lead_slug: parent.lead_slug, proposal_id: parent.proposal_id || null, sender: parent.sender || null, recipient: parent.recipient || null, reply_to: parent.reply_to || null, subject: draft.subject, body: draft.body, status: "draft", provider: "mock", attempt: 0 };
   const { data: email, error: insertError } = await db.from("ds_emails").insert(row).select().single();
   if (insertError) return storageUnavailable();
@@ -522,13 +540,45 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   }
   if (root === "prospects") { const q = body.query ?? {}, candidates = (Array.isArray(body.candidates) ? body.candidates.slice(0, 25) : []) as Record<string, unknown>[], product = String(q.product ?? "").trim(); const radius = Number(q.search_radius_km ?? 0), target = Number(q.target_quantity ?? 0), limit = Number(q.search_limit ?? 0), prepared: { candidate: Record<string, unknown>; qualification: NormalizedQualification }[] = candidates.map((candidate: Record<string, unknown>) => ({ candidate, qualification: normalizeQualification(candidate.qualification) as NormalizedQualification })); if (!String(q.niche ?? "").trim() || !String(q.city ?? q.region ?? "").trim() || !candidates.length) return out({ error: "nicho, cidade/região e candidatos públicos são obrigatórios" }, 400); if ((product && !["datta360","dattavps","both"].includes(product)) || radius < 0 || radius > 500 || target < 0 || target > 100 || limit < 0 || limit > 25) return out({ error: "parâmetros de prospecção inválidos" }, 400); const invalidQualification = prepared.find((entry: { qualification: NormalizedQualification }) => entry.qualification.error); if (invalidQualification) return out({ error: invalidQualification.qualification.error }, 400); const results = []; for (const { candidate: c, qualification } of prepared) { const result = await saveProspect(db, { ...c, nicho: c.nicho || q.niche, cidade: c.cidade || q.city, region: c.region || q.region, product_suggested: c.product_suggested || qualification.value?.recommendation || product, search_radius_km: c.search_radius_km ?? (radius || null), target_quantity: c.target_quantity ?? (target || null), search_limit: c.search_limit ?? (limit || null), source: c.source || "public_search", source_checked_at: c.source_checked_at || now() }, false) as Record<string, unknown>; if (result.error) return storageUnavailable(); if (qualification.value) { const qualificationResult = await saveQualification(db, String(result.lead), qualification.value); if ("error" in qualificationResult) return storageUnavailable(); result.qualification_id = qualificationResult.id; } results.push(result); } return out({ evaluated: candidates.length, results }); }
   if (root === "proposals") {
-    const { data: product } = await db.from("ds_products").select("*").eq("id", body.product_id).eq("active", true).maybeSingle(); if (!product) return out({ error: "Produto não disponível" }, 400);
-    const base = Number(product.base_price), price = body.negotiated_price == null || body.negotiated_price === "" ? base : Number(body.negotiated_price), discount = base - price;
-    const priceError = negotiatedPriceError({ publicPrice: product.public_price, basePrice: base, negotiatedPrice: price, maxDiscountPct: product.max_discount_pct });
-    if (priceError === "negotiated_price_not_positive" || priceError === "discount_above_max") return out({ error: "Preço inválido ou desconto acima do máximo" }, 400);
-    if (priceError) return out({ error: priceError }, 400);
-    const row = { id: id("prop"), lead_slug: body.lead_slug, product_id: body.product_id, base_price: base, negotiated_price: price, discount, margin: price - Number(product.cost), currency: product.currency, terms: String(body.terms || product.terms || "").trim(), valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(), version: 1, status: "draft", artifacts: { diagnosis_ids: Array.isArray(body.diagnosis_ids) ? body.diagnosis_ids : [], preview_ids: Array.isArray(body.preview_ids) ? body.preview_ids : [], social_audit_ids: Array.isArray(body.social_audit_ids) ? body.social_audit_ids : [], comparator: body.comparator === true } };
-    const { error } = await db.from("ds_proposals").insert(row); if (error) return storageUnavailable(); await event(db, row.lead_slug, "proposal.created", row.id); return out(row);
+    let commercialSnapshot;
+    try {
+      commercialSnapshot = buildCommercialSnapshot({
+        sku: body.commercial_sku,
+        negotiatedPrice: body.negotiated_price == null || body.negotiated_price === "" ? undefined : Number(body.negotiated_price),
+        specificTerms: body.specific_terms,
+        commercialOverrideConfirmed: body.commercial_override_confirmed === true,
+      });
+    } catch (error) {
+      return out({ error: error instanceof Error ? error.message : "proposal_commercial_snapshot_incomplete" }, 400);
+    }
+    const { data: product } = await db.from("ds_products").select("*").eq("id", body.product_id).eq("active", true).maybeSingle();
+    if (!product) return out({ error: "Produto não disponível" }, 400);
+    const diagnosisIds = proposalArtifactIds(body.diagnosis_ids), previewIds = proposalArtifactIds(body.preview_ids), socialAuditIds = proposalArtifactIds(body.social_audit_ids);
+    if (!diagnosisIds || !previewIds || !socialAuditIds) return out({ error: "proposal_artifact_ids_invalid" }, 400);
+    const refs = { diagnosis_ids: diagnosisIds, preview_ids: previewIds, social_audit_ids: socialAuditIds };
+    const bound = await proposalArtifactsBelongToLead(db, String(body.lead_slug ?? ""), refs);
+    if ("error" in bound) return storageUnavailable();
+    if (!bound.ok) return out({ error: "proposal_artifacts_cross_lead" }, 409);
+    const base = Number(commercialSnapshot.list_price), price = Number(commercialSnapshot.negotiated_price), discount = base - price;
+    const row = {
+      id: id("prop"),
+      lead_slug: body.lead_slug,
+      product_id: body.product_id,
+      base_price: base,
+      negotiated_price: price,
+      discount,
+      margin: price - Number(product.cost),
+      currency: "BRL",
+      terms: String(body.terms || commercialSnapshot.specific_terms || "").trim(),
+      valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(),
+      version: 1,
+      status: "draft",
+      artifacts: { ...refs, comparator: body.comparator === true, commercial_snapshot: commercialSnapshot },
+    };
+    const { error } = await db.from("ds_proposals").insert(row);
+    if (error) return storageUnavailable();
+    await event(db, row.lead_slug, "proposal.created", row.id);
+    return out(row);
   }
   if (root === "emails" && parts[2] === "transition") { if (body.status === "sent_simulated") await hydrateEmailRecipient(db, parts[1]); return transitionEmail(db, parts[1], body.status, body.fixture); }
   if (root === "emails" && parts[2] === "follow-up") return followUp(db, parts[1]);
@@ -549,7 +599,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
 export async function PUT(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const auth = await context(); if (!auth) return out({ error: "unauthorized" }, 401); const { db } = auth; const parts = (await params).path; const body = await request.json().catch(() => ({}));
   if (parts[0] === "leads" && parts[1]) { if (!isSafeLeadSlug(parts[1])) return out({ error: "invalid_lead_slug" }, 400); const disallowed = firstDisallowedKey(body, LEAD_INPUT_KEYS); if (disallowed) return out({ error: "lead_field_not_allowed" }, 400); const row = uiToLead(body); delete row.slug; if (row.status === "fechado") { const value = Number(row.valor_fechado ?? row.valor); if (body.closingConfirmed !== true || value <= 0) return out({ error: "Fechamento exige confirmação explícita e valor_fechado positivo." }, 400); row.valor = value; row.valor_fechado = value; row.closing_confirmed_at = now(); } row.updated_at = now(); const { error } = await db.from("ds_leads").update(row).eq("slug", parts[1]).is("deleted_at", null); return error ? storageUnavailable() : out({ ok: true }); }
-  if (parts[0] === "settings") { const allowed = new Set(["company_name","seller_name","signature","phone","whatsapp","region","identity","language","demo_mode","limits","email_provider","email_sender","email_reply_to","spf_status","dkim_status","dmarc_status","hour_limit","day_limit","followup_days"]); const rows = Object.entries(body).filter(([key]) => allowed.has(key) && !/(secret|key|password)/i.test(key)).map(([key, value]) => ({ key, value, updated_at: now() })); if (rows.length) await db.from("ds_settings").upsert(rows); return out(await settings(db)); }
+  if (parts[0] === "settings") { const allowed = new Set(["company_name","seller_name","signature","phone","whatsapp","region","identity","language","demo_mode","limits","email_provider","email_sender","email_reply_to","spf_status","dkim_status","dmarc_status","hour_limit","day_limit","followup_days","public_base_url"]); const rows = Object.entries(body).filter(([key]) => allowed.has(key) && !/(secret|key|password)/i.test(key)).map(([key, value]) => ({ key, value, updated_at: now() })); if (rows.length) await db.from("ds_settings").upsert(rows); return out(await settings(db)); }
   if (parts[0] === "products" && parts[1]) { const allowed = ["name","billing","public_price","base_price","cost","commission_pct","max_discount_pct","currency","active","terms","description","checkout_url","cta_label","availability"]; const row = Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key))); row.updated_at = now(); const { data, error } = await db.from("ds_products").update(row).eq("id", parts[1]).select().single(); return error ? storageUnavailable() : out(data); }
   if (parts[0] === "emails" && parts[1]) { if (!String(body.subject || "").trim() || !String(body.body || "").trim()) return out({ error: "Assunto e corpo são obrigatórios" }, 400); const { data: current } = await db.from("ds_emails").select("*").eq("id", parts[1]).single(); if (!current || !["draft","reviewed","failed"].includes(current.status)) return out({ error: "Somente rascunhos, e-mails em revisão ou envios que falharam podem ser editados" }, 400); const patch: Record<string, unknown> = { subject: body.subject.trim(), body: body.body.trim(), updated_at: now() }; if (current.status === "failed") { patch.status = "draft"; patch.error = null; } const { data } = await db.from("ds_emails").update(patch).eq("id", parts[1]).select().single(); await event(db, current.lead_slug, "email.edited", current.id); return out(data); }
   if (parts[0] === "proposals" && parts[1]) { const { data: p } = await db.from("ds_proposals").select("*,ds_products(cost,max_discount_pct,public_price)").eq("id", parts[1]).single(); if (!p) return out({ error: "Proposta não encontrada" }, 404); const price = Number(body.negotiated_price ?? p.negotiated_price), discount = Number(p.base_price) - price, product = p.ds_products as unknown as { cost: number; max_discount_pct: number; public_price: number }; const priceError = negotiatedPriceError({ publicPrice: product.public_price, basePrice: p.base_price, negotiatedPrice: price, maxDiscountPct: product.max_discount_pct }); if (priceError === "negotiated_price_not_positive" || priceError === "discount_above_max") return out({ error: "Preço inválido ou desconto acima do máximo" }, 400); if (priceError) return out({ error: priceError }, 400); await db.from("ds_proposals").update({ status: "revised" }).eq("id", p.id); const row = { ...p, ds_products: undefined, id: id("prop"), negotiated_price: price, discount, margin: price - Number(product.cost), terms: body.terms ?? p.terms, valid_until: new Date(Date.now() + Number(body.valid_days || 7) * 86400000).toISOString(), version: Number(p.version) + 1, status: "draft", created_at: now() }; await db.from("ds_proposals").insert(row); await event(db, p.lead_slug, "proposal.revised", row.id); return out(row); }

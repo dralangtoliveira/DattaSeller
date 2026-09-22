@@ -215,6 +215,39 @@ const patch = String.raw`
       .replace('Pedidos, checkout, pagamento e handoff','Pedidos e integrações');
   };
 
+  // Publicação e rascunho são encadeados: a capability nasce no servidor,
+  // a proposta guarda somente o hash e o URL em claro permanece no rascunho.
+  dsEmail=function(proposalId){
+    return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/public',{method:'POST'})
+      .then(function(publication){
+        if(!publication||!publication.url) throw new Error('Link público não foi emitido.');
+        return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/prospector-draft',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({public_proposal_url:publication.url})
+        });
+      })
+      .then(function(){return dsLoad()})
+      .catch(function(error){alert(error.message||'Não foi possível criar o rascunho Prospector.')});
+  };
+  window.dsPublicProposal=function(proposalId){
+    return apiJson('/api/proposals/'+encodeURIComponent(proposalId)+'/public',{method:'POST'})
+      .then(function(publication){if(publication&&publication.url)window.open(publication.url,'_blank','noopener');return dsLoad()})
+      .catch(function(error){alert(error.message||'Não foi possível publicar a proposta.')});
+  };
+
+  var oldProposalEditor=vProposalEditor;
+  vProposalEditor=function(){
+    var result=oldProposalEditor(), proposal=(DS.proposals||[]).filter(function(x){return x.id===dsProposalEditId})[0];
+    if(!result||!proposal)return result;
+    var publication=proposal.artifacts&&proposal.artifacts.public_proposal;
+    var active=publication&&typeof publication.token_hash==='string'&&!publication.revoked_at;
+    var existing=(DS.emails||[]).filter(function(x){return x.proposal_id===proposal.id&&/https:\/\/[^\\s]+\/p\/[A-Za-z0-9_-]{43}/.test(x.body||'')})[0];
+    var url=existing?(existing.body.match(/https:\/\/[^\\s]+\/p\/[A-Za-z0-9_-]{43}/)||[])[0]:'';
+    var action=url?'<p><a href="'+esc(url)+'" target="_blank" rel="noopener">Abrir proposta pública ↗</a></p>':active?'<p><small>Proposta pública ativa. O token não é armazenado em claro; o link permanece no rascunho Prospector.</small></p>':'<p><button onclick="dsPublicProposal(\''+esc(proposal.id)+'\')">Publicar proposta</button></p>';
+    return result.replace('</div>',action+'</div>');
+  };
+
   var oldFinance=vFinanceiroLocal;
   vFinanceiroLocal=function(){
     return '<div class="prod-alert">Indicadores operacionais do CRM. Pagamentos só são definitivos quando confirmados pelo gateway integrado.</div>'+oldFinance();
@@ -227,6 +260,18 @@ const patch = String.raw`
       .replace(/MODO (DEMO|LOCAL)/g,'')
       .replace(/<div><label>Modo<\/label><select id="set-demo">[\s\S]*?<\/select><\/div>/,'')
       .replace('Provider real, senha, token e chave não são armazenados nesta POC; o adapter mock é o único provider local disponível.','A chave do Resend permanece somente no servidor. O envio real exige revisão, aprovação e confirmação humana.');
+  };
+
+  var configuredGeneralSettings=vGeneralSettings;
+  vGeneralSettings=function(){
+    var result=configuredGeneralSettings(), value=esc((DS.settings||{}).public_base_url||'');
+    if(!/<\/div>$/.test(result)) return result;
+    return result.replace(/<\/div>$/,'<div class="mrow"><div><label>URL pública das propostas</label><input id="set-public-base-url" type="url" inputmode="url" placeholder="https://hml.exemplo.com" value="'+value+'"></div><div style="align-self:end"><button onclick="dsSavePublicBaseUrl()">Salvar URL pública</button></div></div><p style="font-size:12px;color:var(--muted)">Use somente a origem HTTPS do ambiente atual, sem caminho. Esta URL é usada nos rascunhos; o envio continua sujeito à aprovação humana.</p></div>');
+  };
+  window.dsSavePublicBaseUrl=function(){
+    var input=document.getElementById('set-public-base-url'), value=input?input.value.trim():'';
+    if(value&&!/^https:\/\/[^/?#]+$/i.test(value)){alert('Informe apenas uma origem HTTPS, sem caminho.');return}
+    apiJson('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_base_url:value})}).then(dsLoad).catch(function(error){alert(error&&error.message?error.message:'Não foi possível salvar a URL pública.')});
   };
 
   var oldOffer=vOfferRules;
