@@ -37,7 +37,7 @@ async function proposalForPublication(db: Awaited<ReturnType<typeof createSupaba
   return { proposal: data, artifacts };
 }
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await adminContext();
   if (!auth) return noStore({ error: "unauthorized" }, 401);
   const loaded = await proposalForPublication(auth.db, (await params).id);
@@ -48,7 +48,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const publicProposal = { token_hash: hashPublicProposalToken(token), published_at: new Date().toISOString(), revoked_at: null };
   const { error } = await auth.db.from("ds_proposals").update({ artifacts: { ...loaded.artifacts, public_proposal: publicProposal } }).eq("id", loaded.proposal.id);
   if (error) return noStore({ error: "storage_unavailable" }, 503);
-  return noStore({ ok: true, url: `/p/${token}` }, 201);
+  return noStore({ ok: true, url: new URL(`/p/${token}`, request.url).toString() }, 201);
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -42,6 +42,7 @@ test("rotas pública e administrativa exigem hash, administrador e vínculo do m
   assert.match(publicRoute, /Content-Security-Policy/);
   assert.match(adminRoute, /createPublicProposalToken/);
   assert.match(adminRoute, /hashPublicProposalToken/);
+  assert.match(adminRoute, /new URL\(`\/p\/\$\{token\}`, request\.url\)\.toString\(\)/);
   assert.match(adminRoute, /proposal_artifacts_cross_lead/);
   assert.match(adminRoute, /adminContext/);
   assert.match(proxy, /path\.startsWith\("\/p\/"\)/);
