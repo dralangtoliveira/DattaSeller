@@ -18,11 +18,15 @@ test("sanitização pública elimina execução, navegação e recursos externos
 });
 
 test("capa pública não incorpora site externo, não expõe contato e isola o preview", () => {
-  const html = renderProspectorProposalCover({ clientName: "Empresa", oldUrl: "https://cliente.example/", previewHtml: '<h1>Preview</h1><script>alert(1)</script>', diagnosisCriteria: ["CTA observado"], socialAudits: [{ platform: "instagram", username: "empresa", factual_notes: "Bio pública" }], publicMode: true, whatsapp: "5511999999999" });
-  assert.match(html, /Condições comerciais dependem de validação/);
+  const commercialSnapshot = { schema_version: 1, tenant: "datta360", brand_name: "Datta360°", catalog_version: "2026-09-21", sku: "datta360", service_name: "Diagnóstico + Redesign", scope: "Diagnóstico factual e preview visual", currency: "BRL", list_price: 1500, negotiated_price: 1500, recurrence: "one_time", delivery_days: 7, payment_terms: { deposit_pct: 50, delivery_pct: 50 }, installments: null, specific_terms: "Sujeito a revisão humana", captured_at: "2026-09-21T00:00:00.000Z" };
+  const html = renderProspectorProposalCover({ clientName: "Empresa", oldUrl: "https://cliente.example/", previewHtml: '<h1>Preview</h1><script>alert(1)</script>', diagnosisCriteria: ["CTA observado"], socialAudits: [{ platform: "instagram", username: "empresa", factual_notes: "Bio pública" }], publicMode: true, commercialSnapshot, whatsapp: "5511999999999" });
+  assert.match(html, /Proposta Datta360°/);
   assert.match(html, /sandbox=""/);
   assert.match(html, /Diagnóstico factual/);
   assert.match(html, /Direção social/);
+  assert.match(html, /R\$/);
+  assert.match(html, /50%/);
+  assert.doesNotMatch(html, /DattaSeller|US\$/i);
   assert.doesNotMatch(html, /wa\.me|WhatsApp|https:\/\/cliente\.example/i);
 });
 

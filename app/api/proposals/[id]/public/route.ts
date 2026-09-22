@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 // @ts-expect-error Plain JS helper is covered by node:test.
 import { createPublicProposalToken, hashPublicProposalToken } from "@/lib/public-proposal.js";
+// @ts-expect-error Plain JS commercial contract is covered by node:test.
+import { validateCommercialSnapshot } from "@/lib/commercial/datta360-catalog.js";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,7 @@ async function proposalForPublication(db: Awaited<ReturnType<typeof createSupaba
   if (error) return { error: "storage_unavailable" as const };
   if (!data) return { error: "proposal_not_found" as const };
   const artifacts = artifactObject(data.artifacts);
+  if (!validateCommercialSnapshot(artifacts.commercial_snapshot)) return { error: "proposal_commercial_snapshot_incomplete" as const };
   const previewIds = Array.isArray(artifacts.preview_ids) ? artifacts.preview_ids.filter((item): item is string => typeof item === "string") : [];
   const diagnosisIds = Array.isArray(artifacts.diagnosis_ids) ? artifacts.diagnosis_ids.filter((item): item is string => typeof item === "string") : [];
   const socialIds = Array.isArray(artifacts.social_audit_ids) ? artifacts.social_audit_ids.filter((item): item is string => typeof item === "string") : [];
