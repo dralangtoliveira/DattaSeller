@@ -81,3 +81,13 @@ test("a criação de proposta não persiste capability em claro", () => {
   assert.doesNotMatch(proposalSection, /public_token/);
   assert.match(proposalSection, /commercial_snapshot/);
 });
+
+
+test("publicação hash-only é recuperável sem persistir token em claro", () => {
+  const route = readFileSync(new URL("../app/api/proposals/[id]/public/route.ts", import.meta.url), "utf8");
+  assert.match(route, /activeHash/);
+  assert.match(route, /ds_emails/);
+  assert.match(route, /hashPublicProposalToken\(candidateToken\) === activeHash/);
+  assert.match(route, /rotated_at/);
+  assert.doesNotMatch(route, /public_token/);
+});
