@@ -34,6 +34,15 @@ O comando valida os campos, a confirmação explícita e a guarda de isolamento
 antes de qualquer chamada de rede. Em sucesso, encerra sem autenticar, criar
 dados ou enviar e-mail.
 
+Essa guarda examina as variáveis **locais declaradas pelo operador**. Ela não
+consegue ler as variáveis efetivas do deployment Vercel. Antes de executar o
+comando, confirme no deployment e nas configurações Preview que a branch e o
+commit testados usam o mesmo ref Supabase HML de
+`DS_E2E_EXPECTED_SUPABASE_REF`, sem herdar a URL/chave de Production. Se esse
+binding não estiver comprovado, não execute o preflight nem o runner completo.
+Em 2026-09-22 o Preview da branch canônica ainda herdava a URL de Production;
+ver Registro Canônico D-035.
+
 ## Execução
 
 ```bash
