@@ -26,6 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!publication || typeof publication.token_hash !== "string" || publication.revoked_at) return Response.json({ error: "public_proposal_required" }, { status: 409 });
   const snapshot = artifacts.commercial_snapshot && typeof artifacts.commercial_snapshot === "object" ? artifacts.commercial_snapshot as Record<string, unknown> : null;
   if (!validateCommercialSnapshot(snapshot)) return Response.json({ error: "proposal_commercial_snapshot_incomplete" }, { status: 409 });
+  const commercial = snapshot as Record<string, unknown>;
   const previewIds = ids(artifacts.preview_ids), diagnosisIds = ids(artifacts.diagnosis_ids), socialIds = ids(artifacts.social_audit_ids);
   const [leadResult, previewResult, diagnosisResult, socialResult, settingsResult] = await Promise.all([
     db.from("ds_leads").select("nome,email,nota,avaliacoes,site_antigo").eq("slug", proposal.lead_slug).is("deleted_at", null).maybeSingle(),
@@ -45,7 +46,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try { parsed = new URL(publicUrl); } catch { return Response.json({ error: "public_proposal_url_required" }, { status: 400 }); }
   const token = parsed.pathname.match(/^\/p\/([A-Za-z0-9_-]{43})$/)?.[1] ?? "";
   if (parsed.origin !== base || !isPublicProposalToken(token) || publication.token_hash !== hashPublicProposalToken(token)) return Response.json({ error: "public_proposal_not_available" }, { status: 409 });
-  const readiness = publicProposalReadiness({ token, previewIds, diagnosisIds, socialIds, price: snapshot.negotiated_price, currency: snapshot.currency, terms: proposal.terms || snapshot.specific_terms, validUntil: proposal.valid_until, oldUrl: lead.site_antigo, previewFound: Boolean(previewResult.data), diagnosesFound: (diagnosisResult.data ?? []).length === diagnosisIds.length, socialFound: (socialResult.data ?? []).length === socialIds.length, commercialSnapshot: snapshot });
+  const readiness = publicProposalReadiness({ token, previewIds, diagnosisIds, socialIds, price: commercial.negotiated_price, currency: commercial.currency, terms: proposal.terms || commercial.specific_terms, validUntil: proposal.valid_until, oldUrl: lead.site_antigo, previewFound: Boolean(previewResult.data), diagnosesFound: (diagnosisResult.data ?? []).length === diagnosisIds.length, socialFound: (socialResult.data ?? []).length === socialIds.length, commercialSnapshot: commercial });
   if (!readiness.ready) return Response.json({ error: "public_proposal_incomplete", missing: readiness.missing }, { status: 409 });
   const criteria = diagnosisFactsFromCriteria((diagnosisResult.data ?? []).flatMap((row) => Array.isArray(row.criteria) ? row.criteria : [row.criteria]));
   const firstLine = lead.nota
