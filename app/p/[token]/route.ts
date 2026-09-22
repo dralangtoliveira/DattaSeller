@@ -38,12 +38,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   if (error) return new Response("Unavailable", { status: 503, headers: publicHeaders() });
 
   const proposal = proposals?.length === 1 ? proposals[0] : null;
-  const artifacts = proposal ? artifactObject(proposal.artifacts) : null;
-  const publication = artifacts ? artifactObject(artifacts.public_proposal) : null;
-  if (!proposal || !publication || publication.token_hash !== hash || publication.revoked_at) return notFound();
+  if (!proposal) return notFound();
+  const artifacts = artifactObject(proposal.artifacts);
+  const publication = artifactObject(artifacts.public_proposal);
+  if (publication.token_hash !== hash || publication.revoked_at) return notFound();
 
   const snapshot = artifactObject(artifacts.commercial_snapshot);
   if (!validateCommercialSnapshot(snapshot)) return notFound();
+  const paymentTerms = artifactObject(snapshot.payment_terms);
 
   const previewIds = stringIds(artifacts.preview_ids);
   const diagnosisIds = stringIds(artifacts.diagnosis_ids);
@@ -61,7 +63,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const terms = String(
     proposal.terms
     || snapshot.specific_terms
-    || `Prazo: ${snapshot.delivery_days} dias · Pagamento: ${snapshot.payment_terms?.deposit_pct}% na contratação e ${snapshot.payment_terms?.delivery_pct}% na entrega`
+    || `Prazo: ${snapshot.delivery_days} dias · Pagamento: ${paymentTerms.deposit_pct}% na contratação e ${paymentTerms.delivery_pct}% na entrega`
   );
   const readiness = publicProposalReadiness({
     token,
