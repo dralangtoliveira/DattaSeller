@@ -93,9 +93,12 @@
     {
       "id": "DS-VALUE-07",
       "name": "Proposta pública sem login",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "evidence": [
-        "Capa atual exige contexto admin autenticado."
+        "PR #21: publicação e revogação autenticadas por administrador; token CSPRNG de 32 bytes é persistido somente como SHA-256 em artifacts.public_proposal.",
+        "GET /p/{token} lê somente server-side, responde 404 idêntico para token inválido/inexistente/revogado e vincula preview, diagnóstico e social ao mesmo lead antes de renderizar.",
+        "O snapshot comercial Datta360° vem exclusivamente de catalog/products.json, exige BRL e falha fechado na publicação/renderização quando incompleto; página usa noindex, frame denial e CSP sem iframe externo.",
+        "CI e Preview da PR #21 verdes no commit 039a314. Falta evidência funcional autenticada em HML; portanto não é PROVEN_REAL."
       ]
     },
     {

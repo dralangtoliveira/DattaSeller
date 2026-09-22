@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 .vercel
 .redesign-e2e/
+.public-proposal-e2e/

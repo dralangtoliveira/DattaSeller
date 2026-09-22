@@ -38,6 +38,7 @@
   "exclude": [
     "node_modules",
     "poc",
-    "datta360-8v"
+    "datta360-8v",
+    "externals"
   ]
 }

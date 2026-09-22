@@ -94,15 +94,14 @@ test("a migration guarda o cupom e recusa preço negociado acima do preço públ
   assert.match(migration, /'issued', 'applied', 'cancelled'/);
 });
 
-test("a criação da proposta também recusa preço acima do preço público", () => {
+test("a criação da proposta exige snapshot comercial, sem usar preço do produto técnico", () => {
   const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
   const postStart = route.indexOf("export async function POST");
   const postSection = route.slice(postStart, route.indexOf("export async function PUT"));
   assert.ok(postStart > 0, "a rota POST precisa existir");
-  assert.match(postSection, /negotiatedPriceError\(\{ publicPrice: product\.public_price, basePrice: base, negotiatedPrice: price, maxDiscountPct: product\.max_discount_pct \}\)/);
-  assert.doesNotMatch(postSection, /if \(price <= 0 \|\| discount > base \* Number\(product\.max_discount_pct\) \/ 100\)/);
-  assert.equal(negotiatedPriceError({ publicPrice: 100, basePrice: 100, negotiatedPrice: 120, maxDiscountPct: 20 }), "negotiated_price_above_public_price");
-  assert.equal(negotiatedPriceError({ publicPrice: 100, basePrice: 100, negotiatedPrice: 79, maxDiscountPct: 20 }), "discount_above_max");
+  assert.match(postSection, /buildCommercialSnapshot\(\{ sku: body\.commercial_sku/);
+  assert.match(postSection, /commercial_override_confirmed/);
+  assert.doesNotMatch(postSection, /negotiatedPriceError\(\{ publicPrice: product\.public_price, basePrice: base/);
 });
 
 test("a criação do pedido repete o teto antes de gravar a linha do pedido", () => {
