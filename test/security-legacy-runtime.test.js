@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, join, relative, resolve } from "node:path";
+import { extname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(new URL("..", import.meta.url).pathname);
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const RUNTIME_ROOTS = ["app", "lib", "src"];
 const EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx"]);
 const LEGACY_TABLES = [
@@ -43,7 +44,7 @@ test("runtime não volta a acessar o schema comercial legado diretamente", () =>
   const tableAlternation = LEGACY_TABLES.join("|");
   const supabaseFrom = new RegExp(`\\.from\\(\\s*["'](?:${tableAlternation})["']\\s*\\)`, "g");
   const restPath = new RegExp(`/rest/v1/(?:${tableAlternation})(?:[/?#"\\s]|$)`, "g");
-  const legacyRpc = /\\.rpc\\(\\s*["']upsert_lead_identity["']\\s*[,)]/g;
+  const legacyRpc = /\.rpc\(\s*["']upsert_lead_identity["']\s*[,)]/g;
   const violations = [];
 
   for (const file of files) {
