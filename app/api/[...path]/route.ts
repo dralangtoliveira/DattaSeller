@@ -6,7 +6,7 @@ import { resendConfigurationError, resolveEmailRecipient } from "@/lib/email/pro
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { buildFollowUpDraft, canScheduleFollowUp, isFollowUpDue } from "@/lib/email/follow-up.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
-import { buildProspectorEmailDraft, publicProposalTokenFromUrl } from "@/lib/email/prospector.js";
+import { buildProspectorEmailDraft, diagnosisFactFromCriteria, publicProposalTokenFromUrl } from "@/lib/email/prospector.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
 import { hashPublicProposalToken } from "@/lib/public-proposal.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -217,8 +217,7 @@ async function createProspectorEmailDraft(db: Db, body: Record<string, unknown>,
   const { data: lead, error: leadError } = await db.from("ds_leads").select("nome,empresa").eq("slug", proposal.lead_slug).is("deleted_at", null).maybeSingle();
   const { data: diagnosis, error: diagnosisError } = await db.from("ds_site_diagnoses").select("criteria").eq("lead_slug", proposal.lead_slug).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (leadError || diagnosisError) return storageUnavailable();
-  const firstFact = Array.isArray(diagnosis?.criteria) ? diagnosis.criteria[0] : diagnosis?.criteria;
-  const diagnosisFact = typeof firstFact === "string" ? firstFact : String((firstFact as Record<string, unknown> | null)?.detail ?? (firstFact as Record<string, unknown> | null)?.value ?? "");
+  const diagnosisFact = diagnosisFactFromCriteria(diagnosis?.criteria);
   const config = await settings(db);
   let draft; try { draft = buildProspectorEmailDraft({ leadName: lead?.nome, companyName: lead?.empresa || lead?.nome, diagnosisFact, publicProposalUrl: publicUrl, sellerName: config.seller_name }); } catch (error) { return out({ error: error instanceof Error ? error.message : "prospector_email_contract_invalid" }, 409); }
   const row = { id: id("email"), lead_slug: proposal.lead_slug, proposal_id: proposal.id, subject: draft.subject, body: draft.body, template: draft.template, status: "draft", provider: "mock", attempt: 0 };

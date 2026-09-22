@@ -1,9 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildProspectorEmailDraft, publicProposalTokenFromUrl } from "../lib/email/prospector.js";
+import { buildProspectorEmailDraft, diagnosisFactFromCriteria, publicProposalTokenFromUrl } from "../lib/email/prospector.js";
 
 const link = "https://hml.example/p/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+test("extrai fato do formato real persistido pelo DS-VALUE-03", () => {
+  const criteria = {
+    url: "https://empresa.example/",
+    checked_at: "2026-09-22T03:59:15.359Z",
+    fatos: { http_status: 200 },
+    evidencias: [
+      { criterio: "resposta_http", observacao: "GET https://empresa.example/ respondeu 200", valor: "200" },
+    ],
+  };
+  assert.equal(diagnosisFactFromCriteria(criteria), "GET https://empresa.example/ respondeu 200");
+});
+
+test("mantém compatibilidade com diagnóstico controlado em array", () => {
+  assert.equal(diagnosisFactFromCriteria([{ criterion: "CTA", observed_state: "ausente" }]), "CTA: ausente");
+});
 test("DS-VALUE-08 cria rascunho Datta360° limpo, revisável e com um único link", () => {
   const draft = buildProspectorEmailDraft({ leadName: "Ana", companyName: "Empresa", diagnosisFact: "CTA principal não foi localizado na página inicial.", publicProposalUrl: link, sellerName: "João" });
   const count = draft.body.trim().split(/\s+/).length;
