@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Browser do agente é uma dependência Node em runtime; o Next deve preservá-la
+  // como require nativo na Route Handler, conforme sua própria orientação.
+  serverExternalPackages: ["@playwright/test"],
   experimental: { serverActions: { bodySizeLimit: "1mb" } },
   async headers() {
     return [{
