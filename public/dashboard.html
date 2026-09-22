@@ -970,6 +970,18 @@ nav();document.getElementById("view").innerHTML="<div class=\"painel\"><h2>Sincr
       .replace('Provider real, senha, token e chave não são armazenados nesta POC; o adapter mock é o único provider local disponível.','A chave do Resend permanece somente no servidor. O envio real exige revisão, aprovação e confirmação humana.');
   };
 
+  var configuredGeneralSettings=vGeneralSettings;
+  vGeneralSettings=function(){
+    var result=configuredGeneralSettings(), value=esc((DS.settings||{}).public_base_url||'');
+    if(!/<\/div>$/.test(result)) return result;
+    return result.replace(/<\/div>$/,'<div class="mrow"><div><label>URL pública das propostas</label><input id="set-public-base-url" type="url" inputmode="url" placeholder="https://hml.exemplo.com" value="'+value+'"></div><div style="align-self:end"><button onclick="dsSavePublicBaseUrl()">Salvar URL pública</button></div></div><p style="font-size:12px;color:var(--muted)">Use somente a origem HTTPS do ambiente atual, sem caminho. Esta URL é usada nos rascunhos; o envio continua sujeito à aprovação humana.</p></div>');
+  };
+  window.dsSavePublicBaseUrl=function(){
+    var input=document.getElementById('set-public-base-url'), value=input?input.value.trim():'';
+    if(value&&!/^https:\/\/[^/?#]+$/i.test(value)){alert('Informe apenas uma origem HTTPS, sem caminho.');return}
+    apiJson('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_base_url:value})}).then(dsLoad).catch(function(error){alert(error&&error.message?error.message:'Não foi possível salvar a URL pública.')});
+  };
+
   var oldOffer=vOfferRules;
   vOfferRules=function(){
     return oldOffer()

@@ -28,6 +28,13 @@ test("a URL pública é uma configuração permitida, nunca um segredo", () => {
   assert.match(route, /"public_base_url"/);
 });
 
+test("a Central permite configurar a origem HTTPS das propostas públicas", () => {
+  const patch = readFileSync(new URL("../scripts/production-dashboard-patch.mjs", import.meta.url), "utf8");
+  assert.match(patch, /set-public-base-url/);
+  assert.match(patch, /dsSavePublicBaseUrl/);
+  assert.match(patch, /origem HTTPS/);
+});
+
 test("a Central cria o rascunho pelo endpoint Prospector, sem fallback genérico", () => {
   const patch = readFileSync(new URL("../scripts/production-dashboard-patch.mjs", import.meta.url), "utf8");
   assert.match(patch, /prospector-draft/);
