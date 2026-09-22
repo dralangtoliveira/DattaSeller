@@ -47,3 +47,10 @@ test("rotas pública e administrativa exigem hash, administrador e vínculo do m
   assert.match(adminRoute, /adminContext/);
   assert.match(proxy, /path\.startsWith\("\/p\/"\)/);
 });
+
+test("criação administrativa também valida o vínculo dos artefatos antes de persistir", () => {
+  const route = readFileSync(new URL("../app/api/[...path]/route.ts", import.meta.url), "utf8");
+  assert.match(route, /proposalArtifactsBelongToLead/);
+  assert.match(route, /proposal_artifacts_cross_lead/);
+  assert.match(route, /\.eq\("lead_slug", leadSlug\)\.in\("id", refs\.preview_ids\)/);
+});

@@ -104,9 +104,11 @@
     {
       "id": "DS-VALUE-08",
       "name": "Gerador de e-mail Prospector",
-      "status": "MISSING",
+      "status": "PARTIAL",
       "evidence": [
-        "Resend existe, mas o backend aceita assunto/corpo genéricos sem checklist anti-spam obrigatório."
+        "PR #22: POST autenticado /api/emails/prospector valida o token da URL HTTPS contra o hash da proposta publicada e persiste somente rascunho para revisão humana.",
+        "Gerador determina 120–180 palavras, assunto de no máximo 60 caracteres, um único link capability e bloqueia preço, desconto, cupom, promoção, moeda e contexto insuficiente.",
+        "A CI e o Preview da revisão atual da PR #22 devem acompanhar este contrato; falta prova HML de criação autenticada com proposta publicada, portanto não é PROVEN_REAL."
       ]
     },
     {
@@ -122,7 +124,8 @@
       "name": "Follow-up Prospector",
       "status": "PARTIAL",
       "evidence": [
-        "Agendamento e rascunho existem; procedimento original completo e mesmo link público não estão garantidos."
+        "PR #22: follow-up somente para envio sem resposta após três dias completos, cria rascunho de até quatro linhas, extrai e reutiliza o mesmo link capability e impede qualquer segundo follow-up por lead.",
+        "O rascunho segue a revisão humana e não envia mensagem real. Falta evidência HML do limite persistido por lead; portanto não é PROVEN_REAL."
       ]
     },
     {
