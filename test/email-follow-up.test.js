@@ -13,12 +13,18 @@ test("o rascunho de follow-up reutiliza o assunto, o histórico e a assinatura d
   assert.equal(draft.subject, "Re: Proposta Datta360");
   assert.match(draft.body, /"Proposta Datta360"/);
   assert.match(draft.body, /enviado em 2026-09-10/);
-  assert.match(draft.body, /Atenciosamente,\nAna$/);
+  assert.match(draft.body, /Ana$/);
   assert.equal(draft.due_at, "2026-09-16T00:00:00.000Z");
   assert.equal(buildFollowUpDraft({ subject: "Re: já prefixado", created_at: "2026-09-01T00:00:00.000Z" }, { referenceDate: new Date("2026-09-01T00:00:00.000Z") }).subject, "Re: já prefixado");
   assert.equal(buildFollowUpDraft({}).subject, "Re: Proposta DattaSeller");
   assert.match(buildFollowUpDraft({}).body, /DattaSeller$/);
   assert.doesNotMatch(buildFollowUpDraft({}, { referenceDate: new Date("2026-09-01T00:00:00.000Z") }).body, /enviado em/);
+});
+
+test("o follow-up usa o mesmo link público e mantém no máximo quatro linhas", () => {
+  const draft = buildFollowUpDraft({ subject: "Empresa, posso mostrar algo?", body: "Veja https://propostas.example.com/p/token", updated_at: "2026-09-20T12:00:00Z" }, { sellerName: "Ana" });
+  assert.match(draft.body, /https:\/\/propostas\.example\.com\/p\/token/);
+  assert.ok(draft.body.split("\n").length <= 4);
 });
 
 test("o prazo do follow-up é configurável e tem padrão explícito", () => {
