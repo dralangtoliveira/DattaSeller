@@ -108,7 +108,7 @@
       "evidence": [
         "PR #22: POST autenticado /api/emails/prospector valida o token da URL HTTPS contra o hash da proposta publicada e persiste somente rascunho para revisão humana.",
         "Gerador determina 120–180 palavras, assunto de no máximo 60 caracteres, um único link capability e bloqueia preço, desconto, cupom, promoção, moeda e contexto insuficiente.",
-        "CI e Preview da PR #22 verdes no commit e2984fc. Falta prova HML de criação autenticada com proposta publicada; portanto não é PROVEN_REAL."
+        "A CI e o Preview da revisão atual da PR #22 devem acompanhar este contrato; falta prova HML de criação autenticada com proposta publicada, portanto não é PROVEN_REAL."
       ]
     },
     {
