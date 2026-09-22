@@ -13,6 +13,7 @@ CREATE OR REPLACE FUNCTION upsert_lead_identity(
   p_owner_id uuid DEFAULT NULL
 ) RETURNS TABLE (lead_id uuid, operation text)
 LANGUAGE plpgsql
+SET search_path TO pg_catalog, public
 AS $$
 DECLARE
   v_lead_id uuid;
