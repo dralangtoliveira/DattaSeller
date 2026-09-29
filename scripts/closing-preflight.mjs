@@ -29,7 +29,8 @@ function report(name, ok, missing) { const value = ok ? "READY" : `MISSING: ${mi
 report("HML_ADMIN_ACCESS", present("SUPABASE_ACCESS_TOKEN") && (!verifyHml || verified.get("admin") === true), verifyHml ? "SUPABASE_ACCESS_TOKEN with HML administrative scope" : "SUPABASE_ACCESS_TOKEN");
 report("HML_DATABASE", (present("NEXT_PUBLIC_SUPABASE_URL") || present("SUPABASE_HML_URL")) && (present("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || present("SUPABASE_HML_PUBLISHABLE_KEY")) && Boolean(hmlRef), "NEXT_PUBLIC_SUPABASE_URL/SUPABASE_HML_URL, publishable key or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF");
 report("HML_MIGRATION_PENDING", present("SUPABASE_ACCESS_TOKEN") && Boolean(hmlRef) && (!verifyHml || verified.get("migration") === true), verifyHml ? "HML migration columns reply_received_at, reply_provider_message_id and reply_body" : "SUPABASE_ACCESS_TOKEN or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF (execute scripts/hml-commercial-replies.mjs check)");
-report("PREVIEW_HML_BINDING", present("VERCEL_TOKEN") && present("DS_E2E_BASE_URL") && Boolean(hmlRef), "VERCEL_TOKEN, DS_E2E_BASE_URL or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF");
+const vercelAuth = present("VERCEL_TOKEN") || present("VERCEL_OIDC_TOKEN");
+report("PREVIEW_HML_BINDING", vercelAuth && present("DS_E2E_BASE_URL") && Boolean(hmlRef), "VERCEL_TOKEN/VERCEL_OIDC_TOKEN, DS_E2E_BASE_URL or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF");
 report("E2E_ADMIN", present("DS_E2E_EMAIL") && present("DS_E2E_PASSWORD"), "DS_E2E_EMAIL or DS_E2E_PASSWORD");
 report("CONTROLLED_MAILBOX", present("DS_E2E_EMAIL_TO"), "DS_E2E_EMAIL_TO");
 report("CONTROLLED_SENDER", present("DS_E2E_SENDER"), "DS_E2E_SENDER");
