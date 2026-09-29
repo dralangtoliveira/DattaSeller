@@ -47,6 +47,18 @@ This is the persistent control record for the integral closing cycle. Statuses a
 - [ ] Update DattaBrain after HML evidence exists; no HML proof may be promoted from this preparation work.
 - [x] Prepare PR #27 (`CLEAN`, CI ×2 + Preview PASS before this readiness update; no merge requested).
 
+## HML evidence — 2026-09-29
+
+| Check | Reproducible evidence | Status |
+| --- | --- | --- |
+| Administration | Full Access token reads organization and `dattaseller-hml` (`qfwvkarvueuezeqfljbl`, `sa-east-1`, `ACTIVE_HEALTHY`) | PASS |
+| Isolation | HML ref is explicitly distinct from the hard-coded Production ref; all mutable commands reject Production | PASS |
+| Schema / security | 37 public tables; 20 RLS-enabled tables and 20 policies readable through HML administration | PASS |
+| E2E identity | Existing confirmed Auth user has the existing `ds_users.role='admin'` mapping; its HML-only password was reset through Auth Admin and controlled login returns a session | PASS |
+| Incremental migration | `20260929140724_add_commercial_email_replies.sql`, SHA-256 `42a6bb5030870df1e44bdaca2cea430b6d7daa23ac43930715a6c28b47ec4282`, applied only to HML; follow-up check reports all 3 columns and no pending change | PASS |
+| HML commercial settings | provider, sender, reply-to and public-base configuration keys are present; values intentionally not recorded | PARTIAL |
+| Closing preflight | `pnpm closing:preflight` now performs read-only HML admin/migration verification and reports only the remaining missing external resources | PARTIAL |
+
 ## External dependency ledger
 
 | Dependency | Blocks | Does not block | Minimum human action if no technical alternative exists |

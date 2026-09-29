@@ -11,12 +11,24 @@ const present = key => Boolean(env[key]?.trim());
 const file = path => existsSync(join(root, path));
 const route = file("app/api/inbound/resend/route.ts") && file("lib/integrations/resend-reply-webhook.ts");
 const hmlRef = env.DS_E2E_EXPECTED_SUPABASE_REF || env.SUPABASE_HML_REF;
+const verifyHml = process.argv.includes("--verify-hml");
 const statuses = [];
+const verified = new Map();
+if (verifyHml && present("SUPABASE_ACCESS_TOKEN") && hmlRef) {
+  try {
+    const headers = { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, "Content-Type": "application/json" };
+    const project = await fetch(`https://api.supabase.com/v1/projects/${hmlRef}`, { headers });
+    verified.set("admin", project.ok);
+    const migration = await fetch(`https://api.supabase.com/v1/projects/${hmlRef}/database/query`, { method: "POST", headers, body: JSON.stringify({ query: "select count(*)::int as n from information_schema.columns where table_schema = 'public' and table_name = 'ds_emails' and column_name in ('reply_received_at','reply_provider_message_id','reply_body')" }) });
+    const rows = migration.ok ? await migration.json() : [];
+    verified.set("migration", migration.ok && Number(rows?.[0]?.n) === 3);
+  } catch { verified.set("admin", false); verified.set("migration", false); }
+}
 function report(name, ok, missing) { const value = ok ? "READY" : `MISSING: ${missing}`; statuses.push(ok); console.log(`${name}: ${value}`); }
 
-report("HML_ADMIN_ACCESS", present("SUPABASE_ACCESS_TOKEN"), "SUPABASE_ACCESS_TOKEN");
+report("HML_ADMIN_ACCESS", present("SUPABASE_ACCESS_TOKEN") && (!verifyHml || verified.get("admin") === true), verifyHml ? "SUPABASE_ACCESS_TOKEN with HML administrative scope" : "SUPABASE_ACCESS_TOKEN");
 report("HML_DATABASE", (present("NEXT_PUBLIC_SUPABASE_URL") || present("SUPABASE_HML_URL")) && (present("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || present("SUPABASE_HML_PUBLISHABLE_KEY")) && Boolean(hmlRef), "NEXT_PUBLIC_SUPABASE_URL/SUPABASE_HML_URL, publishable key or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF");
-report("HML_MIGRATION_PENDING", present("SUPABASE_ACCESS_TOKEN") && Boolean(hmlRef), "SUPABASE_ACCESS_TOKEN or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF (execute scripts/hml-commercial-replies.mjs check)");
+report("HML_MIGRATION_PENDING", present("SUPABASE_ACCESS_TOKEN") && Boolean(hmlRef) && (!verifyHml || verified.get("migration") === true), verifyHml ? "HML migration columns reply_received_at, reply_provider_message_id and reply_body" : "SUPABASE_ACCESS_TOKEN or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF (execute scripts/hml-commercial-replies.mjs check)");
 report("PREVIEW_HML_BINDING", present("VERCEL_TOKEN") && present("DS_E2E_BASE_URL") && Boolean(hmlRef), "VERCEL_TOKEN, DS_E2E_BASE_URL or DS_E2E_EXPECTED_SUPABASE_REF/SUPABASE_HML_REF");
 report("E2E_ADMIN", present("DS_E2E_EMAIL") && present("DS_E2E_PASSWORD"), "DS_E2E_EMAIL or DS_E2E_PASSWORD");
 report("CONTROLLED_MAILBOX", present("DS_E2E_EMAIL_TO"), "DS_E2E_EMAIL_TO");
