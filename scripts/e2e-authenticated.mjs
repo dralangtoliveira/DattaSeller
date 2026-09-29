@@ -76,6 +76,15 @@ async function call(method, path, body) {
   return { status: response.status, text, json, contentType: response.headers.get("content-type") ?? "" };
 }
 
+async function awaitJob(path, jobId) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const status = await call("GET", `${path}?job=${encodeURIComponent(jobId)}`);
+    if (status.status !== 200 || status.json?.status === "completed" || status.json?.status === "failed") return status;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  return { status: 504, json: { error: "job_timeout" }, text: "job_timeout", contentType: "application/json" };
+}
+
 const { error: authError } = await supabase.auth.signInWithPassword({ email: env.DS_E2E_EMAIL, password: env.DS_E2E_PASSWORD });
 if (authError) {
   record("auth", "blocked", `login falhou: ${authError.message}`);
@@ -115,12 +124,15 @@ record("qualification", qualification.status === 200 ? "pass" : "fail", `HTTP ${
 const diagnosis = await call("POST", "/api/diagnosis", { lead_slug: slug });
 record("diagnosis", diagnosis.status === 201 && diagnosis.json?.diagnosis_id ? "pass" : "fail", `HTTP ${diagnosis.status}`);
 
-const social = await call("POST", "/api/social-audits", { lead_slug: slug, platform: "instagram", url: candidate.instagram_url, username: `e2e${runId}`, factual_notes: ["perfil público controlado"], recommendation: "revisar bio", creative_direction: "manter identidade" });
-record("social", social.status === 200 ? "pass" : "fail", `HTTP ${social.status}`);
+const redesignQueued = await call("POST", "/api/redesign", { lead_slug: slug, diagnosis_id: diagnosis.json?.diagnosis_id });
+const redesign = redesignQueued.status === 202 && redesignQueued.json?.job_id ? await awaitJob("/api/redesign", redesignQueued.json.job_id) : redesignQueued;
+state.previewId = redesign.json?.preview?.id ?? null;
+record("preview", redesign.status === 200 && state.previewId ? "pass" : redesign.status === 503 || redesign.status === 504 ? "blocked" : "fail", `HTTP ${redesign.status} preview=${state.previewId ?? "-"}`);
 
-const preview = await call("POST", "/api/previews", { lead_slug: slug, kind: "redesign" });
-state.previewId = preview.json?.id ?? null;
-record("preview", preview.status === 200 && state.previewId ? "pass" : "fail", `preview=${state.previewId ?? "-"}`);
+const socialQueued = await call("POST", "/api/social", { lead_slug: slug, action: "ANALYZE_SOCIAL" });
+const social = socialQueued.status === 202 && socialQueued.json?.job_id ? await awaitJob("/api/social", socialQueued.json.job_id) : socialQueued;
+const socialId = social.json?.audit?.id ?? null;
+record("social", social.status === 200 && socialId ? "pass" : social.status === 503 || social.status === 504 ? "blocked" : "fail", `HTTP ${social.status} audit=${socialId ?? "-"}`);
 
 if (state.previewId) {
   const editor = await call("GET", `/api/previews/${state.previewId}/editor`);
@@ -129,7 +141,7 @@ if (state.previewId) {
   record("comparator", comparator.status === 200 ? "pass" : "fail", `HTTP ${comparator.status}`);
   // A rota da proposta lê os artefatos no topo do corpo (mesmo contrato da UI);
   // aninhá-los em `artifacts` deixava a proposta sem capa (409 no passo cover).
-  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.diagnosis_id].filter(Boolean), social_audit_ids: [social.json?.id].filter(Boolean), comparator: Boolean(state.previewId) });
+  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.diagnosis_id].filter(Boolean), social_audit_ids: [socialId].filter(Boolean), comparator: Boolean(state.previewId) });
   state.proposalId = proposal.json?.id ?? null;
   state.publicPrice = proposal.json?.base_price ?? null;
   record("proposal", proposal.status === 200 && state.proposalId ? "pass" : "fail", `proposta=${state.proposalId ?? "-"}`);

@@ -82,6 +82,10 @@ test("o runner do E2E exercita o envio pelo endpoint do CRM e o reload", () => {
   assert.match(script, /\/api\/discovery/);
   assert.match(script, /DS_E2E_NICHE/);
   assert.match(script, /\/api\/diagnosis/);
+  assert.match(script, /\/api\/redesign/);
+  assert.match(script, /\/api\/social/);
+  assert.match(script, /awaitJob/);
+  assert.doesNotMatch(script, /\/api\/social-audits/);
   assert.match(script, /\/api\/emails\/\$\{state\.emailId\}\/transition/);
   assert.match(script, /sent_simulated/);
   assert.match(script, /\/api\/emails\/\$\{state\.emailId\}\/follow-up/);
