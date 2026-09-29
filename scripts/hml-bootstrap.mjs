@@ -19,7 +19,10 @@ const HML_NAME = process.env.HML_PROJECT_NAME ?? "dattaseller-hml";
 const HML_REGION = process.env.HML_REGION ?? "sa-east-1";
 const PRODUCTION_REF = "vkvkzoulbljampcbxaim";
 const API = "https://api.supabase.com/v1";
-const MIGRATIONS = ["db/migrations/001_commercial_core.sql", "db/migrations/002_lead_identity.sql", "db/migrations/003_recommendation_feedback.sql", "supabase/migrations/20260914031102_dattaseller_web_schema.sql"];
+// Aplicadas somente na criação de uma HML nova. Para uma HML existente, use
+// scripts/hml-commercial-replies.mjs: ele verifica a alteração incremental e
+// recusa qualquer ref diferente da HML explicitamente declarada.
+const MIGRATIONS = ["db/migrations/001_commercial_core.sql", "db/migrations/002_lead_identity.sql", "db/migrations/003_recommendation_feedback.sql", "supabase/migrations/20260914031102_dattaseller_web_schema.sql", "supabase/migrations/20260915000000_phase_a_containment.sql", "supabase/migrations/20260915212624_add_prospector_reconciliation.sql", "supabase/migrations/20260917000000_add_order_coupon.sql", "supabase/migrations/20260922164000_security_function_hardening.sql", "supabase/migrations/20260929140724_add_commercial_email_replies.sql"];
 
 /**
  * Julgamento puro do escopo da credencial. É a etapa 1 do runbook: sem
@@ -88,6 +91,7 @@ async function apply() {
   const { existing, canCreateProject, reason } = await check();
   if (!existing && !canCreateProject) { console.error(`apply recusado: credencial sem permissão de criação (${reason})`); process.exit(4); }
   let ref = existing?.id;
+  if (ref) { console.error("apply recusado: HML existente exige scripts/hml-commercial-replies.mjs check/apply para evitar reaplicar migrations históricas"); process.exit(6); }
   if (!ref) {
     const password = randomBytes(24).toString("base64url");
     const created = await api("/projects", { method: "POST", body: { name: HML_NAME, organization_id: process.env.HML_ORG_ID, region: HML_REGION, db_pass: password, plan: "free" } });

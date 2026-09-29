@@ -39,21 +39,23 @@ This is the persistent control record for the integral closing cycle. Statuses a
 - [x] Preserve main-worktree changes and create an isolated branch from canonical.
 - [x] Reconcile the machine-readable gate statuses with merged #23/#24 evidence without overstating HML proof: DS-VALUE-07/08 are already `PARTIAL` with HML proof explicitly pending.
 - [x] Audit public proposal, Prospector draft, send, follow-up, inbound and E2E paths for untested or unsafe gaps; the runner was corrected to begin with public discovery and factual diagnosis instead of fixtures.
-- [x] Implement and test provider-authenticated commercial-reply ingestion: `POST /api/inbound/resend` verifies the raw webhook, matches `provider_message_id`, persists reply/audit/timeline and is covered for invalid signature, unmatched reply and replay. HML proof remains required.
+- [x] Implement and test provider-authenticated commercial-reply ingestion: `POST /api/inbound/resend` verifies raw Svix input, retrieves the authenticated received message from Resend, matches the provider ID and intended recipient, then persists reply/audit/timeline. Tests cover invalid signature, provider failure, unmatched reply, cross-lead recipient mismatch and replay. HML proof remains required.
 - [x] Run full regression, typecheck, build, diff check and secret scan on the resulting SHA. 258/258 PASS, typecheck/build/secret scan/diff check PASS; PR #27 CI ×2 and Vercel Preview PASS.
-- [x] Run non-mutating authenticated-E2E preflight and classify every missing prerequisite precisely: base URL, HML admin identity, HML URL/ref/key, controlled mailbox, niche/city and explicit confirmation are absent from the isolated worktree.
+- [x] Add `pnpm closing:preflight`: one non-mutating report for all DS-07–11 dependencies, with names of the exact missing variables/resources and no secret output. Local configuration confirms HML database and E2E admin inputs; the current Supabase token receives `401` for HML administration.
+- [x] Add `pnpm hml:commercial-replies:check` / `HML_APPLY=yes pnpm hml:commercial-replies:apply`: an HML-ref-protected, idempotent incremental migration check/apply with file, SHA-256, pending state and rollback-risk report. It rejects Production and cannot reapply the historical bootstrap chain to an existing HML.
 - [ ] If credentials permit, provision only a zero-cost isolated HML and execute controlled E2E; otherwise record the exact external dependencies.
-- [ ] Update DattaBrain from verified evidence and prepare a reviewable PR.
-- [x] Update DattaBrain from verified evidence and prepare PR #27 (`CLEAN`, CI ×2 + Preview PASS; no merge requested).
+- [ ] Update DattaBrain after HML evidence exists; no HML proof may be promoted from this preparation work.
+- [x] Prepare PR #27 (`CLEAN`, CI ×2 + Preview PASS before this readiness update; no merge requested).
 
 ## External dependency ledger
 
 | Dependency | Blocks | Does not block | Minimum human action if no technical alternative exists |
 | --- | --- | --- | --- |
-| DattaSeller HML admin/project access | mutable HML proof for 07–11 | local audit, tests, code hardening, preflight | Grant scoped HML access or reactivate/provision isolated HML |
+| DattaSeller HML admin/project access | migration status/apply and mutable HML proof for 07–11 | local audit, tests, code hardening, preflight | Grant a token that can administer the already configured HML ref (current token returns `401`) |
 | Valid controlled E2E identity | authenticated HML flow | anonymous/local tests and preflight | Supply or authorize creation of an HML-only E2E identity |
 | Preview bound exclusively to HML | served HML UI proof | local build and API/unit tests | Configure HML-only environment binding |
 | Controlled mailbox and authorized sender | real delivery/reply proof | drafts, validation, idempotence tests | Authorize controlled mailbox/sender for test-only traffic |
+| Resend webhook secret and Preview URL | signed inbound proof and public proposal proof | endpoint/unit tests | Configure `RESEND_WEBHOOK_SECRET` and an HML-only `DS_E2E_BASE_URL` |
 | `GRAPH_SYNC_MISSING` — Graph copy in isolated worktree | graph queries after code changes | source inspection and tests | `graphify update .` was attempted and failed only on write access to `graphify-out`; refresh/copy it after this reviewable change is merged |
 
 ## Completion rule
