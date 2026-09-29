@@ -37,9 +37,9 @@ This is the persistent control record for the integral closing cycle. Statuses a
 
 - [x] Reconcile Git, worktrees, PRs, CI, DattaBrain, contract, gates and graph.
 - [x] Preserve main-worktree changes and create an isolated branch from canonical.
-- [ ] Reconcile the stale local machine-readable gate statuses with merged #23/#24 evidence without overstating HML proof.
+- [x] Reconcile the machine-readable gate statuses with merged #23/#24 evidence without overstating HML proof: DS-VALUE-07/08 are already `PARTIAL` with HML proof explicitly pending.
 - [x] Audit public proposal, Prospector draft, send, follow-up, inbound and E2E paths for untested or unsafe gaps; the runner was corrected to begin with public discovery and factual diagnosis instead of fixtures.
-- [ ] Implement and test provider-authenticated commercial-reply ingestion: audit found no route that matches a provider inbound reply to `ds_emails`; the existing `ds_inbound_events` integration is only the Datta360 lead webhook and cannot prove DS-VALUE-09/10.
+- [x] Implement and test provider-authenticated commercial-reply ingestion: `POST /api/inbound/resend` verifies the raw webhook, matches `provider_message_id`, persists reply/audit/timeline and is covered for invalid signature, unmatched reply and replay. HML proof remains required.
 - [x] Run full regression, typecheck, build, diff check and secret scan on the resulting SHA. 258/258 PASS, typecheck/build/secret scan/diff check PASS; PR #27 CI ×2 and Vercel Preview PASS.
 - [x] Run non-mutating authenticated-E2E preflight and classify every missing prerequisite precisely: base URL, HML admin identity, HML URL/ref/key, controlled mailbox, niche/city and explicit confirmation are absent from the isolated worktree.
 - [ ] If credentials permit, provision only a zero-cost isolated HML and execute controlled E2E; otherwise record the exact external dependencies.
