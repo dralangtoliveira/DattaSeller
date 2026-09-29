@@ -90,7 +90,15 @@ if (auth.status !== 200) {
 }
 record("auth", "pass", `${Array.isArray(auth.json) ? auth.json.length : 0} leads visíveis`);
 
-const candidate = e2eProspectCandidate({ slug, runId, emailTo: env.DS_E2E_EMAIL_TO });
+const discovery = await call("POST", "/api/discovery", { nicho: env.DS_E2E_NICHE, cidade: env.DS_E2E_CITY, quantidade_alvo: 1, limite_candidatos: 10, product: "datta360" });
+const discovered = Array.isArray(discovery.json?.results) ? discovery.json.results.find((item) => !item.deduplicated && item.site_antigo && item.source_url) : null;
+if (!discovered) {
+  record("discovery", discovery.status === 200 ? "blocked" : "fail", discovery.status === 200 ? "nenhum candidato novo com site público utilizável" : `HTTP ${discovery.status} ${discovery.text.slice(0, 160)}`);
+  console.log(JSON.stringify(summarize(results), null, 2));
+  process.exit(1);
+}
+record("discovery", "pass", `${discovered.nome} · ${discovered.source_url}`);
+const candidate = e2eProspectCandidate({ discovered, slug, emailTo: env.DS_E2E_EMAIL_TO });
 
 const prospect = await call("POST", "/api/prospects", { query: { niche: "e2e", city: "Novo Hamburgo", product: "datta360", search_radius_km: 10, target_quantity: 1, search_limit: 1 }, candidates: [candidate] });
 if (prospect.status !== 200) record("prospect", "fail", `HTTP ${prospect.status} ${prospect.text.slice(0, 160)}`);
@@ -101,11 +109,11 @@ if (dedup.status !== 200) record("dedup", "fail", `HTTP ${dedup.status}`);
 else if (dedup.text.includes('"deduplicated":true')) record("dedup", "pass", "duplicata reconhecida");
 else record("dedup", "fail", `deduplicação não reconhecida: ${dedup.text.slice(0, 160)}`);
 
-const qualification = await call("POST", "/api/qualifications", { lead_slug: slug, facts: ["Site público sem CTA no E2E"], hypotheses: ["Validar prioridade comercial"], recommendation: "datta360", reason: "Oportunidade observada em fonte pública", confidence: "medium", validation_question: "Aumentar pedidos é prioridade?", next_action: "revisar com operador", owner: "E2E" });
+const qualification = await call("POST", "/api/qualifications", { lead_slug: slug, facts: ["Lead originado por descoberta pública controlada"], hypotheses: ["Validar prioridade comercial"], recommendation: "datta360", reason: "Oportunidade observada em fonte pública", confidence: "medium", validation_question: "Aumentar pedidos é prioridade?", next_action: "revisar com operador", owner: "E2E" });
 record("qualification", qualification.status === 200 ? "pass" : "fail", `HTTP ${qualification.status}`);
 
-const diagnosis = await call("POST", "/api/diagnoses", { lead_slug: slug, criteria: [{ criterion: "CTA", observed_state: "ausente", evidence: "https://e2e.example/", recommendation: "incluir CTA" }] });
-record("diagnosis", diagnosis.status === 200 ? "pass" : "fail", `HTTP ${diagnosis.status}`);
+const diagnosis = await call("POST", "/api/diagnosis", { lead_slug: slug });
+record("diagnosis", diagnosis.status === 201 && diagnosis.json?.diagnosis_id ? "pass" : "fail", `HTTP ${diagnosis.status}`);
 
 const social = await call("POST", "/api/social-audits", { lead_slug: slug, platform: "instagram", url: candidate.instagram_url, username: `e2e${runId}`, factual_notes: ["perfil público controlado"], recommendation: "revisar bio", creative_direction: "manter identidade" });
 record("social", social.status === 200 ? "pass" : "fail", `HTTP ${social.status}`);
@@ -121,7 +129,7 @@ if (state.previewId) {
   record("comparator", comparator.status === 200 ? "pass" : "fail", `HTTP ${comparator.status}`);
   // A rota da proposta lê os artefatos no topo do corpo (mesmo contrato da UI);
   // aninhá-los em `artifacts` deixava a proposta sem capa (409 no passo cover).
-  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.id].filter(Boolean), social_audit_ids: [social.json?.id].filter(Boolean), comparator: Boolean(state.previewId) });
+  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.diagnosis_id].filter(Boolean), social_audit_ids: [social.json?.id].filter(Boolean), comparator: Boolean(state.previewId) });
   state.proposalId = proposal.json?.id ?? null;
   state.publicPrice = proposal.json?.base_price ?? null;
   record("proposal", proposal.status === 200 && state.proposalId ? "pass" : "fail", `proposta=${state.proposalId ?? "-"}`);
