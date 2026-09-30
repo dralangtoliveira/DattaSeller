@@ -39,6 +39,11 @@ if (preflightOnly) {
 const base = String(env.DS_E2E_BASE_URL).replace(/\/+$/, "");
 const runId = e2eRunId(env.DS_E2E_RUN_ID) ?? new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
 const slug = e2eLeadSlug(runId);
+// O destinatário do E2E é deliberadamente uma caixa controlada. Como a
+// deduplicação comercial também protege e-mails, um segundo run pode apontar
+// para o lead E2E já existente. A partir da prospecção, a cadeia precisa usar
+// o slug efetivamente retornado pelo CRM, nunca assumir o slug recém-gerado.
+let leadSlug = slug;
 const results = [];
 const state = {};
 console.log(`run_id=${runId}`);
@@ -113,26 +118,30 @@ record("discovery", "pass", `${discovered.nome} · ${discovered.source_url}`);
 const candidate = e2eProspectCandidate({ discovered, slug, emailTo: env.DS_E2E_EMAIL_TO });
 
 const prospect = await call("POST", "/api/prospects", { query: { niche: "e2e", city: "Novo Hamburgo", product: "datta360", search_radius_km: 10, target_quantity: 1, search_limit: 1 }, candidates: [candidate] });
-if (prospect.status !== 200) record("prospect", "fail", `HTTP ${prospect.status} ${prospect.text.slice(0, 160)}`);
-else record("prospect", "pass", `${prospect.text.includes('"deduplicated":false') ? "novo" : "resposta sem flag deduplicated"}`);
+const prospectResult = prospect.json?.results?.[0];
+if (prospect.status !== 200 || !prospectResult?.ok || !prospectResult?.lead) record("prospect", "fail", `HTTP ${prospect.status} ${prospect.text.slice(0, 160)}`);
+else {
+  leadSlug = String(prospectResult.lead);
+  record("prospect", "pass", prospectResult.deduplicated ? "deduplicado em lead E2E controlado" : "novo");
+}
 
 const dedup = await call("POST", "/api/prospects", { query: { niche: "e2e", city: "Novo Hamburgo", product: "datta360" }, candidates: [candidate] });
 if (dedup.status !== 200) record("dedup", "fail", `HTTP ${dedup.status}`);
 else if (dedup.text.includes('"deduplicated":true')) record("dedup", "pass", "duplicata reconhecida");
 else record("dedup", "fail", `deduplicação não reconhecida: ${dedup.text.slice(0, 160)}`);
 
-const qualification = await call("POST", "/api/qualifications", { lead_slug: slug, facts: ["Lead originado por descoberta pública controlada"], hypotheses: ["Validar prioridade comercial"], recommendation: "datta360", reason: "Oportunidade observada em fonte pública", confidence: "medium", validation_question: "Aumentar pedidos é prioridade?", next_action: "revisar com operador", owner: "E2E" });
+const qualification = await call("POST", "/api/qualifications", { lead_slug: leadSlug, facts: ["Lead originado por descoberta pública controlada"], hypotheses: ["Validar prioridade comercial"], recommendation: "datta360", reason: "Oportunidade observada em fonte pública", confidence: "medium", validation_question: "Aumentar pedidos é prioridade?", next_action: "revisar com operador", owner: "E2E" });
 record("qualification", qualification.status === 200 ? "pass" : "fail", `HTTP ${qualification.status}`);
 
-const diagnosis = await call("POST", "/api/diagnosis", { lead_slug: slug });
+const diagnosis = await call("POST", "/api/diagnosis", { lead_slug: leadSlug });
 record("diagnosis", diagnosis.status === 201 && diagnosis.json?.diagnosis_id ? "pass" : "fail", `HTTP ${diagnosis.status}`);
 
-const redesignQueued = await call("POST", "/api/redesign", { lead_slug: slug, diagnosis_id: diagnosis.json?.diagnosis_id });
+const redesignQueued = await call("POST", "/api/redesign", { lead_slug: leadSlug, diagnosis_id: diagnosis.json?.diagnosis_id });
 const redesign = redesignQueued.status === 202 && redesignQueued.json?.job_id ? await awaitJob("/api/redesign", redesignQueued.json.job_id) : redesignQueued;
 state.previewId = redesign.json?.preview?.id ?? null;
 record("preview", redesign.status === 200 && state.previewId ? "pass" : redesign.status === 503 || redesign.status === 504 ? "blocked" : "fail", `HTTP ${redesign.status} preview=${state.previewId ?? "-"}`);
 
-const socialQueued = await call("POST", "/api/social", { lead_slug: slug, action: "ANALYZE_SOCIAL" });
+const socialQueued = await call("POST", "/api/social", { lead_slug: leadSlug, action: "ANALYZE_SOCIAL" });
 const social = socialQueued.status === 202 && socialQueued.json?.job_id ? await awaitJob("/api/social", socialQueued.json.job_id) : socialQueued;
 const socialId = social.json?.audit?.id ?? null;
 record("social", social.status === 200 && socialId ? "pass" : social.status === 503 || social.status === 504 ? "blocked" : "fail", `HTTP ${social.status} audit=${socialId ?? "-"}`);
@@ -140,11 +149,11 @@ record("social", social.status === 200 && socialId ? "pass" : social.status === 
 if (state.previewId) {
   const editor = await call("GET", `/api/previews/${state.previewId}/editor`);
   record("editor", editor.status === 200 && editor.text.includes("PROSPECTOR-EDITOR") ? "pass" : "fail", `HTTP ${editor.status}`);
-  const comparator = await call("GET", `/api/comparators/${slug}`);
+  const comparator = await call("GET", `/api/comparators/${leadSlug}`);
   record("comparator", comparator.status === 200 ? "pass" : "fail", `HTTP ${comparator.status}`);
   // A rota da proposta lê os artefatos no topo do corpo (mesmo contrato da UI);
   // aninhá-los em `artifacts` deixava a proposta sem capa (409 no passo cover).
-  const proposal = await call("POST", "/api/proposals", { lead_slug: slug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.diagnosis_id].filter(Boolean), social_audit_ids: [socialId].filter(Boolean), comparator: Boolean(state.previewId) });
+  const proposal = await call("POST", "/api/proposals", { lead_slug: leadSlug, product_id: "datta360", preview_ids: [state.previewId], diagnosis_ids: [diagnosis.json?.diagnosis_id].filter(Boolean), social_audit_ids: [socialId].filter(Boolean), comparator: Boolean(state.previewId) });
   state.proposalId = proposal.json?.id ?? null;
   state.publicPrice = proposal.json?.base_price ?? null;
   record("proposal", proposal.status === 200 && state.proposalId ? "pass" : "fail", `proposta=${state.proposalId ?? "-"}`);
@@ -164,7 +173,7 @@ if (state.previewId) {
   record("cover", "skip", "sem proposta");
 }
 
-const draft = await call("POST", "/api/emails", { lead_slug: slug, proposal_id: state.negotiatedProposalId ?? state.proposalId ?? null, subject: `Proposta E2E ${runId}`, body: "Mensagem de teste controlado do E2E. Revise antes do envio." });
+const draft = await call("POST", "/api/emails", { lead_slug: leadSlug, proposal_id: state.negotiatedProposalId ?? state.proposalId ?? null, subject: `Proposta E2E ${runId}`, body: "Mensagem de teste controlado do E2E. Revise antes do envio." });
 state.emailId = draft.json?.id ?? null;
 record("email_draft", draft.status === 200 && state.emailId ? "pass" : "fail", `email=${state.emailId ?? "-"}`);
 
@@ -184,7 +193,7 @@ if (state.emailId) {
   record("email_followup", followUpOk ? "pass" : followUp.status === 409 ? "blocked" : "fail", `HTTP ${followUp.status}`);
   const timeline = await call("GET", "/api/timeline");
   // O endpoint de timeline responde em camelCase (`leadSlug`), contrato já coberto por teste.
-  const events = Array.isArray(timeline.json) ? timeline.json.filter((item) => (item.leadSlug ?? item.lead_slug) === slug) : [];
+  const events = Array.isArray(timeline.json) ? timeline.json.filter((item) => (item.leadSlug ?? item.lead_slug) === leadSlug) : [];
   record("email_timeline", timeline.status === 200 && events.length > 0 ? "pass" : "fail", `${events.length} eventos do lead E2E`);
 } else {
   for (const id of ["email_edit", "email_approve", "email_send", "email_followup", "email_timeline"]) record(id, "skip", "sem e-mail");
@@ -224,10 +233,10 @@ record("financial", financial.status === 200 && financial.json && Number(financi
 
 const reloadLeads = await call("GET", "/api/leads");
 const reloadTimeline = await call("GET", "/api/timeline");
-const persisted = reloadLeads.status === 200 && Array.isArray(reloadLeads.json) && reloadLeads.json.some((lead) => lead.slug === slug) && reloadTimeline.status === 200;
+const persisted = reloadLeads.status === 200 && Array.isArray(reloadLeads.json) && reloadLeads.json.some((lead) => lead.slug === leadSlug) && reloadTimeline.status === 200;
 record("reload", persisted ? "pass" : "fail", persisted ? "lead e timeline sobreviveram ao reload" : "lead ou timeline não persistiram");
 
-const summary = { ...summarize(results), run_id: runId, lead_slug: slug };
+const summary = { ...summarize(results), run_id: runId, lead_slug: leadSlug };
 console.log("\n--- resumo ---");
 console.log(JSON.stringify(summary, null, 2));
 if (summary.failed) console.log("fechar o Final Gate n. 4 exige zero falhas");
