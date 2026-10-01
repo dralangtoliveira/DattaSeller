@@ -1,0 +1,17 @@
+services:
+  bridge:
+    build: .
+    image: dattaseller/agent-bridge:1
+    container_name: dattaseller-agent-bridge
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://172.18.0.1:8787/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
