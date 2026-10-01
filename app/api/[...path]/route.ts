@@ -404,9 +404,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       result = await createAgentJobAdapter({ endpoint: executor.endpoint, bearer: String(process.env.DS_AGENT_BEARER ?? ""), timeoutMs: AGENT_JOB_TIMEOUT_MS }).submit(job) as Record<string, unknown>;
     } catch (error) {
       const code = error instanceof AgentError ? String((error as { code?: string }).code ?? "") || "agent_executor_unavailable" : "agent_executor_unavailable";
+      const upstream = Number((error as { status?: number }).status ?? 0);
+      // 4xx da ponte é erro de entrada e volta como 4xx; o resto é indisponibilidade.
+      const status = upstream >= 400 && upstream < 500 ? upstream : 502;
       await db.from("ds_agent_jobs").update(failedAgentJobPatch(code)).eq("tenant_id", job.tenant_id).eq("id", job.job_id);
       await event(db, job.lead_slug, "agent.job.failed", `${job.job_id}|${job.job_type}|${code}`);
-      return out({ error: code, job_id: job.job_id, status: "failed" }, 502);
+      return out({ error: code, job_id: job.job_id, status: "failed" }, status);
     }
 
     const { data: salvo, error: saveError } = await db.from("ds_agent_jobs").update(applyAgentResult(result)).eq("tenant_id", job.tenant_id).eq("id", job.job_id).select().single();

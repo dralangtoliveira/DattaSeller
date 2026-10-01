@@ -104,6 +104,17 @@ test("adapter: bearer ausente, bridge indisponível e retorno inválido falham f
     /Executor respondeu 503/,
   );
 
+  // O código estruturado da ponte não pode ser achatado em "executor indisponível".
+  await assert.rejects(
+    () => createAgentJobAdapter({ endpoint: "https://bridge.example", bearer: "b", fetchImpl: async () => ({ ok: false, status: 400, json: async () => ({ error: { code: "agent_tenant_not_allowed" } }) }) }).submit(base),
+    (error) => error.code === "agent_tenant_not_allowed" && error.status === 400,
+  );
+
+  await assert.rejects(
+    () => createAgentJobAdapter({ endpoint: "https://bridge.example", bearer: "b", fetchImpl: async () => ({ ok: false, status: 502, json: async () => ({ errors: [{ code: "agent_executor_timeout" }] }) }) }).submit(base),
+    (error) => error.code === "agent_executor_timeout" && error.status === 502,
+  );
+
   await assert.rejects(
     () => createAgentJobAdapter({ endpoint: "https://bridge.example", bearer: "b", fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ job_id: "job_outro", status: "completed", structured_output: {} }) }) }).submit(base),
     /não corresponde/,
