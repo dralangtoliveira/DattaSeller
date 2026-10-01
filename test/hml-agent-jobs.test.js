@@ -41,3 +41,15 @@ test("preflight define precedência explícita do arquivo do operador", () => {
   assert.match(preflight, /CONFIG_SHADOWED/);
   assert.match(preflight, /CONFIG_SOURCE/);
 });
+
+test("migration de RLS das tabelas legadas é idempotente e cobre o núcleo comercial", () => {
+  const rls = readFileSync(join(root, "supabase", "migrations", "20261001160000_harden_legacy_table_rls.sql"), "utf8");
+  for (const tabela of ["leads", "orders", "payments", "products", "users", "companies", "sales"]) {
+    assert.match(rls, new RegExp(`'${tabela}'`));
+  }
+  assert.match(rls, /enable row level security/);
+  assert.match(rls, /drop policy if exists "admins manage %1\$s"/);
+  assert.match(rls, /to_regclass\(format\('public\.%I', tabela\)\) is null/);
+  assert.match(rls, /revoke all on table[\s\S]*from anon/);
+  assert.equal(/drop table|truncate|delete from/i.test(rls), false);
+});
