@@ -5,7 +5,7 @@ import { E2E_STEPS, REQUIRED_ENV, e2eHeaders, e2eLeadSlug, e2eProspectCandidate,
 import { isSafeLeadSlug } from "../lib/hardening/guards.ts";
 import { isPublicHttpUrl } from "../lib/prospector.js";
 
-const valid = { DS_E2E_BASE_URL: "https://crm.example.com", DS_E2E_EMAIL: "operador@example.com", DS_E2E_PASSWORD: "segredo", NEXT_PUBLIC_SUPABASE_URL: "https://projeto.supabase.co", DS_E2E_EXPECTED_SUPABASE_REF: "projeto", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "chave-publica", DS_E2E_EMAIL_TO: "controle@example.com", DS_E2E_CONFIRM: "yes" };
+const valid = { DS_E2E_BASE_URL: "https://crm.example.com", DS_E2E_EMAIL: "operador@example.com", DS_E2E_PASSWORD: "segredo", NEXT_PUBLIC_SUPABASE_URL: "https://projeto.supabase.co", DS_E2E_EXPECTED_SUPABASE_REF: "projeto", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "chave-publica", DS_E2E_EMAIL_TO: "controle@example.com", DS_E2E_NICHE: "restaurante", DS_E2E_CITY: "Orlando, FL", DS_E2E_CONFIRM: "yes" };
 
 test("o E2E falha fechado quando o ambiente está incompleto ou sem confirmação", () => {
   const empty = validateEnv({});
@@ -27,7 +27,7 @@ test("o template de ambiente nomeia todos os inputs do preflight sem autorizar e
 });
 
 test("a cadeia do E2E é a ordem registrada e não perde nenhum passo", () => {
-  assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "prospect", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "email_draft", "email_edit", "email_approve", "email_send", "email_followup", "email_timeline", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
+  assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "discovery", "prospect", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "email_draft", "email_edit", "email_approve", "email_send", "email_followup", "email_timeline", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
   for (const step of E2E_STEPS) assert.ok(step.label && step.endpoint, `${step.id} precisa de rótulo e endpoint`);
 });
 
@@ -46,17 +46,20 @@ test("o slug do lead E2E é seguro para a API", () => {
   assert.ok(e2eLeadSlug("x".repeat(200)).length <= 60);
 });
 
-test("o candidato do E2E carrega source_url pública exigida por /api/prospects", () => {
+test("o candidato do E2E preserva a descoberta pública e substitui apenas o destinatário controlado", () => {
   const runId = e2eRunId("2026-09-19 01:30") ?? "run";
-  const candidate = e2eProspectCandidate({ slug: e2eLeadSlug(runId), runId, emailTo: "controle@example.com" });
+  const discovered = { nome: "Empresa Real", cidade: "Orlando, FL", telefone: "+14075550100", site_antigo: "https://empresa.example/", instagram_url: "https://instagram.com/empresa", source_url: "https://www.openstreetmap.org/node/1", source: "openstreetmap" };
+  const candidate = e2eProspectCandidate({ discovered, slug: e2eLeadSlug(runId), emailTo: "controle@example.com" });
   assert.ok(isSafeLeadSlug(candidate.slug), "slug precisa passar na guarda da API");
   assert.ok(String(candidate.nome).trim(), "nome é obrigatório");
   assert.ok(isPublicHttpUrl(candidate.source_url), "source_url precisa ser HTTP(S) público — sem ela saveProspect devolve invalid_candidate");
   assert.ok(isPublicHttpUrl(candidate.site_antigo), "site_antigo precisa continuar válido para o preview/comparador");
   assert.equal(candidate.email, "controle@example.com");
+  assert.equal(candidate.nome, discovered.nome);
+  assert.equal(candidate.site_antigo, discovered.site_antigo);
   assert.ok(candidate.instagram_url);
   assert.ok(candidate.telefone);
-  assert.ok(candidate.cidade);
+  assert.equal(candidate.cidade, discovered.cidade);
 });
 
 test("o E2E alcança Preview protegido com o bypass oficial e nunca o registra", () => {
@@ -76,6 +79,13 @@ test("o E2E alcança Preview protegido com o bypass oficial e nunca o registra",
 test("o runner do E2E exercita o envio pelo endpoint do CRM e o reload", () => {
   const script = readFileSync(new URL("../scripts/e2e-authenticated.mjs", import.meta.url), "utf8");
   assert.match(script, /signInWithPassword/);
+  assert.match(script, /\/api\/discovery/);
+  assert.match(script, /DS_E2E_NICHE/);
+  assert.match(script, /\/api\/diagnosis/);
+  assert.match(script, /\/api\/redesign/);
+  assert.match(script, /\/api\/social/);
+  assert.match(script, /awaitJob/);
+  assert.doesNotMatch(script, /\/api\/social-audits/);
   assert.match(script, /\/api\/emails\/\$\{state\.emailId\}\/transition/);
   assert.match(script, /sent_simulated/);
   assert.match(script, /\/api\/emails\/\$\{state\.emailId\}\/follow-up/);
