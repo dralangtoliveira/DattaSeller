@@ -4,9 +4,15 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
+// Precedência explícita: o arquivo canônico do operador vence a variável de
+// ambiente. Uma variável obsoleta exportada no processo não pode mascarar a
+// configuração local e produzir falso 401 — o valor efetivo e a origem ficam
+// identificáveis sem revelar nenhum segredo.
 const local = {};
-try { for (const line of readFileSync(join(root, ".env.local"), "utf8").split(/\r?\n/)) { const match = line.match(/^([A-Z0-9_]+)=(.*)$/); if (match && !process.env[match[1]]) local[match[1]] = match[2].trim(); } } catch { /* no local configuration */ }
-const env = { ...local, ...process.env };
+try { for (const line of readFileSync(join(root, ".env.local"), "utf8").split(/\r?\n/)) { const match = line.match(/^([A-Za-z0-9_]+)=(.*)$/); if (match) local[match[1]] = match[2].trim(); } } catch { /* no local configuration */ }
+const env = { ...process.env, ...local };
+const sourced = (key) => (local[key] ? "arquivo" : env[key] ? "ambiente" : "ausente");
+const shadowed = Object.keys(local).filter((key) => local[key] && process.env[key] !== undefined && process.env[key] !== local[key]).sort();
 const present = key => Boolean(env[key]?.trim());
 const file = path => existsSync(join(root, path));
 const route = file("app/api/inbound/resend/route.ts") && file("lib/integrations/resend-reply-webhook.ts");
@@ -38,5 +44,12 @@ report("RESEND_WEBHOOK_SECRET", present("RESEND_WEBHOOK_SECRET"), "RESEND_WEBHOO
 report("RESEND_WEBHOOK_ROUTE", route && present("DS_E2E_BASE_URL"), route ? "DS_E2E_BASE_URL" : "webhook route source missing");
 report("PUBLIC_PROPOSAL_URL", present("DS_E2E_BASE_URL"), "DS_E2E_BASE_URL");
 report("E2E_RUNNER", file("scripts/e2e-authenticated.mjs") && present("DS_E2E_NICHE") && present("DS_E2E_CITY") && present("DS_E2E_EXPECTED_SUPABASE_REF"), "scripts/e2e-authenticated.mjs, DS_E2E_NICHE, DS_E2E_CITY or DS_E2E_EXPECTED_SUPABASE_REF");
+// Informativo (não bloqueia DS-07..11): executor agêntico configurado no alvo.
+console.log(`AGENT_EXECUTOR: ${present("DS_AGENT_ENDPOINT") && present("DS_AGENT_BEARER") ? "READY" : "MISSING: DS_AGENT_ENDPOINT or DS_AGENT_BEARER"}`);
+// Origem da configuração: só nomes de variável e a origem, nunca o valor.
+for (const key of ["SUPABASE_ACCESS_TOKEN", "DS_E2E_EXPECTED_SUPABASE_REF", "NEXT_PUBLIC_SUPABASE_URL", "RESEND_WEBHOOK_SECRET", "DS_AGENT_ENDPOINT", "DS_AGENT_BEARER"]) {
+  console.log(`CONFIG_SOURCE: ${key}=${sourced(key)}`);
+}
+if (shadowed.length) console.log(`CONFIG_SHADOWED: ${shadowed.join(", ")} (arquivo local vence a variável de ambiente)`);
 console.log(`READY_FOR_DS07_11: ${statuses.every(Boolean) ? "READY" : "BLOCKED: satisfy every MISSING field above"}`);
 process.exit(statuses.every(Boolean) ? 0 : 1);

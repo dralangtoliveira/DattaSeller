@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
@@ -17,4 +18,25 @@ test("preflight nomeia cada dependência de fechamento sem imprimir segredo", ()
 test("preflight publicado exige verificação administrativa HML", () => {
   const packageJson = readFileSync(join(root, "package.json"), "utf8");
   assert.match(packageJson, /closing:preflight.*--verify-hml/);
+});
+
+test("variável de ambiente obsoleta não mascara a configuração canônica do operador", () => {
+  const sandbox = mkdtempSync(join(tmpdir(), "ds-preflight-"));
+  writeFileSync(join(sandbox, ".env.local"), [
+    "SUPABASE_ACCESS_TOKEN=sbp_arquivo_vencedor",
+    "DS_E2E_EXPECTED_SUPABASE_REF=qfwvkarvueuezeqfljbl",
+    "",
+  ].join("\n"));
+  const output = spawnSync(process.execPath, [script], {
+    cwd: sandbox,
+    encoding: "utf8",
+    env: { PATH: process.env.PATH, SUPABASE_ACCESS_TOKEN: "sbp_obsoleto_no_ambiente" },
+  });
+  assert.match(output.stdout, /CONFIG_SOURCE: SUPABASE_ACCESS_TOKEN=arquivo/);
+  assert.match(output.stdout, /CONFIG_SOURCE: DS_E2E_EXPECTED_SUPABASE_REF=arquivo/);
+  assert.match(output.stdout, /CONFIG_SHADOWED: SUPABASE_ACCESS_TOKEN/);
+  assert.match(output.stdout, /CONFIG_SOURCE: RESEND_WEBHOOK_SECRET=ausente/);
+  assert.match(output.stdout, /AGENT_EXECUTOR:/);
+  assert.equal(output.stdout.includes("sbp_arquivo_vencedor"), false);
+  assert.equal(output.stdout.includes("sbp_obsoleto_no_ambiente"), false);
 });

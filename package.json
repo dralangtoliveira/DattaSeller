@@ -12,6 +12,8 @@
     "closing:preflight": "node scripts/closing-preflight.mjs --verify-hml",
     "hml:commercial-replies:check": "node scripts/hml-commercial-replies.mjs check",
     "hml:commercial-replies:apply": "node scripts/hml-commercial-replies.mjs apply",
+    "hml:agent-jobs:check": "node scripts/hml-agent-jobs.mjs check",
+    "hml:agent-jobs:apply": "node scripts/hml-agent-jobs.mjs apply",
     "e2e:authenticated": "node scripts/e2e-authenticated.mjs",
     "discovery:real": "node scripts/discovery-smoke.mjs",
     "discovery:e2e": "node scripts/discovery-e2e-local.mjs",

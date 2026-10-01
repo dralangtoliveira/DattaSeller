@@ -26,6 +26,10 @@ import { REDESIGN_ACTION, RedesignError, parseRedesignJob, validateRedesignArtif
 import { createRedesignWorker } from "@/lib/redesign/worker.js";
 // @ts-expect-error contrato e agente social (DS-VALUE-05/06) exercitados por node:test sem build.
 import { AGENT_ACTIONS, AgentError, parseSocialJob, validateSocialAuditArtifact, validateSocialDemoArtifact } from "@/lib/agent/contract.js";
+// @ts-expect-error fronteira neutra de executor (DS-AGENT-01) exercitada por node:test sem build.
+import { createAgentJobAdapter } from "@/lib/agent/job-interface.js";
+// @ts-expect-error helpers do job agêntico (DS-AGENT-01) exercitados por node:test sem build.
+import { agentJobRow, agentJobView, applyAgentResult, failedAgentJobPatch, isTerminalAgentJob, normalizeAgentJobRequest, selectAgentExecutor } from "@/lib/agent/jobs.js";
 // @ts-expect-error agente social (DS-VALUE-05/06) exercitado por node:test sem build.
 import { createAgent } from "@/lib/agent/worker.js";
 // @ts-expect-error helper is deliberately exercised by node:test without a build step.
@@ -43,6 +47,9 @@ export const runtime = "nodejs";
 // A descoberta consulta fontes públicas reais (Nominatim + Overpass) e precisa
 // de folga sobre o timeout padrão da função.
 export const maxDuration = 60;
+// O job agêntico remoto precisa caber no orçamento da função serverless: o
+// timeout é explícito e devolve erro estruturado em vez de pendurar a requisição.
+const AGENT_JOB_TIMEOUT_MS = Number(process.env.DS_AGENT_TIMEOUT_MS ?? 45000) || 45000;
 type Db = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type Qualification = { facts: string[]; hypotheses: string[]; recommendation: string; reason: string; confidence: string; validation_question: string; next_action: string; owner: string };
 type NormalizedQualification = { value: Qualification | null; error?: string };
@@ -324,6 +331,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
   }
   if (root === "products") { const { data, error } = await db.from("ds_products").select("*").order("id"); return error ? storageUnavailable() : out(data); }
   if (root === "leads") { const { data, error } = await db.from("ds_leads").select("*").is("deleted_at", null).order("updated_at", { ascending: false }); return error ? storageUnavailable() : out((data ?? []).map(leadToUi)); }
+  // DS-AGENT-01 — leitura do estado dos jobs agênticos (o CRM é a fonte de verdade).
+  if (root === "agent" && parts[1] === "jobs") {
+    const sessao = await context(); if (!sessao) return out({ error: "unauthorized" }, 401);
+    const lead = new URL(request.url).searchParams.get("lead");
+    if (lead && !isSafeLeadSlug(lead)) return out({ error: "invalid_lead_slug" }, 400);
+    const base = sessao.db.from("ds_agent_jobs").select("*");
+    const { data, error } = await (lead ? base.eq("lead_slug", lead) : base).order("created_at", { ascending: false }).limit(100);
+    if (error) return storageUnavailable();
+    return out({ jobs: ((data ?? []) as Array<Record<string, unknown>>).map(agentJobView) });
+  }
   // Leitura da trilha de auditoria exigida pela cadeia canônica (passo `email_timeline`
   // e `reload` do runner E2E). Filtro opcional por lead, com slug validado.
   if (root === "timeline") {
@@ -355,6 +372,48 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
 export async function POST(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const auth = await context(); if (!auth) return out({ error: "unauthorized" }, 401);
   const { db, user } = auth; const parts = (await params).path; const root = parts[0]; const body = await request.json().catch(() => ({}));
+  // DS-AGENT-01 — executa um AgentJob pelo executor neutro.
+  //
+  // CRM/server-side → `lib/agent/job-interface.js` → ponte HTTPS → Hermes
+  // compartilhado → skill DattaSeller → AgentResult → persistência no CRM.
+  // O bearer da ponte existe apenas no servidor: o navegador nunca o recebe. Se a
+  // ponte não está configurada, nada é inventado e o fluxo continua no worker do
+  // próprio repositório pelas rotas de capacidade já existentes.
+  if (root === "agent" && parts[1] === "jobs") {
+    const executor = selectAgentExecutor({ endpoint: process.env.DS_AGENT_ENDPOINT, bearer: process.env.DS_AGENT_BEARER });
+    if (!executor.remote) return out({ error: "agent_executor_unavailable" }, 503);
+    const normalizado = normalizeAgentJobRequest(body, { fallbackJobId: id("job") });
+    if (normalizado.error) return out({ error: normalizado.error }, 400);
+    const job = normalizado.job;
+    if (job.lead_slug && !isSafeLeadSlug(job.lead_slug)) return out({ error: "invalid_lead_slug" }, 400);
+
+    const { data: existente, error: leituraError } = await db.from("ds_agent_jobs").select("*").eq("tenant_id", job.tenant_id).eq("id", job.job_id).maybeSingle();
+    if (leituraError) return storageUnavailable();
+    if (existente && isTerminalAgentJob(existente)) return out(agentJobView(existente));
+
+    if (!existente) {
+      const { error: insertError } = await db.from("ds_agent_jobs").insert(agentJobRow({ job, executor, userId: user.id }));
+      if (insertError) return storageUnavailable();
+    } else {
+      const { error: updateError } = await db.from("ds_agent_jobs").update({ status: "running", attempts: Number(existente.attempts ?? 0) + 1, updated_at: now() }).eq("tenant_id", job.tenant_id).eq("id", job.job_id);
+      if (updateError) return storageUnavailable();
+    }
+
+    let result: Record<string, unknown>;
+    try {
+      result = await createAgentJobAdapter({ endpoint: executor.endpoint, bearer: String(process.env.DS_AGENT_BEARER ?? ""), timeoutMs: AGENT_JOB_TIMEOUT_MS }).submit(job) as Record<string, unknown>;
+    } catch (error) {
+      const code = error instanceof AgentError ? String((error as { code?: string }).code ?? "") || "agent_executor_unavailable" : "agent_executor_unavailable";
+      await db.from("ds_agent_jobs").update(failedAgentJobPatch(code)).eq("tenant_id", job.tenant_id).eq("id", job.job_id);
+      await event(db, job.lead_slug, "agent.job.failed", `${job.job_id}|${job.job_type}|${code}`);
+      return out({ error: code, job_id: job.job_id, status: "failed" }, 502);
+    }
+
+    const { data: salvo, error: saveError } = await db.from("ds_agent_jobs").update(applyAgentResult(result)).eq("tenant_id", job.tenant_id).eq("id", job.job_id).select().single();
+    if (saveError) return storageUnavailable();
+    await event(db, job.lead_slug, "agent.job.completed", `${job.job_id}|${job.job_type}|${String(result.status)}`);
+    return out(agentJobView(salvo), 201);
+  }
   if (root === "leads") {
     const disallowed = firstDisallowedKey(body, LEAD_INPUT_KEYS);
     if (disallowed) return out({ error: "lead_field_not_allowed" }, 400);

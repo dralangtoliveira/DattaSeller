@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-// Verifica/aplica somente a migration incremental de respostas comerciais no
-// ref HML declarado. Nunca aceita o ref de Production e nunca imprime tokens.
+// Verifica/aplica somente a migration incremental dos jobs agênticos no ref HML
+// declarado. Nunca aceita o ref de Production e nunca imprime tokens.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = process.cwd();
 const PRODUCTION_REF = "vkvkzoulbljampcbxaim";
-const FILE = "supabase/migrations/20260929140724_add_commercial_email_replies.sql";
+const FILE = "supabase/migrations/20261001150000_add_agent_jobs.sql";
+const TABLE = "ds_agent_jobs";
 const sql = readFileSync(join(ROOT, FILE), "utf8");
 const sha256 = createHash("sha256").update(sql).digest("hex");
 const ref = process.env.DS_E2E_EXPECTED_SUPABASE_REF || process.env.SUPABASE_HML_REF;
@@ -31,17 +32,16 @@ async function query(query) {
 }
 async function check() {
   validateTarget();
-  const result = await query("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'ds_emails' and column_name in ('reply_received_at','reply_provider_message_id','reply_body') order by column_name");
+  const result = await query(`select c.relname as table_name, c.relrowsecurity as rls, (select count(*)::int from pg_policies p where p.schemaname = 'public' and p.tablename = '${TABLE}') as policies from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = '${TABLE}'`);
   if (!result.ok) fail(`consulta HML recusada (${result.status}): valide escopo do SUPABASE_ACCESS_TOKEN`, 5);
-  const columns = Array.isArray(result.data) ? result.data.map(row => row.column_name) : [];
-  const pending = ["reply_received_at", "reply_provider_message_id", "reply_body"].filter(column => !columns.includes(column));
+  const row = Array.isArray(result.data) ? result.data[0] : null;
   console.log(`MIGRATION_FILE: ${FILE}`);
   console.log(`MIGRATION_SHA256: ${sha256}`);
   console.log(`MIGRATION_DESTINATION: HML ref=${ref}`);
-  console.log(`MIGRATION_PENDING: ${pending.length ? `YES (${pending.join(",")})` : "NO"}`);
-  console.log("MIGRATION_IDEMPOTENT: YES (ADD COLUMN/CREATE INDEX IF NOT EXISTS)");
-  console.log("MIGRATION_ROLLBACK: não destrutivo; rollback manual exigiria remover colunas/índice após revisão");
-  return { pending: pending.length > 0 };
+  console.log(`MIGRATION_PENDING: ${row ? "NO" : "YES"}`);
+  if (row) console.log(`MIGRATION_STATE: table=${row.table_name} rls=${row.rls} policies=${row.policies}`);
+  console.log("MIGRATION_IDEMPOTENT: YES (CREATE TABLE/POLICY IF NOT EXISTS)");
+  return { pending: !row };
 }
 if (process.argv[2] === "check") await check();
 else if (process.argv[2] === "apply") {
@@ -52,4 +52,4 @@ else if (process.argv[2] === "apply") {
   if (!result.ok) fail(`MIGRATION_APPLY: FAILED (${result.status})`, 6);
   console.log("MIGRATION_APPLY: OK");
   await check();
-} else fail("uso: node scripts/hml-commercial-replies.mjs [check|apply]", 2);
+} else fail("uso: node scripts/hml-agent-jobs.mjs [check|apply]", 2);
