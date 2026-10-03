@@ -1,7 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildProspectorDraft, diagnosisFactsFromCriteria, validateProspectorDraft } from "../lib/email/prospector-draft.js";
+import { buildProspectorDraft, buildProspectorSubject, diagnosisFactsFromCriteria, validateProspectorDraft } from "../lib/email/prospector-draft.js";
+
+test("o assunto do Prospector continua sendo uma pergunta com nome real longo", () => {
+  // Defeito real encontrado no HML: cortar a frase no limite removia o "?" e
+  // invalidava o rascunho de qualquer negócio com nome maior que ~19 caracteres.
+  for (const nome of ["Fat Rosie's Taco & Tequila Bar", "Mr and Mrs Crab Seafood", "Empresa Exemplo", "A", "  Espaços   demais  no  nome  "]) {
+    const assunto = buildProspectorSubject(nome);
+    assert.ok(assunto.length <= 60, `${assunto} estourou o limite`);
+    assert.ok(assunto.endsWith("?"), `${assunto} precisa terminar em pergunta`);
+    assert.equal(validateProspectorDraft({ subject: assunto, body: "", publicUrl: "https://a.example" }), "prospector_word_count_invalid");
+  }
+  assert.match(buildProspectorSubject("Fat Rosie's Taco & Tequila Bar"), /^Fat Rosie's Taco & Tequila Bar/);
+});
 
 test("gera rascunho Prospector com pergunta, 120-180 palavras e link único", () => {
   const draft = buildProspectorDraft({ businessName: "Empresa Exemplo", firstLine: "Vi a apresentação pública da Empresa Exemplo e gostei da forma como vocês explicam o atendimento.", diagnosis: ["O contato está publicado, mas a chamada principal não aparece logo no início.", "A página tem informações úteis, porém a hierarquia pode deixar o serviço mais fácil de entender."], publicUrl: "https://propostas.example.com/p/abc", sellerName: "Ana", identity: "DattaSeller", whatsapp: "+5511999999999" });

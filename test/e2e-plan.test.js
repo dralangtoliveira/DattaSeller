@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { E2E_STEPS, REQUIRED_ENV, e2eHeaders, e2eLeadSlug, e2eProspectCandidate, e2eRunId, summarize, validateEnv } from "../lib/e2e/plan.js";
+import { E2E_STEPS, REQUIRED_ENV, e2eHeaders, e2eLeadSlug, e2eProspectCandidate, e2eRunId, publicProposalToken, summarize, validateEnv } from "../lib/e2e/plan.js";
 import { isSafeLeadSlug } from "../lib/hardening/guards.ts";
 import { isPublicHttpUrl } from "../lib/prospector.js";
 
@@ -27,8 +27,31 @@ test("o template de ambiente nomeia todos os inputs do preflight sem autorizar e
 });
 
 test("a cadeia do E2E é a ordem registrada e não perde nenhum passo", () => {
-  assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "discovery", "prospect", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "email_draft", "email_edit", "email_approve", "email_send", "email_followup", "email_timeline", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
+  assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "discovery", "prospect", "enrichment", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "public_publish", "public_open", "public_token_isolation", "prospector_draft", "public_second_client", "email_draft", "email_edit", "email_approve", "email_send", "email_temporal_fixture", "email_followup", "email_followup_duplicate", "email_timeline", "public_revoke", "public_revoked_closed", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
   for (const step of E2E_STEPS) assert.ok(step.label && step.endpoint, `${step.id} precisa de rótulo e endpoint`);
+});
+
+test("o capability da proposta pública só é aceito na origem declarada do alvo", () => {
+  const token = "A".repeat(43);
+  assert.equal(publicProposalToken(`https://preview.example.vercel.app/p/${token}`, "https://preview.example.vercel.app/"), token);
+  assert.equal(publicProposalToken(`https://preview.example.vercel.app/p/${token}`, "https://outro.example.vercel.app"), "");
+  assert.equal(publicProposalToken(`https://preview.example.vercel.app/p/${"A".repeat(42)}`, "https://preview.example.vercel.app"), "");
+  assert.equal(publicProposalToken("https://preview.example.vercel.app/api/proposals/x/public", "https://preview.example.vercel.app"), "");
+  assert.equal(publicProposalToken("não é url"), "");
+});
+
+test("o runner prova DS-VALUE-07/08 com publicação, abertura anônima e revogação", () => {
+  const script = readFileSync(new URL("../scripts/e2e-authenticated.mjs", import.meta.url), "utf8");
+  assert.match(script, /\/api\/proposals\/\$\{state\.proposalId\}\/public/);
+  assert.match(script, /\/api\/proposals\/\$\{state\.proposalId\}\/prospector-draft/);
+  assert.match(script, /publicProposalToken/);
+  assert.match(script, /public_revoked_closed/);
+  assert.match(script, /public_second_client/);
+  // A abertura pública é anônima de verdade: sem cookie de sessão do CRM.
+  const anonBlock = script.match(/const anonGet =[\s\S]*?\n\}\);/)?.[0] ?? "";
+  assert.ok(anonBlock, "o runner precisa de um fetch anônimo dedicado");
+  assert.doesNotMatch(anonBlock, /[Cc]ookie/, "a abertura pública não pode reutilizar a sessão do operador");
+  assert.doesNotMatch(anonBlock, /x-dattaseller|Authorization/, "a abertura pública não pode carregar credencial do CRM");
 });
 
 test("o resumo só fica verde sem falha e sem bloqueio", () => {
