@@ -369,9 +369,11 @@ if (publicUrl) {
 
 // --- DS-VALUE-08 — rascunho Prospector ancorado no link público ---------------
 let prospectorDraftId = null;
+let prospectorDraftBody = "";
 if (state.proposalId && publicToken) {
   const prospector = await call("POST", `/api/proposals/${state.proposalId}/prospector-draft`, { public_proposal_url: publicUrl });
   prospectorDraftId = typeof prospector.json?.id === "string" ? prospector.json.id : null;
+  prospectorDraftBody = typeof prospector.json?.body === "string" ? prospector.json.body : "";
   const scheduled = prospector.json?.status === "draft" && prospector.json?.provider === "mock";
   const anchored = carriesPublicLink(prospector.json?.body, publicToken);
   record("prospector_draft", prospector.status === 201 && prospectorDraftId && scheduled && anchored ? "pass" : "fail", prospector.status === 201 ? `draft=${prospectorDraftId} link=${anchored ? "no corpo" : "ausente"}` : `HTTP ${prospector.status} ${prospector.json?.error ?? prospector.text.slice(0, 140)}`);
@@ -435,7 +437,12 @@ state.emailId = prospectorDraftId ?? draft.json?.id ?? null;
 record("email_draft", draft.status === 200 && state.emailId ? "pass" : "fail", `email=${state.emailId ?? "-"}${prospectorDraftId ? " (Prospector)" : ""}`);
 
 if (state.emailId) {
-  const edited = await call("PUT", `/api/emails/${state.emailId}`, { subject: `Proposta E2E ${runId}`, body: "Mensagem de teste controlado do E2E, revisada pelo operador." });
+  // A revisão humana do rascunho não pode destruir o link público: o follow-up
+  // precisa reutilizar exatamente o mesmo `/p/:token` (DS-VALUE-10).
+  const corpoRevisado = prospectorDraftBody
+    ? `${prospectorDraftBody}\n\nRevisado pelo operador no E2E controlado.`
+    : "Mensagem de teste controlado do E2E, revisada pelo operador.";
+  const edited = await call("PUT", `/api/emails/${state.emailId}`, { subject: `Proposta E2E ${runId}`, body: corpoRevisado });
   record("email_edit", edited.status === 200 ? "pass" : "fail", `HTTP ${edited.status}`);
   const reviewed = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "reviewed" });
   const approved = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "approved" });
