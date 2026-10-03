@@ -27,6 +27,24 @@ test("a checklist bloqueia gatilhos, mais de um link e texto fora do tamanho", (
   assert.equal(validateProspectorDraft({ subject: "Empresa, posso mostrar algo?", body, publicUrl: "https://c.example" }), "prospector_link_invalid");
 });
 
+test("a evidência factual com URL não duplica o link da proposta", () => {
+  // Defeito real encontrado no HML: o diagnóstico cita URLs públicas observadas
+  // (ex.: Instagram do lead) e o rascunho era reprovado por link duplicado.
+  const publicUrl = "https://preview.example.vercel.app/p/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  const draft = buildProspectorDraft({
+    businessName: "Fat Rosie's Taco & Tequila Bar",
+    firstLine: "Vi a avaliação pública de 4,6 (2.100 avaliações) para Fat Rosie's Taco & Tequila Bar.",
+    diagnosis: ["Redes sociais publicadas: https://instagram.com/fat_rosies", "O contato aparece no rodapé."],
+    publicUrl,
+    sellerName: "Alan Oliveira",
+    identity: "DattaSeller",
+    whatsapp: null,
+  });
+  assert.equal(validateProspectorDraft({ ...draft, publicUrl }), null);
+  assert.equal((draft.body.match(/https?:\/\/[^\s]+/g) ?? []).length, 1);
+  assert.doesNotMatch(draft.body, /instagram\.com/);
+});
+
 test("a rota autenticada exige publicação hash-only e o mesmo URL capability antes de persistir", () => {
   const route = readFileSync(new URL("../app/api/proposals/[id]/prospector-draft/route.ts", import.meta.url), "utf8");
   assert.match(route, /public_proposal_required/);
