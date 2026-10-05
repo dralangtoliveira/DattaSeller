@@ -370,13 +370,19 @@ if (publicUrl) {
 // --- DS-VALUE-08 — rascunho Prospector ancorado no link público ---------------
 let prospectorDraftId = null;
 let prospectorDraftBody = "";
+let prospectorDraftSubject = "";
 if (state.proposalId && publicToken) {
   const prospector = await call("POST", `/api/proposals/${state.proposalId}/prospector-draft`, { public_proposal_url: publicUrl });
   prospectorDraftId = typeof prospector.json?.id === "string" ? prospector.json.id : null;
   prospectorDraftBody = typeof prospector.json?.body === "string" ? prospector.json.body : "";
+  prospectorDraftSubject = typeof prospector.json?.subject === "string" ? prospector.json.subject : "";
   const scheduled = prospector.json?.status === "draft" && prospector.json?.provider === "mock";
   const anchored = carriesPublicLink(prospector.json?.body, publicToken);
-  record("prospector_draft", prospector.status === 201 && prospectorDraftId && scheduled && anchored ? "pass" : "fail", prospector.status === 201 ? `draft=${prospectorDraftId} link=${anchored ? "no corpo" : "ausente"}` : `HTTP ${prospector.status} ${prospector.json?.error ?? prospector.text.slice(0, 140)}`);
+  // A checklist exige um único link comercial; as URLs da evidência factual do
+  // diagnóstico são neutralizadas, não apagadas da análise.
+  const linksNoCorpo = (String(prospector.json?.body ?? "").match(/https?:\/\/[^\s]+/g) ?? []).length;
+  const assuntoValido = Boolean(prospectorDraftSubject) && prospectorDraftSubject.length <= 60 && prospectorDraftSubject.endsWith("?");
+  record("prospector_draft", prospector.status === 201 && prospectorDraftId && scheduled && anchored && assuntoValido !== false ? "pass" : "fail", prospector.status === 201 ? `draft=${prospectorDraftId} assunto="${prospectorDraftSubject}" (${prospectorDraftSubject.length} car.) links=${linksNoCorpo} destinatário=${prospector.json?.recipient ?? "-"}` : `HTTP ${prospector.status} ${prospector.json?.error ?? prospector.text.slice(0, 140)}`);
 } else record("prospector_draft", "skip", "sem publicação ativa");
 
 // --- DS-VALUE-07 — isolamento entre dois clientes reais ----------------------
@@ -430,6 +436,19 @@ if (secondProposalId) {
   record("public_second_client", secondPublicUrl && own?.status === 200 && ownVisible && !crossVisible ? "pass" : "fail", secondPublicUrl ? `HTTP ${own?.status} cliente próprio=${ownVisible ? "visível" : "ausente"} cliente alheio=${crossVisible ? "VAZOU" : "ausente"}` : `HTTP ${secondPublished.status} ${secondPublished.json?.error ?? secondPublished.text.slice(0, 140)}`);
 } else record("public_second_client", "skip", "sem segunda proposta publicável");
 
+// Rascunho do segundo cliente: prova que o follow-up é escopado ao lead da
+// própria cadeia e nunca alcança a jornada do outro cliente.
+let secondEmailId = null;
+if (secondProposalId) {
+  const rascunhoB = await call("POST", "/api/emails", { lead_slug: secondLeadSlug, proposal_id: secondProposalId, subject: `Proposta E2E ${runId} segundo cliente`, body: "Rascunho controlado do segundo cliente do E2E." });
+  secondEmailId = rascunhoB.json?.id ?? null;
+}
+
+// Remetente/resposta declarados pela configuração do próprio HML (nunca segredo).
+const configEmail = await call("GET", "/api/settings");
+const cfgEmail = configEmail.json && typeof configEmail.json === "object" ? configEmail.json : {};
+record("sender_config", String(cfgEmail.email_sender ?? "").includes("@") && String(cfgEmail.email_reply_to ?? "").includes("@") ? "pass" : "fail", `remetente=${cfgEmail.email_sender ?? "-"} resposta=${cfgEmail.email_reply_to ?? "-"} provider=${cfgEmail.email_provider ?? "-"} followup_days=${cfgEmail.followup_days ?? "-"}`);
+
 const draft = await call("POST", "/api/emails", { lead_slug: leadSlug, proposal_id: state.negotiatedProposalId ?? state.proposalId ?? null, subject: `Proposta E2E ${runId}`, body: "Mensagem de teste controlado do E2E. Revise antes do envio." });
 // A cadeia de e-mail roda sobre o rascunho do Prospector (com o link público)
 // quando ele existe; o rascunho genérico continua registrado como passo.
@@ -442,16 +461,21 @@ if (state.emailId) {
   const corpoRevisado = prospectorDraftBody
     ? `${prospectorDraftBody}\n\nRevisado pelo operador no E2E controlado.`
     : "Mensagem de teste controlado do E2E, revisada pelo operador.";
-  const edited = await call("PUT", `/api/emails/${state.emailId}`, { subject: `Proposta E2E ${runId}`, body: corpoRevisado });
+  // O assunto permanece o gerado pelo Prospector (válido e terminando em
+  // pergunta); o run id fica apenas no corpo revisado, para rastreabilidade.
+  const edited = await call("PUT", `/api/emails/${state.emailId}`, { subject: prospectorDraftSubject || `Proposta E2E ${runId}`, body: corpoRevisado });
   record("email_edit", edited.status === 200 ? "pass" : "fail", `HTTP ${edited.status}`);
   const reviewed = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "reviewed" });
   const approved = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "approved" });
   record("email_approve", reviewed.status === 200 && approved.status === 200 ? "pass" : "fail", `reviewed=${reviewed.status} approved=${approved.status}`);
   const sent = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "sent_simulated" });
   const sendStatus = sent.json?.status ?? "?";
-  if (sendStatus === "sent") record("email_send", "pass", `provider=${sent.json?.provider} id=${sent.json?.provider_message_id ?? "-"}`);
+  if (sendStatus === "sent") record("email_send", "pass", `provider=${sent.json?.provider} id=${sent.json?.provider_message_id ?? "-"} destinatário=${sent.json?.recipient ?? "-"}`);
   else if (sendStatus === "failed") record("email_send", "blocked", `envio não concluído: ${sent.json?.error ?? "provider_send_failed"} (RESEND_API_KEY/domínio)`);
   else record("email_send", "fail", `HTTP ${sent.status} ${sent.text.slice(0, 140)}`);
+  // DS-VALUE-10: recém-enviado, o follow-up precisa ser recusado pela regra temporal.
+  const cedo = await call("POST", `/api/emails/${state.emailId}/follow-up`);
+  record("email_followup_not_due", cedo.status === 409 && cedo.json?.error === "follow_up_not_due" ? "pass" : "fail", `HTTP ${cedo.status} ${cedo.json?.error ?? ""}`);
   // A janela temporal do follow-up é uma fixture controlada e explícita: só roda
   // quando o operador declara DS_E2E_TEMPORAL_FIXTURE=yes e só toca o lead E2E
   // do HML (o alvo já foi validado como isolado de Production antes daqui).
@@ -476,12 +500,19 @@ if (state.emailId) {
   record("email_followup", followUpOk ? "pass" : followUp.status === 409 ? "blocked" : "fail", followUp.status === 201 ? `mesmo link público=${followUpOk ? "sim" : "não"}` : `HTTP ${followUp.status} ${followUp.json?.error ?? ""}`);
   const followUpAgain = await call("POST", `/api/emails/${state.emailId}/follow-up`);
   record("email_followup_duplicate", followUpAgain.json?.duplicate === true ? "pass" : followUpAgain.status === 409 ? "blocked" : "fail", `HTTP ${followUpAgain.status}`);
+  // DS-VALUE-10 — resposta já recebida torna o follow-up inelegível.
+  const respondido = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "generic_reply" });
+  const depoisDaResposta = await call("POST", `/api/emails/${state.emailId}/follow-up`);
+  record("email_followup_replied", respondido.status === 200 && depoisDaResposta.status === 409 ? "pass" : "fail", `resposta=${respondido.status} follow-up=${depoisDaResposta.status} ${depoisDaResposta.json?.error ?? ""}`);
+  // DS-VALUE-10 — isolamento por lead: e-mail de outro cliente não é elegível.
+  const alheio = secondEmailId ? await call("POST", `/api/emails/${secondEmailId}/follow-up`) : null;
+  record("email_followup_foreign_lead", alheio && alheio.status === 409 ? "pass" : alheio ? "fail" : "skip", alheio ? `HTTP ${alheio.status} ${alheio.json?.error ?? ""}` : "sem rascunho do segundo cliente");
   const timeline = await call("GET", "/api/timeline");
   // O endpoint de timeline responde em camelCase (`leadSlug`), contrato já coberto por teste.
   const events = Array.isArray(timeline.json) ? timeline.json.filter((item) => (item.leadSlug ?? item.lead_slug) === leadSlug) : [];
   record("email_timeline", timeline.status === 200 && events.length > 0 ? "pass" : "fail", `${events.length} eventos do lead E2E`);
 } else {
-  for (const id of ["email_edit", "email_approve", "email_send", "email_temporal_fixture", "email_followup", "email_followup_duplicate", "email_timeline"]) record(id, "skip", "sem e-mail");
+  for (const id of ["email_edit", "email_approve", "email_send", "email_followup_not_due", "email_temporal_fixture", "email_followup", "email_followup_duplicate", "email_followup_replied", "email_followup_foreign_lead", "email_timeline"]) record(id, "skip", "sem e-mail");
 }
 
 // --- DS-VALUE-07 — revogação encerra o capability ----------------------------

@@ -27,7 +27,7 @@ test("o template de ambiente nomeia todos os inputs do preflight sem autorizar e
 });
 
 test("a cadeia do E2E é a ordem registrada e não perde nenhum passo", () => {
-  assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "discovery", "prospect", "enrichment", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "public_publish", "public_open", "public_token_isolation", "prospector_draft", "public_second_client", "email_draft", "email_edit", "email_approve", "email_send", "email_temporal_fixture", "email_followup", "email_followup_duplicate", "email_timeline", "public_revoke", "public_revoked_closed", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
+  assert.deepEqual(E2E_STEPS.map((step) => step.id), ["auth", "discovery", "prospect", "enrichment", "dedup", "qualification", "diagnosis", "social", "preview", "editor", "comparator", "proposal", "negotiation", "cover", "public_publish", "public_open", "public_token_isolation", "prospector_draft", "public_second_client", "sender_config", "email_draft", "email_edit", "email_approve", "email_send", "email_followup_not_due", "email_temporal_fixture", "email_followup", "email_followup_duplicate", "email_followup_replied", "email_followup_foreign_lead", "email_timeline", "public_revoke", "public_revoked_closed", "order", "checkout", "payment", "contract", "contract_html", "contract_docx", "handoff", "financial", "reload"]);
   for (const step of E2E_STEPS) assert.ok(step.label && step.endpoint, `${step.id} precisa de rótulo e endpoint`);
 });
 
