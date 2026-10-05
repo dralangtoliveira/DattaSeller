@@ -23,7 +23,10 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   // O contexto do Worker Agent (DS-VALUE-04) passa pela borda porque a própria
   // rota exige token do worker OU sessão admin; sem isso ela responde 401.
-  const isPublic = path === "/login" || path === "/api/auth/logout" || path.startsWith("/api/inbound/") || path === "/api/worker/context";
+  // DS-VALUE-07: a proposta pública é um capability hash-only — o cliente abre
+  // `/p/<token>` sem sessão. A autorização é o próprio token (validado no
+  // servidor contra o hash persistido), não o login do CRM.
+  const isPublic = path === "/login" || path === "/api/auth/logout" || path.startsWith("/api/inbound/") || path === "/api/worker/context" || path === "/p" || path.startsWith("/p/");
   if (!isAdmin && !isPublic) {
     if (user) await supabase.auth.signOut();
     const url = request.nextUrl.clone();

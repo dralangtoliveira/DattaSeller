@@ -8,11 +8,14 @@
  * Uso: node scripts/crm-visual-validation.mjs <app_url> <cookie> [pasta_saida]
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadPlaywright } from "../lib/agent/browser.js";
 
-const [appUrl, cookie, pastaSaida = ".redesign-e2e/crm-visual"] = process.argv.slice(2);
+const [appUrl, cookieArg, pastaSaida = ".redesign-e2e/crm-visual"] = process.argv.slice(2);
+// A credencial de sessão pode vir de arquivo (`CRM_VISUAL_COOKIE_FILE`) para não
+// transitar por linha de comando nem por log de erro.
+const cookie = process.env.CRM_VISUAL_COOKIE_FILE ? readFileSync(process.env.CRM_VISUAL_COOKIE_FILE, "utf8").trim() : cookieArg;
 if (!appUrl || !cookie) {
   console.error("uso: node scripts/crm-visual-validation.mjs <app_url> <cookie> [pasta_saida]");
   process.exit(2);
@@ -28,7 +31,16 @@ mkdirSync(pastaSaida, { recursive: true });
 const chromium = await loadPlaywright();
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 950 }, locale: "pt-BR" });
-await context.addCookies([{ name: "sb-127-auth-token", value: cookie.replace(/^sb-127-auth-token=/, ""), domain: "127.0.0.1", path: "/" }]);
+// O artefato servido pode estar em localhost ou em um Preview HML: o nome do
+// cookie de sessão depende do ref do projeto e o host vem da própria URL.
+const alvo = new URL(appUrl);
+const separador = cookie.indexOf("=");
+const cookieName = separador > 0 ? cookie.slice(0, separador) : "sb-127-auth-token";
+const cookieValue = separador > 0 ? cookie.slice(separador + 1) : cookie;
+await context.addCookies([{ name: cookieName, value: cookieValue, domain: alvo.hostname, path: "/" }]);
+// Preview protegido pela Vercel: o bypass de automação entra só como cabeçalho,
+// nunca é impresso nem versionado.
+if (process.env.CRM_VISUAL_BYPASS) await context.setExtraHTTPHeaders({ "x-vercel-protection-bypass": process.env.CRM_VISUAL_BYPASS });
 // Permite validar somente o boot e a navegação do artefato servido sem tocar
 // HML/Production. O modo é explícito e só pode ser ativado no ambiente local.
 if (process.env.CRM_VISUAL_MOCK_API === "yes") {

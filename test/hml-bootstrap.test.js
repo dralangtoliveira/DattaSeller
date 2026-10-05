@@ -65,6 +65,7 @@ test("as migrations canônicas estão declaradas na ordem correta", () => {
     assert.ok(position > cursor, `${file} fora de ordem`);
     cursor = position;
   }
+  assert.ok(declared.includes("20260929140724_add_commercial_email_replies.sql"), "migration de respostas comerciais precisa integrar uma HML nova");
 });
 
 test("a criação só acontece com plano free e senha aleatória local", () => {
@@ -109,6 +110,7 @@ test("apply consulta o escopo antes de criar e recusa quando não pode criar", (
   assert.match(applySection, /if \(!existing && !canCreateProject\) \{ console\.error\(`apply recusado: credencial sem permissão de criação \(\$\{reason\}\)`\); process\.exit\(4\); \}/);
   // A criação só pode existir depois da checagem de escopo.
   assert.ok(applySection.indexOf("canCreateProject") < applySection.indexOf('api("/projects", { method: "POST"'));
+  assert.match(applySection, /HML existente exige scripts\/hml-commercial-replies\.mjs/);
 });
 
 test("importar o script não executa CLI nem chama a rede", () => {

@@ -35,6 +35,10 @@ const PORT = Number(flag("port", process.env.DATTASELLER_WORKER_PORT ?? 4599));
 const SECRET = process.env.DATTASELLER_WORKER_SECRET ?? "";
 const API_URL = (process.env.DATTASELLER_API_URL ?? "").replace(/\/$/, "");
 const API_TOKEN = process.env.DATTASELLER_WORKER_TOKEN ?? "";
+// Preview protegido: o segredo oficial de bypass é opcional e só é encaminhado
+// ao CRM quando configurado no processo do Worker. Nunca integra job, log ou
+// resposta HTTP.
+const API_BYPASS = process.env.DATTASELLER_API_BYPASS ?? "";
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost", "127.0.0.2"]);
 const isLoopback = (host) => LOOPBACK_HOSTS.has(String(host ?? "").toLowerCase().trim());
@@ -57,7 +61,8 @@ if (API_URL && !API_TOKEN) {
  */
 async function contextProvider(contextPath) {
   const url = resolveContextUrl(contextPath, API_URL);
-  const response = await fetch(url, { headers: { "x-dattaseller-worker-token": API_TOKEN } });
+  const headers = { "x-dattaseller-worker-token": API_TOKEN, ...(API_BYPASS ? { "x-vercel-protection-bypass": API_BYPASS } : {}) };
+  const response = await fetch(url, { headers });
   if (!response.ok) throw new RedesignError("redesign_context_unavailable", `CRM respondeu ${response.status} ao pedir o contexto.`);
   return response.json();
 }

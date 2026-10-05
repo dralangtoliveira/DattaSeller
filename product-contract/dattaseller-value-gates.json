@@ -1,14 +1,12 @@
 {
-  "version": "2026-09-19",
+  "version": "2026-10-05",
   "product": "DattaSeller",
   "product_ready": false,
   "canonical_integration": {
-    "branch": "hardening/phase-a-containment-clean",
-    "pull_request": 26,
-    "merge_commit": "470ff162b1f74e8819b0d6df219bf9d2a124f85e",
-    "merged_at": "2026-09-22T19:07:05Z",
-    "verified_head": "cd60bce2bf17d71f05036a8c683bef1d7a52387a",
-    "verification": "PR #26 CLEAN; CI verify (2), secret scan, testes, typecheck, build e Vercel SUCCESS no HEAD cd60bce; no merge commit 470ff16, CI verify com secret scan/testes/typecheck/build e status Vercel SUCCESS; checkout local 258/258 testes, tsc e secret scan 300 arquivos aprovados. O Preview da branch canônica herda NEXT_PUBLIC_SUPABASE_URL de Production (ref vkvkzoulbljampcbxaim); preflight HML real bloqueado. DS-VALUE-07/08 permanecem PARTIAL."
+    "branch": "codex/master-closing-20260929",
+    "pull_request": 27,
+    "verified_head": "6826e0965477afe09c69d3ab131e26da69646247",
+    "verification": "Preview da branch codex/master-closing-20260929 (project v0-project, time datta-x) ligado exclusivamente ao HML qfwvkarvueuezeqfljbl e verificado em runtime: DS_E2E_EXPECTED_SUPABASE_REF=HML, admin E2E autenticado e alvo recusando Production. Prova mutável real de 2026-10-05 (run 20261005f) com 49 passos OK, 0 falhas e 0 bloqueios. CI verify x2, Vercel SUCCESS e mergeStateStatus CLEAN no head 6826e09."
   },
   "allowed_status": [
     "MISSING",
@@ -101,21 +99,26 @@
     {
       "id": "DS-VALUE-07",
       "name": "Proposta pública sem login",
-      "status": "PARTIAL",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "A publicação autenticada gera capability CSPRNG de 32 bytes (43 caracteres base64url) e persiste somente SHA-256 em artifacts.public_proposal; o token em claro não é armazenado na proposta.",
-        "GET /p/:token resolve o hash server-side, exige artefatos do mesmo lead e snapshot comercial Datta360 válido, sanitiza o preview e aplica noindex, DENY, CSP sem frame externo, no-referrer e permissions policy.",
-        "Falta evidência reproduzível em HML do ciclo publicar → abrir sem login → revogar; portanto permanece PARTIAL."
+        "Prova mutável em runtime HML/Preview (2026-10-05, run 20261005f, head 6826e09): POST /api/proposals/:id/public respondeu 201 com capability base64url de 43 caracteres e persistiu somente o SHA-256 (hash_len=64) em artifacts.public_proposal — nenhum token em claro na proposta.",
+        "GET /p/<token> SEM sessão do CRM respondeu 200 com o conteúdo do cliente correto (Fat Rosie's Taco & Tequila Bar), X-Robots-Tag noindex, CSP sem frame externo e X-Frame-Options DENY.",
+        "Isolamento entre dois clientes reais: cada proposta publicada abriu apenas o próprio cliente (cliente próprio visível, cliente alheio ausente) e um capability desconhecido respondeu 404.",
+        "Revogação: DELETE /api/proposals/:id/public respondeu 200 e a mesma URL passou a responder 404, enquanto a publicação do outro cliente continuou 200; a segunda publicação também foi revogada (200 → 404).",
+        "Defeito real de produto encontrado e corrigido por esta prova: a borda (proxy.ts) redirecionava /p/:token para /login (307) e o cliente sem login nunca abria a proposta; /p e /p/* passaram a ser públicos, com a autorização permanecendo no token hash-only validado no servidor.",
+        "Evidência persistida no HML: ds_proposals.artifacts.public_proposal com published_at/revoked_at preenchidos para as duas propostas do run."
       ]
     },
     {
       "id": "DS-VALUE-08",
       "name": "Gerador de e-mail Prospector",
-      "status": "PARTIAL",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "POST /api/proposals/:id/prospector-draft exige admin, publicação hash-only ativa, URL capability correspondente, lead com e-mail, artefatos completos e snapshot comercial canônico; a checklist bloqueia gatilhos, assunto inválido, 120–180 palavras e link divergente.",
-        "O gerador consome o formato real de diagnóstico persistido pelo DS-VALUE-03 (criteria.evidencias[].observacao) e mantém compatibilidade com o formato controlado anterior.",
-        "Falta evidência HML do rascunho com publicação real; nenhum e-mail real foi enviado por este gate."
+        "Prova mutável em runtime HML (2026-10-05, run 20261005f): POST /api/proposals/:id/prospector-draft gerou e persistiu o rascunho com assunto válido (56 caracteres, terminando em pergunta), exatamente UM link no corpo — o capability público da própria proposta — e destinatário na caixa controlada.",
+        "Releitura no HML: ds_emails do run com status sent, provider resend, provider_message_id real (01a10d77-...), recipient contato+20261005f@dralanoliveira.com e assunto 'Fat Rosie's Taco & Tequila Bar, posso mostrar uma coisa?'.",
+        "Fluxo humano preservado: rascunho → edição (PUT, sem destruir o link) → reviewed → approved → envio real pelo endpoint do CRM, com remetente/resposta vindos da configuração do HML (Datta360 <noreply@mail.datta360.com.br> / contato@dralanoliveira.com, provider resend, followup_days 3).",
+        "A checklist distingue evidência factual de link comercial: as URLs citadas pelo diagnóstico (por exemplo o Instagram observado) são neutralizadas no texto, e o único link do corpo é a proposta — dois defeitos reais de produto foram corrigidos por esta prova (assunto cortado perdia o '?' e a evidência factual duplicava links).",
+        "Auditoria: eventos de timeline do lead E2E (email.prospector_draft, email.sent, email.follow_up.scheduled) e reenvio/duplicidade recusados."
       ]
     },
     {
@@ -123,25 +126,31 @@
       "name": "Envio real controlado",
       "status": "PARTIAL",
       "evidence": [
-        "Fluxo Resend foi provado em ambiente controlado; Production ainda permanece em DEMO."
+        "PROVEN_REAL (envio): envio real controlado pelo endpoint do CRM em runtime HML — provider=resend, provider_message_id real, destinatário na caixa controlada, status sent e evento de timeline, em três execuções independentes (runs 20261005d/e/f).",
+        "PROVEN_REAL (gates negativos do retorno): POST /api/inbound/resend sem assinatura respondeu 400 invalid_webhook e com assinatura inválida respondeu 400 invalid_webhook, sem gravar nada (ds_inbound_events = 0) — fail-closed comprovado em runtime no Preview HML.",
+        "PARTIAL (caminho positivo do retorno): o handler verifica a assinatura com RESEND_WEBHOOK_SECRET e, em seguida, busca a mensagem recebida no Resend (emails.receiving.get). Faltam duas capacidades externas para a prova positiva ponta a ponta: (a) o valor do segredo de webhook (variável sensível da Vercel, não recuperável por API/CLI) para assinar o evento; (b) um e-mail realmente recebido na conta Resend (caixa de entrada/domínio de recebimento configurado). Nada foi simulado para não declarar PROVEN_REAL sem runtime."
       ]
     },
     {
       "id": "DS-VALUE-10",
       "name": "Follow-up Prospector",
-      "status": "PARTIAL",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "Follow-up exige status sem resposta, três dias completos pelo followup_days configurado, reutiliza exatamente o link /p/:token e cria no máximo um ds_followups por lead.",
-        "generic_reply e demais respostas não são elegíveis; repetição devolve duplicidade sem novo rascunho.",
-        "Falta evidência HML temporal/persistida; portanto permanece PARTIAL."
+        "Prova mutável em runtime HML (2026-10-05, run 20261005f): recém-enviado, POST /api/emails/:id/follow-up respondeu 409 follow_up_not_due (antes do prazo do followup_days=3).",
+        "Depois do prazo (fixture temporal controlada no HML, e-mail do lead E2E recuado 4 dias): o follow-up foi criado (201) reutilizando EXATAMENTE o mesmo link /p/<token> do e-mail original; a segunda chamada devolveu duplicidade sem novo rascunho (um ds_followups por lead).",
+        "Resposta já recebida: após o e-mail passar para generic_reply, o follow-up respondeu 409 follow_up_requires_sent_email (inelegível).",
+        "Isolamento por lead/tenant: o follow-up de um rascunho do segundo cliente respondeu 409 e não tocou a jornada do cliente principal.",
+        "Evidência persistida: ds_followups (fup_7366b693dd68, status scheduled) e o rascunho de follow-up com o mesmo link, além dos eventos de timeline do lead."
       ]
     },
     {
       "id": "DS-VALUE-11",
       "name": "E2E comercial real",
-      "status": "MISSING",
+      "status": "PROVEN_REAL",
       "evidence": [
-        "E2E atual prova CRM/integrações com candidato preparado, não a cadeia completa iniciando em nicho/cidade."
+        "Jornada comercial completa em runtime HML (2026-10-05, run 20261005f, head 6826e09): nicho+cidade → descoberta real em fonte pública → lead controlado com proveniência → enriquecimento real → qualificação → diagnóstico factual → redesign/preview → auditoria social → proposta com snapshot comercial Datta360 → publicação pública → rascunho Prospector → revisão/aprovação → envio real Resend → follow-up → pedido → checkout → pagamento aprovado → contrato (HTML e DOCX) → handoff → financeiro/comissão → reload/persistência.",
+        "Resultado final persistido: pedido ord_03f22ec08174, pagamento aprovado, contrato contract_ef235311c413 com minuta HTML e DOCX válidos, handoff entregue, financeiro com vendas e comissão calculadas e lead+timeline sobrevivendo ao reload.",
+        "Execução limpa: 49 passos OK, 0 falhas e 0 bloqueios (scripts/e2e-authenticated.mjs), integralmente contra o Preview HML do mesmo SHA candidato."
       ]
     }
   ]
