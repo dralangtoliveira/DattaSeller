@@ -72,16 +72,23 @@ const supabase = createBrowserClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBL
 });
 
 async function call(method, path, body) {
-  const response = await fetch(`${base}${path}`, {
-    method,
-    headers: e2eHeaders({
-      base,
-      cookie: [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; "),
-      bypass: env.DS_E2E_BYPASS,
-    }),
-    body: body === undefined ? undefined : JSON.stringify(body),
-    redirect: "manual",
+  const headers = e2eHeaders({
+    base,
+    cookie: [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; "),
+    bypass: env.DS_E2E_BYPASS,
   });
+  // A borda pode derrubar a conexão (ECONNRESET) em execuções longas: repetir é
+  // parte do transporte, nunca da prova — e falha de rede vira passo registrado,
+  // não exceção não tratada que interrompe a evidência.
+  let response = null;
+  for (let tentativa = 0; tentativa < 3 && !response; tentativa += 1) {
+    try {
+      response = await fetch(`${base}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), redirect: "manual" });
+    } catch (error) {
+      if (tentativa === 2) return { status: 0, text: `network_error:${error?.cause?.code ?? error?.message ?? error}`, json: null, contentType: "" };
+      await new Promise((resolve) => setTimeout(resolve, 1500 * (tentativa + 1)));
+    }
+  }
   const text = await response.text();
   let json = null;
   try { json = JSON.parse(text); } catch { json = null; }
