@@ -132,6 +132,27 @@ async function diagnosisWithRetry(slug) {
 }
 
 /**
+ * Fixture controlada e explícita do HML: a regra do produto é "no máximo um
+ * follow-up por lead", então repetir a prova no mesmo lead controlado exige
+ * limpar o agendamento anterior. Só roda com DS_E2E_RESET_FOLLOWUPS=yes, só no
+ * lead controlado e só no HML (o alvo já foi validado como isolado). A trilha de
+ * auditoria (timeline) não é tocada.
+ */
+async function limparFollowupsDoLead(lead) {
+  if (String(env.DS_E2E_RESET_FOLLOWUPS ?? "").trim().toLowerCase() !== "yes") return { status: "skip", detail: "DS_E2E_RESET_FOLLOWUPS != yes (sem reset)" };
+  if (!String(env.SUPABASE_SECRET_KEY ?? "").trim()) return { status: "fail", detail: "SUPABASE_SECRET_KEY ausente" };
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error, count } = await admin.from("ds_followups").delete({ count: "exact" }).eq("lead_slug", lead);
+    if (error) return { status: "fail", detail: `reset falhou: ${error.message}` };
+    return { status: "pass", detail: `agendamentos anteriores do lead controlado removidos (${count ?? 0}) — somente HML` };
+  } catch (error) {
+    return { status: "fail", detail: `reset indisponível: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+/**
  * ANALYZE_SOCIAL pela rota do CRM.
  *
  * O Preview serverless não tem os binários do Playwright, então a perna de
@@ -449,6 +470,9 @@ const configEmail = await call("GET", "/api/settings");
 const cfgEmail = configEmail.json && typeof configEmail.json === "object" ? configEmail.json : {};
 record("sender_config", String(cfgEmail.email_sender ?? "").includes("@") && String(cfgEmail.email_reply_to ?? "").includes("@") ? "pass" : "fail", `remetente=${cfgEmail.email_sender ?? "-"} resposta=${cfgEmail.email_reply_to ?? "-"} provider=${cfgEmail.email_provider ?? "-"} followup_days=${cfgEmail.followup_days ?? "-"}`);
 
+const resetFollowups = await limparFollowupsDoLead(leadSlug);
+record("email_followup_fixture_reset", resetFollowups.status, resetFollowups.detail);
+
 const draft = await call("POST", "/api/emails", { lead_slug: leadSlug, proposal_id: state.negotiatedProposalId ?? state.proposalId ?? null, subject: `Proposta E2E ${runId}`, body: "Mensagem de teste controlado do E2E. Revise antes do envio." });
 // A cadeia de e-mail roda sobre o rascunho do Prospector (com o link público)
 // quando ele existe; o rascunho genérico continua registrado como passo.
@@ -496,10 +520,11 @@ if (state.emailId) {
   const temporal = await ensureFollowUpWindow(state.emailId, leadSlug);
   record("email_temporal_fixture", temporal.status, temporal.detail);
   const followUp = await call("POST", `/api/emails/${state.emailId}/follow-up`);
-  const followUpOk = followUp.status === 201 && carriesPublicLink(followUp.json?.email?.body, publicToken);
-  record("email_followup", followUpOk ? "pass" : followUp.status === 409 ? "blocked" : "fail", followUp.status === 201 ? `mesmo link público=${followUpOk ? "sim" : "não"}` : `HTTP ${followUp.status} ${followUp.json?.error ?? ""}`);
+  const mesmoLink = carriesPublicLink(followUp.json?.email?.body, publicToken);
+  const followUpOk = followUp.status === 201 && mesmoLink;
+  record("email_followup", followUpOk ? "pass" : followUp.status === 409 ? "blocked" : "fail", followUp.status === 201 ? `mesmo link público=${mesmoLink ? "sim" : "não"}` : `HTTP ${followUp.status} ${followUp.json?.error ?? ""}`);
   const followUpAgain = await call("POST", `/api/emails/${state.emailId}/follow-up`);
-  record("email_followup_duplicate", followUpAgain.json?.duplicate === true ? "pass" : followUpAgain.status === 409 ? "blocked" : "fail", `HTTP ${followUpAgain.status}`);
+  record("email_followup_duplicate", followUpAgain.json?.duplicate === true ? "pass" : followUpAgain.status === 409 ? "blocked" : "fail", `HTTP ${followUpAgain.status} duplicado=${followUpAgain.json?.duplicate === true ? "sim" : "não"} (um follow-up por lead)`);
   // DS-VALUE-10 — resposta já recebida torna o follow-up inelegível.
   const respondido = await call("POST", `/api/emails/${state.emailId}/transition`, { status: "generic_reply" });
   const depoisDaResposta = await call("POST", `/api/emails/${state.emailId}/follow-up`);
